@@ -1,6 +1,6 @@
 # Makefile for automagik-tools development
 
-.PHONY: help install test test-unit test-working test-mcp test-integration test-all test-fast test-coverage lint format clean build
+.PHONY: help install test test-unit test-working test-mcp test-integration test-all test-fast test-coverage lint format clean build publish-test publish check-dist
 
 # Default target
 help:
@@ -22,8 +22,11 @@ help:
 	@echo "  lint        Run linting (ruff + black check)"
 	@echo "  format      Format code (black + ruff fix)"
 	@echo ""
-	@echo "Build:"
+	@echo "Build & Publish:"
 	@echo "  build       Build the package"
+	@echo "  check-dist  Check built package quality"
+	@echo "  publish-test Upload to TestPyPI (recommended first)"
+	@echo "  publish     Upload to PyPI (production)"
 	@echo "  clean       Clean build artifacts"
 	@echo ""
 	@echo "Direct pytest examples:"
@@ -37,6 +40,10 @@ help:
 # Ensure .venv is activated for all commands
 SHELL := /bin/bash
 ACTIVATE := source .venv/bin/activate &&
+
+# Load environment variables from .env file
+include .env
+export
 
 # Setup
 install:
@@ -83,10 +90,25 @@ format:
 	$(ACTIVATE) black automagik_tools tests
 	$(ACTIVATE) ruff check --fix automagik_tools tests
 
-# Build
+# Build & Publish
 build:
 	@echo "Building package..."
 	$(ACTIVATE) python -m build --no-isolation
+
+check-dist:
+	@echo "Checking built package quality..."
+	$(ACTIVATE) twine check dist/*
+
+publish-test: build check-dist
+	@echo "Publishing to TestPyPI..."
+	@echo "Using API key for user: $(PYPI_USERNAME)"
+	$(ACTIVATE) TWINE_USERNAME="__token__" TWINE_PASSWORD="$(PYPI_API_KEY)" twine upload --repository testpypi dist/*
+
+publish: build check-dist
+	@echo "Publishing to PyPI..."
+	@echo "Using API key for user: $(PYPI_USERNAME)"
+	read -p "Are you sure you want to publish to PyPI? (y/N): " confirm && [ "$$confirm" = "y" ]
+	$(ACTIVATE) TWINE_USERNAME="__token__" TWINE_PASSWORD="$(PYPI_API_KEY)" twine upload dist/*
 
 clean:
 	@echo "Cleaning build artifacts..."
