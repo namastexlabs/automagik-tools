@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automagik-tools"
+version = "0.1.0"
+description = "A monorepo package for MCP tools with dynamic loading capabilities"
+authors = [
+    {name = "Automagik Team", email = "team@automagik.dev"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+keywords = ["mcp", "tools", "ai", "agents", "fastmcp", "whatsapp", "discord", "notion"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications :: Chat",
+    "Topic :: Office/Business",
+]
+
+dependencies = [
+    "fastmcp>=2.5.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.5.0",
+    "typer>=0.15.0",
+    "rich>=13.0.0",
+    "importlib-metadata>=6.0.0",
+    "watchdog>=3.0.0",
+    "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+evolution-api = [
+    "httpx>=0.28.1",
+    "python-dotenv>=1.1.0",
+]
+
+discord = [
+    "discord.py>=2.3.0",
+    "python-dotenv>=1.1.0",
+]
+
+notion = [
+    "notion-client>=2.0.0",
+    "python-dotenv>=1.1.0",
+]
+
+github = [
+    "pygithub>=2.1.0",
+    "python-dotenv>=1.1.0",
+]
+
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+
+all = [
+    "automagik-tools[evolution-api,discord,notion,github]",
+]
+
+[project.urls]
+Homepage = "https://github.com/automagik/automagik-tools"
+Documentation = "https://automagik-tools.readthedocs.io/"
+Repository = "https://github.com/automagik/automagik-tools"
+Issues = "https://github.com/automagik/automagik-tools/issues"
+
+[project.scripts]
+automagik-tools = "automagik_tools.cli:main"
+
+[project.entry-points."automagik_tools.plugins"]
+evolution-api = "automagik_tools.tools.evolution_api:create_tool"
+
+[tool.setuptools]
+packages = ["automagik_tools"]
+
+[tool.setuptools.package-data]
+automagik_tools = ["py.typed"] 

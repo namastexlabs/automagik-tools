@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Everytime you run a command, we need to make sure our .venv is activated. 
+
+We use "uv" for our operations. 
+
+So when using a command you do like "source .venv/bin/activate && extra commands" 
