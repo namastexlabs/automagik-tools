@@ -15,18 +15,41 @@ A monorepo Python package for building, running, and extending Model Context Pro
 
 ## 📦 Installation
 
-You can install automagik-tools as a standard Python package:
+### Option 1: Using uvx (Recommended)
+
+The easiest way to use automagik-tools is with [uvx](https://docs.astral.sh/uv/guides/tools/), which runs the tool in an isolated environment without affecting your system Python:
 
 ```bash
-pip install automagik-tools
+# Run directly without installation
+uvx automagik-tools --help
+
+# List available tools
+uvx automagik-tools list
+
+# Run a server
+uvx automagik-tools serve-all --tools evolution-api
 ```
 
-Or, for development (editable) installs:
+### Option 2: Using pip
+
+You can also install automagik-tools as a standard Python package:
+
+```bash
+# Install globally or in a virtual environment
+pip install automagik-tools
+
+# Or install the latest development version
+pip install git+https://github.com/namastexlabs/automagik-tools.git
+```
+
+### Option 3: Development Installation
+
+For development (editable) installs:
 
 ```bash
 git clone https://github.com/namastexlabs/automagik-tools.git
 cd automagik-tools
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ---
@@ -36,12 +59,20 @@ pip install -e .
 ### 1. List Available Tools
 
 ```bash
+# Using uvx (recommended)
+uvx automagik-tools list
+
+# Or using pip-installed version
 automagik-tools list
 ```
 
 ### 2. Run a Tool Server (Single Tool)
 
 ```bash
+# Using uvx
+uvx automagik-tools serve --tool evolution-api
+
+# Or using pip-installed version
 automagik-tools serve --tool evolution-api
 ```
 
@@ -51,6 +82,10 @@ automagik-tools serve --tool evolution-api
 ### 3. Run a Multi-Tool Server
 
 ```bash
+# Using uvx
+uvx automagik-tools serve-all --tools evolution-api
+
+# Or using pip-installed version  
 automagik-tools serve-all --tools evolution-api,discord,notion
 ```
 
@@ -59,38 +94,94 @@ automagik-tools serve-all --tools evolution-api,discord,notion
 
 ### 🤖 Connecting to MCP-Compatible Clients
 
-You can connect your automagik-tools server to any MCP-compatible client (such as an LLM agent, orchestrator, or workflow tool) by specifying the server endpoint in a JSON configuration. For example:
+You can connect your automagik-tools server to any MCP-compatible client in several ways:
+
+#### Option 1: Using uvx with stdio transport (Recommended)
+
+Most MCP clients support running tools via stdio transport using uvx:
 
 ```json
 {
-    "mcpServers": {
-        {
-        "whatsapp-evolution-api": {
-            "transport": "sse",
-            "url": "http://localhost:8000/mcp"
-        }
+  "mcpServers": {
+    "automagik-tools": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["automagik-tools", "serve", "--tool", "evolution-api", "--transport", "stdio"],
+      "env": {
+        "EVOLUTION_API_BASE_URL": "https://your-api-server.com",
+        "EVOLUTION_API_KEY": "your_api_key_here"
+      }
     }
+  }
 }
 ```
 
-- For multi-tool servers, use the full path (e.g., `/evolution-api/mcp`):
+For multiple tools:
 
 ```json
 {
-    "mcpServers": {
-        {
-        "whatsapp-evolution-api": {
-            "transport": "sse",
-           "url": "http://localhost:8000/evolution-api/mcp"
-        }
+  "mcpServers": {
+    "automagik-tools-multi": {
+      "transport": "stdio",
+      "command": "uvx", 
+      "args": ["automagik-tools", "serve-all", "--tools", "evolution-api", "--transport", "stdio"],
+      "env": {
+        "EVOLUTION_API_BASE_URL": "https://your-api-server.com",
+        "EVOLUTION_API_KEY": "your_api_key_here"
+      }
     }
+  }
 }
 ```
 
-- Adjust the `url` to match your server's address and port.
-- The `transport` can be `sse`, `stdio`, or another supported protocol depending on your client and deployment.
+#### Option 2: Using uvx with development version
+
+If you're developing or want to use a local version:
+
+```json
+{
+  "mcpServers": {
+    "automagik-tools-dev": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["--from", "/path/to/automagik-tools", "automagik-tools", "serve", "--tool", "evolution-api", "--transport", "stdio"],
+      "env": {
+        "EVOLUTION_API_BASE_URL": "https://your-api-server.com",
+        "EVOLUTION_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop Example
+
+For Claude Desktop, add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "automagik-tools": {
+      "command": "uvx",
+      "args": ["automagik-tools", "serve", "--tool", "evolution-api", "--transport", "stdio"],
+      "env": {
+        "EVOLUTION_API_BASE_URL": "https://your-api-server.com",
+        "EVOLUTION_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
 
 This allows your LLM agent or automation platform to call tools, access resources, and use prompts exposed by automagik-tools as part of its workflow.
+
+### 💡 Why uvx?
+
+- **No installation required**: Run automagik-tools without installing it globally
+- **Isolated environment**: Each run uses a fresh, isolated Python environment
+- **Always latest**: Automatically pulls the latest version from PyPI
+- **No conflicts**: Doesn't interfere with your system Python or other tools
+- **Zero setup**: Works immediately if you have uv installed
 
 ---
 
