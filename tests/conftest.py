@@ -1,0 +1,152 @@
+"""
+Pytest configuration and shared fixtures for automagik-tools tests
+"""
+
+import asyncio
+import json
+import os
+import tempfile
+import subprocess
+import pytest
+from pathlib import Path
+from typing import Dict, Any, Optional
+from unittest.mock import patch, AsyncMock
+import httpx
+
+# Test data
+TEST_EVOLUTION_CONFIG = {
+    "base_url": "http://test-api.example.com",
+    "api_key": "test_api_key",
+    "timeout": 30
+}
+
+SAMPLE_MCP_INITIALIZE = {
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {},
+        "clientInfo": {"name": "test-client", "version": "1.0.0"}
+    },
+    "id": 1
+}
+
+SAMPLE_MCP_LIST_TOOLS = {
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "id": 2
+}
+
+@pytest.fixture
+def temp_config_dir():
+    """Create a temporary directory for config files"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield Path(temp_dir)
+
+@pytest.fixture
+def mock_evolution_config():
+    """Mock evolution API configuration"""
+    with patch.dict(os.environ, {
+        "EVOLUTION_API_BASE_URL": TEST_EVOLUTION_CONFIG["base_url"],
+        "EVOLUTION_API_KEY": TEST_EVOLUTION_CONFIG["api_key"],
+        "EVOLUTION_API_TIMEOUT": str(TEST_EVOLUTION_CONFIG["timeout"])
+    }):
+        # Return string-based config for environment variables
+        yield {
+            "EVOLUTION_API_BASE_URL": TEST_EVOLUTION_CONFIG["base_url"],
+            "EVOLUTION_API_KEY": TEST_EVOLUTION_CONFIG["api_key"],
+            "EVOLUTION_API_TIMEOUT": str(TEST_EVOLUTION_CONFIG["timeout"])
+        }
+
+@pytest.fixture
+def mock_httpx_client():
+    """Mock httpx client for API calls"""
+    with patch("httpx.AsyncClient") as mock:
+        mock_client = AsyncMock()
+        mock.return_value.__aenter__.return_value = mock_client
+        yield mock_client
+
+@pytest.fixture
+def project_root():
+    """Get the project root directory"""
+    return Path(__file__).parent.parent
+
+@pytest.fixture
+async def event_loop():
+    """Create an event loop for async tests"""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+class MCPTestClient:
+    """Helper class for testing MCP protocol interactions"""
+    
+    def __init__(self, command: list):
+        self.command = command
+        self.process = None
+    
+    async def start(self):
+        """Start the MCP server process"""
+        self.process = await asyncio.create_subprocess_exec(
+            *self.command,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**os.environ, **TEST_EVOLUTION_CONFIG}
+        )
+        return self
+    
+    async def send_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Send a JSON-RPC message and get response"""
+        if not self.process:
+            raise RuntimeError("Process not started")
+        
+        message_json = json.dumps(message) + "\n"
+        self.process.stdin.write(message_json.encode())
+        await self.process.stdin.drain()
+        
+        # Read response
+        response_line = await self.process.stdout.readline()
+        if response_line:
+            try:
+                return json.loads(response_line.decode().strip())
+            except json.JSONDecodeError:
+                return None
+        return None
+    
+    async def close(self):
+        """Close the MCP server process"""
+        if self.process:
+            self.process.terminate()
+            await self.process.wait()
+
+@pytest.fixture
+async def mcp_test_client(project_root):
+    """Create an MCP test client for stdio testing"""
+    command = [
+        "python", "-m", "automagik_tools.cli",
+        "serve", "--tool", "evolution-api", "--transport", "stdio"
+    ]
+    
+    client = MCPTestClient(command)
+    await client.start()
+    yield client
+    await client.close()
+
+def run_cli_command(args: list, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
+    """Helper function to run CLI commands"""
+    full_env = os.environ.copy()
+    if env:
+        full_env.update(env)
+    
+    return subprocess.run(
+        ["python", "-m", "automagik_tools.cli"] + args,
+        capture_output=True,
+        text=True,
+        env=full_env
+    )
+
+@pytest.fixture
+def cli_runner():
+    """Fixture that provides the CLI runner helper"""
+    return run_cli_command 

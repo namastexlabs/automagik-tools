@@ -7,7 +7,7 @@ name = "automagik-tools"
 version = "0.1.0"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
-    {name = "Automagik Team", email = "team@automagik.dev"},
+    {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -37,6 +37,8 @@ dependencies = [
     "importlib-metadata>=6.0.0",
     "watchdog>=3.0.0",
     "pyyaml>=6.0.1",
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
 ]
 
 [project.optional-dependencies]
@@ -75,10 +77,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/automagik/automagik-tools"
-Documentation = "https://automagik-tools.readthedocs.io/"
-Repository = "https://github.com/automagik/automagik-tools"
-Issues = "https://github.com/automagik/automagik-tools/issues"
+Homepage = "https://github.com/namastexlabs/automagik-tools"
+Documentation = "https://github.com/namastexlabs/automagik-tools/README.md"
+Repository = "https://github.com/namastexlabs/automagik-tools"
+Issues = "https://github.com/namastexlabs/automagik-tools/issues"
 
 [project.scripts]
 automagik-tools = "automagik_tools.cli:main"
@@ -87,7 +89,44 @@ automagik-tools = "automagik_tools.cli:main"
 evolution-api = "automagik_tools.tools.evolution_api:create_tool"
 
 [tool.setuptools]
-packages = ["automagik_tools"]
+packages = ["automagik_tools", "automagik_tools.tools", "automagik_tools.tools.evolution_api"]
 
 [tool.setuptools.package-data]
-automagik_tools = ["py.typed"] 
+automagik_tools = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+    "--color=yes",
+    "--durations=10",
+    "--asyncio-mode=auto",
+    "--cov=automagik_tools",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=30"
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: Unit tests for individual components",
+    "integration: Integration tests for full workflows", 
+    "slow: Tests that take a long time to run",
+    "network: Tests that require network access",
+    "cli: Tests for command-line interface",
+    "mcp: Tests for MCP protocol compliance",
+    "evolution_api: Tests specific to Evolution API tool"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning", 
+    "ignore::UserWarning:httpx",
+    "ignore::pytest.PytestUnraisableExceptionWarning"
+] 

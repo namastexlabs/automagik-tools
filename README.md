@@ -152,9 +152,84 @@ pip install -e .
 
 ## 📚 Documentation
 - [FastMCP Documentation](https://github.com/jlowin/fastmcp)
-- [Automagik Tools Docs](https://automagik-tools.readthedocs.io/) *(if available)*
 
 ---
 
 ## 📝 License
 MIT 
+
+---
+
+## 🧪 Testing
+
+The project includes a comprehensive test suite using **pytest**. After installation, you can run tests directly:
+
+### Quick Test Commands
+
+```bash
+# Install development dependencies first
+uv pip install -e ".[dev]"
+
+# Run all tests
+pytest tests/
+
+# Run specific test categories
+pytest tests/test_cli.py              # CLI tests
+pytest tests/test_mcp_protocol.py     # MCP protocol tests  
+pytest tests/test_integration.py      # Integration tests
+pytest tests/tools/                   # Tool-specific tests
+
+# Run tests with coverage
+pytest tests/ --cov=automagik_tools --cov-report=html
+
+# Run specific test
+pytest tests/test_cli.py::TestCLIBasics::test_list_command -v
+
+# Run tests matching a pattern
+pytest -k "test_list" -v
+
+# Skip slow tests
+pytest tests/ -m "not slow" -v
+```
+
+### Using Make (Alternative)
+
+We also provide a Makefile for convenience:
+
+```bash
+make help           # Show all available commands
+make test           # Run all tests  
+make test-unit      # Run unit tests
+make test-mcp       # Run MCP protocol tests
+make test-coverage  # Run with coverage report
+make lint           # Check code quality
+make format         # Format code
+```
+
+### Test Categories
+
+The test suite is organized into several categories:
+
+- **Unit Tests** (`test_cli.py`, `test_evolution_api.py`): Test individual components
+- **MCP Protocol Tests** (`test_mcp_protocol.py`): Test MCP compliance and stdio transport
+- **Integration Tests** (`test_integration.py`): Test complete workflows end-to-end
+
+### Environment Variables for Testing
+
+Set these environment variables for Evolution API tests:
+
+```bash
+export EVOLUTION_API_BASE_URL="http://your-api-server:8080"
+export EVOLUTION_API_KEY="your_api_key"
+```
+
+### Test Configuration
+
+Tests are configured via `pytest.ini`. Key features:
+
+- **Automatic async support** for MCP protocol testing
+- **Coverage reporting** with HTML output in `htmlcov/`
+- **Test markers** for categorizing tests (`unit`, `integration`, `mcp`, etc.)
+- **Timeout protection** for long-running tests
+
+--- 

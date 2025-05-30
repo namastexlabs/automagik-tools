@@ -1,0 +1,237 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+        exclude:
+          # Exclude some combinations to speed up CI
+          - os: windows-latest
+            python-version: '3.10'
+          - os: macos-latest
+            python-version: '3.10'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Create virtual environment
+      run: uv venv
+    
+    - name: Install dependencies
+      run: |
+        uv pip install -e ".[dev]"
+        uv pip install pytest-xvfb  # For headless testing on Linux
+    
+    - name: Run smoke tests
+      run: |
+        source .venv/bin/activate || .venv\Scripts\activate
+        python -m automagik_tools.cli --help
+        python -m automagik_tools.cli list
+    
+    - name: Run unit tests
+      run: |
+        source .venv/bin/activate || .venv\Scripts\activate
+        pytest tests/test_cli.py tests/tools/test_evolution_api.py -v --tb=short
+    
+    - name: Run MCP protocol tests
+      run: |
+        source .venv/bin/activate || .venv\Scripts\activate
+        pytest tests/test_mcp_protocol.py -v --tb=short
+      env:
+        EVOLUTION_API_BASE_URL: http://test-api.example.com
+        EVOLUTION_API_KEY: test_api_key
+    
+    - name: Run integration tests (Linux only - avoid platform-specific issues)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        source .venv/bin/activate
+        pytest tests/test_integration.py -v --tb=short --timeout=60
+      env:
+        EVOLUTION_API_BASE_URL: http://test-api.example.com
+        EVOLUTION_API_KEY: test_api_key
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Create virtual environment
+      run: uv venv
+    
+    - name: Install dependencies
+      run: |
+        uv pip install -e ".[dev]"
+        uv pip install coverage[toml]
+    
+    - name: Run tests with coverage
+      run: |
+        source .venv/bin/activate
+        pytest tests/ --cov=automagik_tools --cov-report=xml --cov-report=term-missing --cov-fail-under=60
+      env:
+        EVOLUTION_API_BASE_URL: http://test-api.example.com
+        EVOLUTION_API_KEY: test_api_key
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Create virtual environment
+      run: uv venv
+    
+    - name: Install dependencies
+      run: |
+        uv pip install -e ".[dev]"
+        uv pip install black ruff mypy
+    
+    - name: Check code formatting with Black
+      run: |
+        source .venv/bin/activate
+        black --check automagik_tools tests
+    
+    - name: Lint with Ruff
+      run: |
+        source .venv/bin/activate
+        ruff check automagik_tools tests
+    
+    - name: Type check with MyPy
+      run: |
+        source .venv/bin/activate
+        mypy automagik_tools
+      continue-on-error: true  # MyPy can be strict, don't fail CI
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Create virtual environment
+      run: uv venv
+    
+    - name: Install build dependencies
+      run: |
+        uv pip install build twine
+    
+    - name: Build package
+      run: |
+        source .venv/bin/activate
+        python -m build --no-isolation
+    
+    - name: Check package installation
+      run: |
+        source .venv/bin/activate
+        twine check dist/*
+    
+    - name: Test package installation
+      run: |
+        source .venv/bin/activate
+        pip install dist/*.whl
+        automagik-tools --help
+        automagik-tools list
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-files
+        path: dist/
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Create virtual environment
+      run: uv venv
+    
+    - name: Install dependencies
+      run: |
+        uv pip install -e ".[dev]"
+        uv pip install safety bandit
+    
+    - name: Run safety check
+      run: |
+        source .venv/bin/activate
+        safety check
+      continue-on-error: true
+    
+    - name: Run bandit security check
+      run: |
+        source .venv/bin/activate
+        bandit -r automagik_tools
+      continue-on-error: true 
