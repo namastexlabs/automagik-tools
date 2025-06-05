@@ -17,13 +17,13 @@ This document describes the FastMCP patterns implemented in automagik-tools to e
    - Clean async patterns with proper fixtures
 
 3. **Server Composition with mount()**
-   - Created `automagik_tools/servers/hub.py` demonstrating proper composition
-   - Tools are mounted with prefixes (e.g., `/evolution/*`, `/hello/*`)
+   - Hub at `automagik_tools/hub.py` demonstrates proper composition
+   - Tools are mounted with prefixes (e.g., `/evolution_api/*`)
    - Automatic lifespan coordination
 
 4. **FastMCP CLI Integration**
-   - Direct server files in `automagik_tools/servers/`
-   - Can run with `fastmcp run` command
+   - Each tool exports `mcp` variable in `__main__.py`
+   - Can run with `fastmcp run` command directly from tool modules
    - Support for `fastmcp dev` with MCP Inspector
 
 5. **Hidden Parameters**
@@ -31,18 +31,18 @@ This document describes the FastMCP patterns implemented in automagik-tools to e
    - Tools don't expose internal `config` parameter to LLMs
    - Cleaner tool signatures
 
-## 📁 New Structure
+## 📁 Structure
 
 ```
 automagik_tools/
-├── servers/              # FastMCP server implementations
-│   ├── __init__.py
-│   ├── hub.py           # Main hub using mount()
-│   ├── evolution_api.py # Standalone Evolution API
-│   └── example_hello.py # Standalone Example Hello
-└── tools/               # Tool implementations (unchanged)
+├── hub.py               # Main hub using mount() pattern
+└── tools/               # Self-contained tool implementations
     ├── evolution_api/
-    └── example_hello/
+    │   ├── __init__.py  # Exports create_server(), get_metadata(), etc.
+    │   └── __main__.py  # Exports mcp for FastMCP CLI
+    └── evolution_api_v2/
+        ├── __init__.py  # Exports create_server(), get_metadata(), etc.
+        └── __main__.py  # Exports mcp for FastMCP CLI
 ```
 
 ## 🚀 Usage Examples
@@ -51,14 +51,14 @@ automagik_tools/
 
 ```bash
 # Run the hub server (all tools)
-fastmcp run automagik_tools.servers.hub:hub
+fastmcp run automagik_tools.hub:hub
 
-# Run individual tools
-fastmcp run automagik_tools.servers.evolution_api:mcp
-fastmcp run automagik_tools.servers.example_hello:mcp
+# Run individual tools directly
+fastmcp run automagik_tools.tools.evolution_api:mcp
+fastmcp run automagik_tools.tools.evolution_api_v2:mcp
 
 # Development with MCP Inspector
-fastmcp dev automagik_tools.servers.hub:hub
+fastmcp dev automagik_tools.hub:hub
 ```
 
 ### Using Make Commands

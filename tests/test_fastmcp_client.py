@@ -5,7 +5,6 @@ Test using FastMCP Client pattern for better compliance
 import pytest
 from fastmcp import Client
 from automagik_tools.tools.evolution_api import create_server, EvolutionAPIConfig
-from automagik_tools.tools.example_hello import create_server as create_hello_server, ExampleHelloConfig
 from unittest.mock import AsyncMock, patch
 
 
@@ -89,64 +88,6 @@ class TestEvolutionAPIWithClient:
         prompt_names = [p.name for p in prompts]
         assert "whatsapp_message_template" in prompt_names
         assert "instance_setup_guide" in prompt_names
-
-
-class TestExampleHelloWithClient:
-    """Test Example Hello tool using FastMCP Client pattern"""
-    
-    @pytest.fixture
-    async def hello_client(self):
-        """Create a test client for Example Hello"""
-        config = ExampleHelloConfig()
-        server = create_hello_server(config)
-        async with Client(server) as client:
-            yield client
-    
-    @pytest.mark.asyncio
-    async def test_say_hello(self, hello_client):
-        """Test the say_hello tool"""
-        result = await hello_client.call_tool("say_hello", {"name": "Test User"})
-        assert "Hello, Test User!" in result[0].text
-        assert "Welcome to automagik-tools" in result[0].text
-    
-    @pytest.mark.asyncio
-    async def test_add_numbers(self, hello_client):
-        """Test the add_numbers tool"""
-        result = await hello_client.call_tool("add_numbers", {"a": 5, "b": 3})
-        assert "8" in result[0].text
-    
-    @pytest.mark.asyncio
-    async def test_get_resource(self, hello_client):
-        """Test getting a resource"""
-        result = await hello_client.read_resource("example://info")
-        assert "minimal example MCP tool" in result[0].text
-
-
-class TestServerComposition:
-    """Test FastMCP server composition patterns"""
-    
-    @pytest.mark.asyncio
-    async def test_multiple_servers_with_client(self):
-        """Test accessing multiple servers through clients"""
-        # Create configs
-        evolution_config = EvolutionAPIConfig(
-            base_url="http://test.api",
-            api_key="test"
-        )
-        hello_config = ExampleHelloConfig()
-        
-        # Create servers
-        evolution_server = create_server(evolution_config)
-        hello_server = create_hello_server(hello_config)
-        
-        # Test each server independently with its own client
-        async with Client(evolution_server) as evolution_client:
-            evolution_tools = await evolution_client.list_tools()
-            assert any(t.name == "send_text_message" for t in evolution_tools)
-        
-        async with Client(hello_server) as hello_client:
-            hello_tools = await hello_client.list_tools()
-            assert any(t.name == "say_hello" for t in hello_tools)
 
 
 if __name__ == "__main__":

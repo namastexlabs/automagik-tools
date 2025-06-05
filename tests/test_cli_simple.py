@@ -26,7 +26,8 @@ class TestCLIQuick:
     
     def test_create_config_function(self):
         """Test the create_config_for_tool function directly"""
-        config = create_config_for_tool('evolution-api')
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
         assert hasattr(config, 'base_url')
         assert hasattr(config, 'api_key')
     

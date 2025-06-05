@@ -2,7 +2,11 @@
 """Standalone runner for Evolution API v2"""
 
 import argparse
-from . import run_standalone, get_metadata
+from . import run_standalone, get_metadata, EvolutionAPIv2Config, create_server
+
+# Export for FastMCP CLI: fastmcp run automagik_tools.tools.evolution_api_v2
+config = EvolutionAPIv2Config()
+mcp = create_server(config)
 
 def main():
     metadata = get_metadata()

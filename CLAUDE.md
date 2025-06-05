@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 automagik-tools is a monorepo Python package for building MCP (Model Context Protocol) tools. It provides a plugin-based framework for integrating real-world services with AI agents using FastMCP.
 
+**IMPORTANT: Each tool is self-contained in its own folder under `automagik_tools/tools/`. There is no separate servers folder - tools export their servers directly.**
+
 ## Vision: The Premier MCP Tools Repository
 
 This repository aims to become the largest and most comprehensive collection of MCP tools, making it trivially easy for developers to:
@@ -55,12 +57,19 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
    - Supports stdio and SSE transports
    - Dynamic tool discovery via Python entry points
 
-2. **Tools (`automagik_tools/tools/`)**: Plugin-based tool implementations
-   - Each tool is a FastMCP server
-   - Tools are discovered via entry points in pyproject.toml
-   - Currently implements Evolution API for WhatsApp
+2. **Tools (`automagik_tools/tools/`)**: Self-contained plugin implementations
+   - Each tool is a complete FastMCP server in its own folder
+   - Must export: `create_server()`, `get_metadata()`, `get_config_class()`
+   - `__main__.py` exports `mcp` for FastMCP CLI compatibility
+   - Tools are auto-discovered from the tools directory
+   - Currently implements Evolution API (v1 and v2) for WhatsApp
 
-3. **Testing Strategy**:
+3. **Hub (`automagik_tools/hub.py`)**: Composition pattern
+   - Automatically discovers and mounts all tools
+   - Provides unified access point for all tools
+   - Uses FastMCP's mount() pattern
+
+4. **Testing Strategy**:
    - Unit tests for fast feedback (`test_unit_fast.py`)
    - MCP protocol compliance tests (`test_mcp_protocol.py`)
    - Integration tests for end-to-end flows (`test_integration.py`)

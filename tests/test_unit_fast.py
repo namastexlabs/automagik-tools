@@ -6,7 +6,7 @@ These tests focus on unit testing without starting real servers
 import pytest
 from unittest.mock import patch, MagicMock
 from automagik_tools.cli import discover_tools, create_config_for_tool
-from automagik_tools.tools.evolution_api import create_tool
+from automagik_tools.tools.evolution_api import create_server
 
 
 class TestToolDiscovery:
@@ -37,16 +37,18 @@ class TestConfigCreation:
     
     def test_create_evolution_config(self):
         """Test creating configuration for evolution-api tool"""
-        config = create_config_for_tool('evolution-api')
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
         
         assert hasattr(config, 'base_url')
         assert hasattr(config, 'api_key')
         assert hasattr(config, 'timeout')
     
     def test_create_unknown_tool_config(self):
-        """Test creating config for unknown tool returns empty dict"""
-        config = create_config_for_tool('unknown-tool')
-        assert config == {}
+        """Test creating config for unknown tool raises ValueError"""
+        tools = discover_tools()
+        with pytest.raises(ValueError):
+            config = create_config_for_tool('unknown-tool', tools)
 
 
 class TestEvolutionAPITool:
@@ -54,20 +56,22 @@ class TestEvolutionAPITool:
     
     def test_tool_creation(self):
         """Test that evolution API tool can be created"""
-        config = create_config_for_tool('evolution-api')
-        tool = create_tool(config)
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
+        server = create_server(config)
         
-        assert tool is not None
-        assert hasattr(tool, 'name')
-        assert tool.name == "Evolution API Tool"
+        assert server is not None
+        assert hasattr(server, 'name')
+        assert server.name == "Evolution API Tool"
     
     @pytest.mark.asyncio
     async def test_tool_has_functions(self):
         """Test that the tool has expected functions"""
-        config = create_config_for_tool('evolution-api')
-        tool = create_tool(config)
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
+        server = create_server(config)
         
-        tools_dict = await tool.get_tools()
+        tools_dict = await server.get_tools()
         tool_names = list(tools_dict.keys())  # FastMCP returns a dict, not a list
         
         expected_tools = [
@@ -82,10 +86,11 @@ class TestEvolutionAPITool:
     @pytest.mark.asyncio
     async def test_tool_has_resources(self):
         """Test that the tool has resources"""
-        config = create_config_for_tool('evolution-api')
-        tool = create_tool(config)
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
+        server = create_server(config)
         
-        resources_dict = await tool.get_resources()
+        resources_dict = await server.get_resources()
         assert len(resources_dict) > 0
         
         # FastMCP returns dict with URIs as keys
@@ -95,10 +100,11 @@ class TestEvolutionAPITool:
     @pytest.mark.asyncio
     async def test_tool_has_prompts(self):
         """Test that the tool has prompts"""
-        config = create_config_for_tool('evolution-api')
-        tool = create_tool(config)
+        tools = discover_tools()
+        config = create_config_for_tool('evolution-api', tools)
+        server = create_server(config)
         
-        prompts_dict = await tool.get_prompts()
+        prompts_dict = await server.get_prompts()
         assert len(prompts_dict) > 0
         
         # FastMCP returns dict with prompt names as keys
@@ -148,8 +154,8 @@ class TestErrorHandling:
             'timeout': 30
         })()
         
-        tool = create_tool(config)
-        assert tool is not None  # Tool creation should still work
+        server = create_server(config)
+        assert server is not None  # Server creation should still work
         
         # But actual API calls should fail (this is expected behavior)
 

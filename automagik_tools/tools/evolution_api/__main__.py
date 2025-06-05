@@ -3,7 +3,11 @@
 
 import sys
 import argparse
-from . import run_standalone, get_metadata, EvolutionAPIConfig
+from . import run_standalone, get_metadata, EvolutionAPIConfig, create_server
+
+# Export for FastMCP CLI: fastmcp run automagik_tools.tools.evolution_api
+config = EvolutionAPIConfig()
+mcp = create_server(config)
 
 
 def main():
