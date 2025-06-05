@@ -10,44 +10,31 @@ Drop any OpenAPI URL → Get a live, auto-updating MCP server. When the API upda
 
 Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools makes **every API on the internet instantly accessible to AI agents**.
 
-## 🌟 Featured Tool: AutoMagik
-
-Production-ready AI orchestration that speaks human:
-
-```bash
-# Get started instantly with SSE transport
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
-```
-
-**Key features:**
-- 💬 **Natural Language**: Just describe what you want in plain English
-- ✨ **Spark**: Spawn hives of agents in seconds for parallel workflows
-- 🔄 **Task Scheduling**: Automagikally schedule recurring tasks and routines
-- 🏗️ **Framework Agnostic**: Works with PydanticAI, LangGraph, CrewAI, LangChain, etc.
-- 🤝 **Dev Friendly**: Start with natural language, deploy with full Python source
-- 🛡️ **Production Ready**: Built for real-world use
-
 ## 🚀 Dynamic OpenAPI → MCP
 
+Turn any API into an MCP tool instantly:
+
 ```bash
-# Example: Discord Bot with SSE transport
+# Just point to any OpenAPI URL - here's Discord as an example
 uvx automagik-tools serve \
   --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
   --transport sse --port 8001
 ```
 
-**That's it!** Your AI can now:
-- Send Discord messages
-- Manage channels and servers  
-- React to messages
-- Handle voice channels
-- Everything in Discord's API
+**Works with ANY OpenAPI spec:**
+- 🔄 Auto-updates when the API changes
+- 🚀 Zero code, just paste the URL
+- 🌐 Discord, Stripe, GitHub, Slack, or your internal APIs
 
-**Key Benefits**: 
-- 🔄 **Always Up-to-Date**: Fetches the OpenAPI spec on every start - if Discord updates their API, your tool automagikally has the new endpoints
-- 🚀 **Zero Code**: No writing tool definitions, no maintenance
-- 🔐 **Secure**: API keys stay in your environment
-- 🌐 **Universal**: Works with ANY OpenAPI spec (Stripe, Slack, GitHub, your internal APIs...)
+## 🌟 Featured Tool: AutoMagik
+
+> **AI orchestration that speaks human** - Production-ready platform for complex AI workflows
+
+```bash
+uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+```
+
+💬 Natural Language • ✨ Spark (spawn agent hives) • 🔄 Task Scheduling • 🏗️ Framework Agnostic (PydanticAI, LangGraph, CrewAI) • 🤝 Dev Friendly
 
 ## 🚀 Quick Start (30 seconds to your first AI tool)
 
