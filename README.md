@@ -36,34 +36,46 @@ uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
 
 💬 Natural Language • ✨ Spark (spawn agent hives) • 🔄 Task Scheduling • 🏗️ Framework Agnostic (PydanticAI, LangGraph, CrewAI) • 🤝 Dev Friendly
 
-## 🚀 Quick Start (30 seconds to your first AI tool)
+## 🚀 Quick Start
 
-### 1️⃣ Test it instantly (no install needed):
+### Copy this into Claude/Cursor to get Discord AI powers:
+
+```json
+{
+  "mcpServers": {
+    "discord": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "serve",
+        "--openapi-url",
+        "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "DISCORD_TOKEN": "YOUR_BOT_TOKEN"
+      }
+    }
+  }
+}
+```
+
+**Where to paste:**
+- **Claude Desktop**: Settings → Developer → Edit Config
+- **Cursor**: `~/.cursor/mcp.json`
+
+### Or test instantly via command line:
 
 ```bash
-# Try AutoMagik - AI orchestration platform
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
-
-# Or use any OpenAPI spec (e.g., Discord API)
+# Discord API
 uvx automagik-tools serve \
   --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
   --transport sse --port 8001
+
+# AutoMagik AI orchestration
+uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
 ```
-
-### 2️⃣ Add to Claude/Cursor:
-
-```bash
-# Generate config automatically
-uvx automagik-tools mcp-config automagik-agents
-# or
-uvx automagik-tools mcp-config discord-api
-
-# Copy the output to:
-# - Cursor: ~/.cursor/mcp.json
-# - Claude Desktop: Settings → Developer → Edit Config
-```
-
-### 3️⃣ That's it! Your AI now has superpowers 🚀
 
 ## 📋 Real-World Examples
 
@@ -96,27 +108,6 @@ Now in Claude/Cursor you can say:
 - "Set up a workflow that monitors my GitHub repos and creates weekly summaries"
 - "Process these customer feedback emails and categorize them by sentiment"
 
-### Discord Bot (using official Discord OpenAPI)
-```json
-{
-  "mcpServers": {
-    "discord": {
-      "command": "uvx",
-      "args": [
-        "automagik-tools@latest",
-        "serve",
-        "--openapi-url",
-        "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "DISCORD_TOKEN": "YOUR_BOT_TOKEN"  // Get from https://discord.com/developers
-      }
-    }
-  }
-}
-```
 
 ### More OpenAPI Examples
 ```bash
