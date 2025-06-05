@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 import httpx
 from fastmcp import FastMCP, Context
+from .config import EvolutionAPIConfig
 
 
 # Pydantic models for request validation
@@ -34,31 +35,34 @@ class ProfileUpdate(BaseModel):
     status: Optional[str] = Field(default=None, description="Profile status message")
 
 
+# Store config at module level to avoid passing it around
+_config = None
+
 # Helper function to make Evolution API requests
 async def make_evolution_request(
     method: str,
     endpoint: str,
     instance: str,
     data: Optional[Dict] = None,
-    ctx: Optional[Context] = None,
-    config: Optional[Any] = None
+    ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
     """Make authenticated request to Evolution API"""
-    if not config or not config.api_key:
+    global _config
+    if not _config or not _config.api_key:
         raise ValueError("Evolution API key is required but not configured")
     
     # Remove trailing slash from base URL and ensure proper URL construction
-    base_url = config.base_url.rstrip('/')
+    base_url = _config.base_url.rstrip('/')
     url = f"{base_url}/{endpoint.format(instance=instance)}"
     headers = {
-        "apikey": config.api_key,
+        "apikey": _config.api_key,
         "Content-Type": "application/json"
     }
     
     if ctx:
         await ctx.info(f"Making {method} request to Evolution API: {url}")
     
-    async with httpx.AsyncClient(timeout=config.timeout) as client:
+    async with httpx.AsyncClient(timeout=_config.timeout) as client:
         try:
             if method.upper() == "GET":
                 response = await client.get(url, headers=headers)
@@ -88,10 +92,22 @@ async def make_evolution_request(
 
 def create_tool(config: Any) -> FastMCP:
     """Create the Evolution API MCP tool"""
-    mcp = FastMCP("Evolution API Tool")
+    global _config
+    _config = config
+    
+    mcp = FastMCP(
+        "Evolution API Tool",
+        instructions="Use this tool to interact with WhatsApp via Evolution API. Ensure you have a valid instance before sending messages."
+    )
     
     # MCP Tools
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,  # This tool sends messages (modifies state)
+            "destructiveHint": False,  # Not destructive
+            "openWorldHint": True,  # Calls external Evolution API
+        }
+    )
     async def send_text_message(
         instance: str,
         number: str,
@@ -122,11 +138,16 @@ def create_tool(config: Any) -> FastMCP:
             "message/sendText/{instance}",
             instance,
             message_data.model_dump(exclude_none=True),
-            ctx,
-            config
+            ctx
         )
 
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,  # Creates new instance
+            "destructiveHint": False,
+            "openWorldHint": True,
+        }
+    )
     async def create_instance(
         instance_name: str,
         integration: str = "WHATSAPP-BAILEYS",
@@ -156,7 +177,13 @@ def create_tool(config: Any) -> FastMCP:
             config
         )
 
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,  # Only reads instance info
+            "destructiveHint": False,
+            "openWorldHint": True,
+        }
+    )
     async def get_instance_info(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Get information about a WhatsApp instance
@@ -172,7 +199,13 @@ def create_tool(config: Any) -> FastMCP:
             config=config
         )
 
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,  # Only reads state
+            "destructiveHint": False,
+            "openWorldHint": True,
+        }
+    )
     async def get_connection_state(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Get the connection state of a WhatsApp instance
@@ -204,7 +237,13 @@ def create_tool(config: Any) -> FastMCP:
             config=config
         )
 
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,  # Deletes instance permanently
+            "openWorldHint": True,
+        }
+    )
     async def delete_instance(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Delete a WhatsApp instance
@@ -220,7 +259,13 @@ def create_tool(config: Any) -> FastMCP:
             config=config
         )
 
-    @mcp.tool()
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,  # Only checks numbers
+            "destructiveHint": False,
+            "openWorldHint": True,
+        }
+    )
     async def check_whatsapp_number(
         instance: str,
         numbers: List[str],
@@ -318,7 +363,7 @@ def create_tool(config: Any) -> FastMCP:
     async def list_all_instances(ctx: Context = None) -> str:
         """Get a list of all Evolution API instances"""
         try:
-            result = await make_evolution_request("GET", "instance/fetchInstances", "", ctx=ctx, config=config)
+            result = await make_evolution_request("GET", "instance/fetchInstances", "", ctx=ctx)
             return f"Available instances: {result}"
         except Exception as e:
             return f"Error fetching instances: {str(e)}"
@@ -335,10 +380,11 @@ def create_tool(config: Any) -> FastMCP:
     @mcp.resource("evolution://config")
     async def get_server_config() -> str:
         """Get Evolution API server configuration"""
+        global _config
         config_info = {
-            "base_url": config.base_url,
-            "api_key_configured": bool(config.api_key),
-            "timeout": config.timeout,
+            "base_url": _config.base_url if _config else "Not configured",
+            "api_key_configured": bool(_config.api_key if _config else False),
+            "timeout": _config.timeout if _config else "Not configured",
             "supported_features": [
                 "Send text messages",
                 "Instance management", 
@@ -389,4 +435,62 @@ def create_tool(config: Any) -> FastMCP:
     return mcp
 
 
-__all__ = ["create_tool"] 
+def get_metadata() -> Dict[str, Any]:
+    """Tool metadata for discovery"""
+    return {
+        "name": "evolution-api",
+        "version": "1.0.0",
+        "description": "WhatsApp integration via Evolution API",
+        "author": "Automagik Team",
+        "category": "communication",
+        "tags": ["whatsapp", "messaging", "api"],
+        "config_env_prefix": "EVOLUTION_"
+    }
+
+
+def get_config_class():
+    """Return configuration class for introspection"""
+    return EvolutionAPIConfig
+
+
+def create_server(config: Optional[EvolutionAPIConfig] = None):
+    """Create FastMCP server instance"""
+    if config is None:
+        config = EvolutionAPIConfig()
+    return create_tool(config)
+
+
+def get_config_schema() -> Dict[str, Any]:
+    """Return JSON schema of configuration"""
+    return EvolutionAPIConfig.model_json_schema()
+
+
+def get_required_env_vars() -> Dict[str, str]:
+    """Return required environment variables"""
+    schema = EvolutionAPIConfig.model_json_schema()
+    required = {}
+    
+    for field, props in schema.get('properties', {}).items():
+        if field in schema.get('required', []):
+            env_var = f"EVOLUTION_{field.upper()}"
+            required[env_var] = props.get('description', '')
+    
+    return required
+
+
+def run_standalone(host: str = "0.0.0.0", port: int = 8000):
+    """Run tool as standalone service"""
+    config = EvolutionAPIConfig()
+    server = create_server(config)
+    
+    print(f"Starting Evolution API MCP server on {host}:{port}")
+    print(f"Configuration:")
+    print(f"  Base URL: {config.base_url}")
+    print(f"  API Key: {'***' if config.api_key else 'Not set'}")
+    print(f"  Timeout: {config.timeout}s")
+    
+    server.run(transport="sse", host=host, port=port)
+
+
+__all__ = ["create_tool", "create_server", "get_metadata", "get_config_class", 
+          "get_config_schema", "get_required_env_vars", "run_standalone"] 

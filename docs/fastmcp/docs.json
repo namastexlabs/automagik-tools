@@ -1,0 +1,138 @@
+{
+    "$schema": "https://mintlify.com/docs.json",
+    "appearance": {
+        "default": "system",
+        "strict": false
+    },
+    "background": {
+        "color": {
+            "dark": "#222831",
+            "light": "#EEEEEE"
+        },
+        "decoration": "windows"
+    },
+    "colors": {
+        "dark": "#f72585",
+        "light": "#4cc9f0",
+        "primary": "#2d00f7"
+    },
+    "description": "The fast, Pythonic way to build MCP servers and clients.",
+    "favicon": {
+        "dark": "/assets/favicon.ico",
+        "light": "/assets/favicon.ico"
+    },
+    "footer": {
+        "socials": {
+            "bluesky": "https://bsky.app/profile/jlowin.dev",
+            "github": "https://github.com/jlowin/fastmcp",
+            "x": "https://x.com/jlowin"
+        }
+    },
+    "integrations": {
+        "ga4": {
+            "measurementId": "G-64R5W1TJXG"
+        }
+    },
+    "name": "FastMCP",
+    "navbar": {
+        "primary": {
+            "href": "https://github.com/jlowin/fastmcp",
+            "type": "github"
+        }
+    },
+    "navigation": {
+        "groups": [
+            {
+                "group": "Get Started",
+                "pages": [
+                    "getting-started/welcome",
+                    "getting-started/installation",
+                    "getting-started/quickstart"
+                ]
+            },
+            {
+                "group": "Servers",
+                "pages": [
+                    "servers/fastmcp",
+                    {
+                        "group": "Core Components",
+                        "icon": "toolbox",
+                        "pages": [
+                            "servers/tools",
+                            "servers/resources",
+                            "servers/prompts",
+                            "servers/context"
+                        ]
+                    },
+                    {
+                        "group": "Authentication",
+                        "icon": "shield-check",
+                        "pages": [
+                            "servers/auth/bearer"
+                        ]
+                    },
+                    "servers/openapi",
+                    "servers/proxy",
+                    "servers/composition",
+                    {
+                        "group": "Deployment",
+                        "icon": "upload",
+                        "pages": [
+                            "deployment/running-server",
+                            "deployment/asgi"
+                        ]
+                    }
+                ]
+            },
+            {
+                "group": "Clients",
+                "pages": [
+                    "clients/client",
+                    "clients/transports",
+                    {
+                        "group": "Authentication",
+                        "icon": "user-shield",
+                        "pages": [
+                            "clients/auth/oauth",
+                            "clients/auth/bearer"
+                        ]
+                    },
+                    "clients/advanced-features"
+                ]
+            },
+            {
+                "group": "Integrations",
+                "pages": [
+                    "integrations/anthropic",
+                    "integrations/claude-desktop",
+                    "integrations/openai",
+                    "integrations/gemini",
+                    "integrations/contrib"
+                ]
+            },
+            {
+                "group": "Patterns",
+                "pages": [
+                    "patterns/decorating-methods",
+                    "patterns/http-requests",
+                    "patterns/testing",
+                    "patterns/cli"
+                ]
+            }
+        ]
+    },
+    "redirects": [
+        {
+            "destination": "/servers/proxy",
+            "source": "/patterns/proxy"
+        },
+        {
+            "destination": "/servers/composition",
+            "source": "/patterns/composition"
+        }
+    ],
+    "search": {
+        "prompt": "Search the docs..."
+    },
+    "theme": "mint"
+}

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.1.0"
+version = "0.1.1"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
     {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},
@@ -87,9 +87,10 @@ automagik-tools = "automagik_tools.cli:main"
 
 [project.entry-points."automagik_tools.plugins"]
 evolution-api = "automagik_tools.tools.evolution_api:create_tool"
-
+example-hello = "automagik_tools.tools.example_hello:create_tool"
+automagik-agents = "automagik_tools.tools.automagik_agents:create_tool"
 [tool.setuptools]
-packages = ["automagik_tools", "automagik_tools.tools", "automagik_tools.tools.evolution_api"]
+packages = ["automagik_tools", "automagik_tools.tools", "automagik_tools.tools.evolution_api", "automagik_tools.tools.example_hello"]
 
 [tool.setuptools.package-data]
 automagik_tools = ["py.typed"]
@@ -130,3 +131,10 @@ filterwarnings = [
     "ignore::UserWarning:httpx",
     "ignore::pytest.PytestUnraisableExceptionWarning"
 ] 
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.1.1",
+]

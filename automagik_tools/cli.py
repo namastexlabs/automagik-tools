@@ -5,35 +5,19 @@ CLI for automagik-tools
 import os
 import sys
 from typing import Dict, Any, Optional, List
+import importlib
 import importlib.metadata
 import typer
 from rich.console import Console
 from rich.table import Table
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
 from contextlib import asynccontextmanager
 import asyncio
 
 console = Console()
 app = typer.Typer(name="automagik-tools", help="MCP Tools Framework")
-
-
-class EvolutionAPIConfig(BaseSettings):
-    """Configuration for Evolution API"""
-    base_url: str = Field(default="https://your-evolution-api-server.com", alias="evolution_api_base_url")
-    api_key: str = Field(default="", alias="evolution_api_key")
-    timeout: int = Field(default=30, alias="evolution_api_timeout")
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "extra": "ignore"  # Allow extra fields
-    }
 
 
 def create_multi_mcp_lifespan(loaded_tools: Dict[str, FastMCP]):
@@ -102,37 +86,70 @@ def discover_tools() -> Dict[str, Any]:
             tool_entry_points = entry_points.get('automagik_tools.plugins', [])
         
         for ep in tool_entry_points:
-            tools[ep.name] = {
-                'name': ep.name,
-                'type': 'Static',
-                'status': '⚪ Available',
-                'description': _get_tool_description(ep.name),
-                'entry_point': ep
-            }
+            try:
+                # Get the module name from the entry point
+                module_name = ep.value.split(':')[0]
+                # Import the module directly
+                module = importlib.import_module(module_name)
+                
+                metadata = module.get_metadata() if hasattr(module, 'get_metadata') else {}
+                tools[ep.name] = {
+                    'name': ep.name,
+                    'module': module,
+                    'entry_point': ep,
+                    'metadata': metadata,
+                    'type': 'Static',
+                    'status': '⚪ Available',
+                    'description': metadata.get('description', f'{ep.name} tool')
+                }
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to load {ep.name}: {e}[/yellow]")
+                # Still add it for backwards compatibility
+                tools[ep.name] = {
+                    'name': ep.name,
+                    'entry_point': ep,
+                    'metadata': {'description': f'{ep.name} tool'},
+                    'type': 'Static',
+                    'status': '⚪ Available',
+                    'description': f'{ep.name} tool'
+                }
     except Exception as e:
         console.print(f"[red]Error discovering tools: {e}[/red]")
     
     return tools
 
 
-def _get_tool_description(tool_name: str) -> str:
-    """Get description for a tool"""
-    descriptions = {
-        'evolution-api': 'WhatsApp messaging via Evolution API',
-        'discord': 'Discord bot integration',
-        'notion': 'Notion workspace integration', 
-        'github': 'GitHub repository management',
-    }
-    return descriptions.get(tool_name, f'{tool_name} tool')
 
 
-def create_config_for_tool(tool_name: str) -> Any:
-    """Create configuration for a specific tool"""
-    if tool_name == 'evolution-api':
-        return EvolutionAPIConfig()
-    else:
-        # For other tools, return empty config for now
-        return {}
+def create_config_for_tool(tool_name: str, tools: Dict[str, Any]) -> Any:
+    """Create configuration by asking the tool itself"""
+    if tool_name not in tools:
+        raise ValueError(f"Tool '{tool_name}' not found")
+    
+    tool_data = tools[tool_name]
+    
+    # Try to get module from tool data
+    if 'module' in tool_data:
+        tool_module = tool_data['module']
+        
+        # Check if tool exports get_config_class
+        if hasattr(tool_module, 'get_config_class'):
+            config_class = tool_module.get_config_class()
+            return config_class()
+    
+    # Fallback for tools not yet loaded
+    if 'entry_point' in tool_data:
+        try:
+            tool_module = tool_data['entry_point'].load()
+            if hasattr(tool_module, 'get_config_class'):
+                config_class = tool_module.get_config_class()
+                return config_class()
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to load config for '{tool_name}': {e}[/yellow]")
+    
+    # Legacy support - return empty dict
+    console.print(f"[yellow]Warning: Tool '{tool_name}' doesn't export get_config_class[/yellow]")
+    return {}
 
 
 def load_tool(tool_name: str, tools: Dict[str, Any]) -> FastMCP:
@@ -140,11 +157,32 @@ def load_tool(tool_name: str, tools: Dict[str, Any]) -> FastMCP:
     if tool_name not in tools:
         raise ValueError(f"Tool '{tool_name}' not found")
     
-    entry_point = tools[tool_name]['entry_point']
-    create_tool_func = entry_point.load()
-    config = create_config_for_tool(tool_name)
+    tool_data = tools[tool_name]
+    config = create_config_for_tool(tool_name, tools)
     
-    return create_tool_func(config)
+    # Try to use module if already loaded
+    if 'module' in tool_data:
+        tool_module = tool_data['module']
+        
+        # Use the tool's create function
+        if hasattr(tool_module, 'create_server'):
+            return tool_module.create_server(config)
+        elif hasattr(tool_module, 'create_tool'):
+            # Legacy support
+            return tool_module.create_tool(config)
+    
+    # Fallback to loading via entry point
+    if 'entry_point' in tool_data:
+        create_tool_func = tool_data['entry_point'].load()
+        if hasattr(create_tool_func, 'create_server'):
+            return create_tool_func.create_server(config)
+        elif hasattr(create_tool_func, 'create_tool'):
+            return create_tool_func.create_tool(config)
+        else:
+            # Direct function call for legacy
+            return create_tool_func(config)
+    
+    raise ValueError(f"Tool '{tool_name}' doesn't export create_server or create_tool")
 
 
 @app.command()
@@ -323,7 +361,7 @@ def serve(
     try:
         # Load the tool
         mcp_server = load_tool(tool, tools)
-        config = create_config_for_tool(tool)
+        config = create_config_for_tool(tool, tools)
         
         if tool == 'evolution-api':
             console.print(f"[blue]Config loaded: URL={config.base_url}, API Key={'***' if config.api_key else 'Not set'}[/blue]")
@@ -343,6 +381,92 @@ def serve(
         import traceback
         console.print(f"[red]{traceback.format_exc()}[/red]")
         sys.exit(1)
+
+
+@app.command()
+def info(tool_name: str):
+    """Show detailed information about a tool"""
+    tools = discover_tools()
+    
+    if tool_name not in tools:
+        console.print(f"[red]Tool '{tool_name}' not found[/red]")
+        console.print(f"Available tools: {', '.join(tools.keys())}")
+        return
+    
+    tool_data = tools[tool_name]
+    
+    # Display basic info
+    console.print(f"\n[bold cyan]Tool: {tool_name}[/bold cyan]")
+    
+    if 'metadata' in tool_data and tool_data['metadata']:
+        metadata = tool_data['metadata']
+        console.print(f"Version: {metadata.get('version', 'Unknown')}")
+        console.print(f"Description: {metadata.get('description', 'No description')}")
+        console.print(f"Category: {metadata.get('category', 'Uncategorized')}")
+        console.print(f"Author: {metadata.get('author', 'Unknown')}")
+        
+        if 'tags' in metadata and metadata['tags']:
+            console.print(f"Tags: {', '.join(metadata['tags'])}")
+        
+        if 'config_env_prefix' in metadata:
+            console.print(f"\nEnvironment Prefix: {metadata['config_env_prefix']}")
+    
+    # Display configuration info
+    if 'module' in tool_data and hasattr(tool_data['module'], 'get_required_env_vars'):
+        console.print(f"\n[bold]Required Environment Variables:[/bold]")
+        env_vars = tool_data['module'].get_required_env_vars()
+        if env_vars:
+            for var, desc in env_vars.items():
+                console.print(f"  {var}: {desc}")
+        else:
+            console.print("  No required environment variables")
+    
+    # Display config schema if available
+    if 'module' in tool_data and hasattr(tool_data['module'], 'get_config_schema'):
+        console.print(f"\n[bold]Configuration Schema:[/bold]")
+        schema = tool_data['module'].get_config_schema()
+        for prop, details in schema.get('properties', {}).items():
+            required = prop in schema.get('required', [])
+            prop_type = details.get('type', 'unknown')
+            desc = details.get('description', '')
+            console.print(f"  {prop}: {prop_type} {'(required)' if required else '(optional)'}")
+            if desc:
+                console.print(f"    Description: {desc}")
+
+
+@app.command()
+def run(
+    tool_name: str,
+    host: str = typer.Option("0.0.0.0", help="Host to bind to"),
+    port: int = typer.Option(8000, help="Port to bind to")
+):
+    """Run a tool standalone (if it supports it)"""
+    tools = discover_tools()
+    
+    if tool_name not in tools:
+        console.print(f"[red]Tool '{tool_name}' not found[/red]")
+        console.print(f"Available tools: {', '.join(tools.keys())}")
+        return
+    
+    tool_data = tools[tool_name]
+    
+    # Check if module is loaded
+    if 'module' not in tool_data:
+        console.print(f"[red]Tool '{tool_name}' couldn't be loaded[/red]")
+        return
+    
+    tool_module = tool_data['module']
+    
+    # Check if tool supports standalone execution
+    if hasattr(tool_module, 'run_standalone'):
+        console.print(f"[green]Running {tool_name} standalone on {host}:{port}[/green]")
+        tool_module.run_standalone(host=host, port=port)
+    else:
+        # Fallback to create_server
+        console.print(f"[yellow]Tool doesn't have run_standalone, using create_server[/yellow]")
+        config = create_config_for_tool(tool_name, tools)
+        server = load_tool(tool_name, tools)
+        server.run(transport="sse", host=host, port=port)
 
 
 @app.command()
