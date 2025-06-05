@@ -15,9 +15,84 @@ from fastmcp import FastMCP
 import uvicorn
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import httpx
 
 console = Console()
 app = typer.Typer(name="automagik-tools", help="MCP Tools Framework")
+
+
+def create_dynamic_openapi_tool(
+    openapi_url: str,
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    transport: str = "sse"
+) -> FastMCP:
+    """Create a dynamic MCP tool from an OpenAPI specification URL"""
+    
+    # Only print to console for non-stdio transports
+    if transport != "stdio":
+        console.print(f"[blue]Fetching OpenAPI spec from: {openapi_url}[/blue]")
+    
+    # Fetch the OpenAPI spec
+    try:
+        response = httpx.get(openapi_url, timeout=30)
+        response.raise_for_status()
+        openapi_spec = response.json()
+    except Exception as e:
+        raise ValueError(f"Failed to fetch OpenAPI spec: {e}")
+    
+    # Extract info from OpenAPI spec
+    api_info = openapi_spec.get("info", {})
+    api_title = api_info.get("title", "Dynamic API")
+    api_description = api_info.get("description", "API loaded from OpenAPI spec")
+    
+    # Determine base URL
+    if not base_url:
+        # Try to get from OpenAPI spec servers
+        servers = openapi_spec.get("servers", [])
+        if servers:
+            base_url = servers[0].get("url", "")
+        else:
+            # Try to extract from the OpenAPI URL
+            from urllib.parse import urlparse
+            parsed = urlparse(openapi_url)
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+    
+    if transport != "stdio":
+        console.print(f"[blue]API Title: {api_title}[/blue]")
+        console.print(f"[blue]Base URL: {base_url}[/blue]")
+    
+    # Create HTTP client with authentication
+    headers = {}
+    if api_key:
+        # Try common auth header patterns
+        headers["X-API-Key"] = api_key
+        headers["Authorization"] = f"Bearer {api_key}"
+        if transport != "stdio":
+            console.print("[blue]Authentication headers configured[/blue]")
+    
+    client = httpx.AsyncClient(
+        base_url=base_url,
+        headers=headers,
+        timeout=30.0
+    )
+    
+    # Create MCP server from OpenAPI spec
+    try:
+        mcp_server = FastMCP.from_openapi(
+            openapi_spec=openapi_spec,
+            client=client,
+            name=api_title,
+            instructions=api_description
+        )
+        
+        if transport != "stdio":
+            console.print(f"[green]✅ Successfully created MCP server for {api_title}[/green]")
+        
+        return mcp_server
+        
+    except Exception as e:
+        raise ValueError(f"Failed to create MCP server from OpenAPI spec: {e}")
 
 
 def create_multi_mcp_lifespan(loaded_tools: Dict[str, FastMCP]):
@@ -278,7 +353,7 @@ def serve_all(
     for tool_name in tool_names:
         try:
             console.print(f"[blue]Loading tool: {tool_name}[/blue]")
-            config = create_config_for_tool(tool_name)
+            config = create_config_for_tool(tool_name, available_tools)
             if tool_name == "evolution-api":
                 console.print(
                     f"[blue]Config: URL={config.base_url}, API Key={'***' if config.api_key else 'Not set'}[/blue]"
@@ -380,7 +455,8 @@ def serve_all(
 
 @app.command()
 def serve(
-    tool: str = typer.Option(..., help="Tool name to serve"),
+    tool: Optional[str] = typer.Option(None, help="Tool name to serve"),
+    openapi_url: Optional[str] = typer.Option(None, help="OpenAPI spec URL for dynamic tool creation"),
     host: Optional[str] = typer.Option(
         None, help="Host to bind to (overrides HOST env var)"
     ),
@@ -388,8 +464,50 @@ def serve(
         None, help="Port to bind to (overrides PORT env var)"
     ),
     transport: str = typer.Option("sse", help="Transport type (sse or stdio)"),
+    api_key: Optional[str] = typer.Option(None, help="API key for OpenAPI authentication"),
+    base_url: Optional[str] = typer.Option(None, help="Base URL for the API (if different from OpenAPI spec)"),
 ):
-    """Serve a specific tool (legacy single-tool mode)"""
+    """Serve a specific tool or create one dynamically from OpenAPI spec"""
+    # Check if we're creating a dynamic OpenAPI tool
+    if openapi_url:
+        if transport != "stdio":
+            console.print(f"[blue]Creating dynamic tool from OpenAPI spec: {openapi_url}[/blue]")
+        
+        # Create dynamic OpenAPI tool
+        try:
+            mcp_server = create_dynamic_openapi_tool(
+                openapi_url=openapi_url,
+                api_key=api_key,
+                base_url=base_url,
+                transport=transport
+            )
+            
+            # Get host and port
+            serve_host = host or os.getenv("HOST", "127.0.0.1")
+            serve_port = port or int(os.getenv("PORT", "8000"))
+            
+            # Start the server
+            if transport == "sse":
+                console.print(
+                    f"[green]🚀 Starting dynamic OpenAPI server on {serve_host}:{serve_port}[/green]"
+                )
+                mcp_server.run(transport="sse", host=serve_host, port=serve_port)
+            else:
+                # No console output for stdio to avoid protocol interference
+                mcp_server.run(transport="stdio")
+            return
+            
+        except Exception as e:
+            console.print(f"[red]❌ Failed to create dynamic OpenAPI tool: {e}[/red]")
+            import traceback
+            console.print(f"[red]{traceback.format_exc()}[/red]")
+            sys.exit(1)
+    
+    # Otherwise, use existing tool discovery
+    if not tool:
+        console.print("[red]Either --tool or --openapi-url must be specified[/red]")
+        sys.exit(1)
+        
     tools = discover_tools()
 
     if tool not in tools:

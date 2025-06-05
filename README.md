@@ -60,11 +60,12 @@ Imagine describing what you want in plain English and having AI automatically:
 # No installation needed - just run with uvx!
 uvx automagik-tools list
 
-# Turn any API into an MCP tool
+# Method 1: Pre-generate a tool from OpenAPI (persistent)
 uvx automagik-tools tool --url https://api.stripe.com/v1/openapi.json
-
-# Your Stripe MCP tool is ready! 🎉
 uvx automagik-tools serve --tool stripe
+
+# Method 2: Direct OpenAPI deployment (no pre-generation needed!) 🚀
+uvx automagik-tools serve --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_...
 ```
 
 That's it. You now have a fully functional MCP tool for Stripe that any AI can use.
@@ -513,6 +514,44 @@ AUTOMAGIK_AGENTS_API_KEY=your_key AUTOMAGIK_AGENTS_BASE_URL=http://your-server:8
   }
 }
 ```
+
+---
+
+## 🚀 Dynamic OpenAPI Tools (NEW!)
+
+Run any OpenAPI-based API as an MCP tool **without pre-generating files**:
+
+```bash
+# Direct deployment - no tool generation needed!
+uvx automagik-tools serve --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_...
+
+# With custom base URL (if different from OpenAPI spec)
+uvx automagik-tools serve --openapi-url https://example.com/openapi.json --base-url https://api.example.com --api-key your-key
+
+# For stdio transport (Claude Desktop, Cursor, etc.)
+uvx automagik-tools serve --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_... --transport stdio
+```
+
+### MCP Client Configuration for Dynamic OpenAPI Tools
+
+```json
+{
+  "mcpServers": {
+    "stripe-api": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools", 
+        "serve", 
+        "--openapi-url", "https://api.stripe.com/v1/openapi.json",
+        "--api-key", "sk_test_...",
+        "--transport", "stdio"
+      ]
+    }
+  }
+}
+```
+
+This feature uses FastMCP's native OpenAPI support to create MCP tools on-the-fly from any OpenAPI specification.
 
 ---
 

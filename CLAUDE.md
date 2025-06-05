@@ -126,8 +126,16 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 3. **Discord Community**: Support and collaboration
 4. **Tool Templates**: Quickstart templates for common integrations
 
-## Recent Makefile Updates
+## Recent Updates
 
+### Dynamic OpenAPI Support (NEW!)
+- Added `--openapi-url` flag to `serve` command for direct OpenAPI deployment
+- No pre-generation needed: `uvx automagik-tools serve --openapi-url https://api.example.com/openapi.json`
+- Supports authentication with `--api-key` and custom base URLs with `--base-url`
+- Works with all transports (stdio, SSE, HTTP)
+- Uses FastMCP's native `from_openapi()` support
+
+### Makefile Updates
 - Removed `serve-evolution` command (tool-specific, replaced by generic `serve` command)
 - Removed `test-working` command (was only testing 2 specific files)
 - Removed `fastmcp-*` commands (dead code - duplicated existing functionality)

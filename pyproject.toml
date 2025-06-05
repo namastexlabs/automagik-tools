@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.1.2pre2"
+version = "0.1.3"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
     {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},

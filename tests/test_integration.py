@@ -9,6 +9,7 @@ import json
 import subprocess
 import signal
 import time
+import sys
 from tests.conftest import SAMPLE_MCP_INITIALIZE, SAMPLE_MCP_LIST_TOOLS
 
 
@@ -24,7 +25,7 @@ class TestEndToEndWorkflow:
         env = os.environ.copy()
         env.update(mock_evolution_config)
         process = await asyncio.create_subprocess_exec(
-            "python",
+            sys.executable,
             "-m",
             "automagik_tools.cli",
             "serve",
@@ -111,7 +112,7 @@ class TestEndToEndWorkflow:
 
         process = subprocess.Popen(
             [
-                "python",
+                sys.executable,
                 "-m",
                 "automagik_tools.cli",
                 "serve",
@@ -277,7 +278,7 @@ class TestErrorRecoveryAndResilience:
     async def test_server_recovers_from_malformed_input(self, mock_evolution_config):
         """Test that server recovers from malformed JSON input"""
         process = await asyncio.create_subprocess_exec(
-            "python",
+            sys.executable,
             "-m",
             "automagik_tools.cli",
             "serve",
@@ -324,7 +325,7 @@ class TestErrorRecoveryAndResilience:
 
         process = subprocess.Popen(
             [
-                "python",
+                sys.executable,
                 "-m",
                 "automagik_tools.cli",
                 "serve",
@@ -364,7 +365,7 @@ class TestPerformanceAndScaling:
     async def test_multiple_concurrent_requests(self, mock_evolution_config):
         """Test handling multiple concurrent MCP requests"""
         process = await asyncio.create_subprocess_exec(
-            "python",
+            sys.executable,
             "-m",
             "automagik_tools.cli",
             "serve",
@@ -429,7 +430,7 @@ class TestPerformanceAndScaling:
 
         process = subprocess.Popen(
             [
-                "python",
+                sys.executable,
                 "-m",
                 "automagik_tools.cli",
                 "serve",
