@@ -256,7 +256,7 @@ check-release: ## 🔍 Check if ready for release (clean working directory)
 	$(call print_status,Checking release readiness...)
 	@# Check for uncommitted changes
 	@if [ -n "$$(git status --porcelain)" ]; then \
-		$(call print_error,Uncommitted changes detected!); \
+		echo -e "$(FONT_RED)$(ERROR) Uncommitted changes detected!$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)Please commit or stash your changes before publishing.$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)Run: git status$(FONT_RESET)"; \
 		exit 1; \
@@ -264,7 +264,7 @@ check-release: ## 🔍 Check if ready for release (clean working directory)
 	@# Check if on main branch
 	@CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$CURRENT_BRANCH" != "main" ]; then \
-		$(call print_warning,Not on main branch (current: $$CURRENT_BRANCH)); \
+		echo -e "$(FONT_YELLOW)$(WARNING) Not on main branch (current: $$CURRENT_BRANCH)$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)It's recommended to publish from the main branch.$(FONT_RESET)"; \
 		read -p "Continue anyway? [y/N] " -n 1 -r; \
 		echo; \
@@ -274,8 +274,8 @@ check-release: ## 🔍 Check if ready for release (clean working directory)
 	fi
 	@# Check if main branch is up to date with origin
 	@git fetch origin main --quiet; \
-	@if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
-		$(call print_warning,Local main branch differs from origin/main); \
+	if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
+		echo -e "$(FONT_YELLOW)$(WARNING) Local main branch differs from origin/main$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)Consider pulling latest changes or pushing your commits.$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)Run: git pull origin main$(FONT_RESET)"; \
 		read -p "Continue anyway? [y/N] " -n 1 -r; \
@@ -306,21 +306,13 @@ publish: check-release build check-dist ## $(ROCKET) Upload to PyPI and create G
 	@# Get version from pyproject.toml
 	@VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
 	echo -e "$(FONT_CYAN)$(INFO) Publishing version: v$$VERSION$(FONT_RESET)"; \
-	\
-	# Upload to PyPI
 	$(UV) run twine upload dist/* -u __token__ -p "$(PYPI_TOKEN)"; \
-	\
-	# Create git tag if it doesn't exist
 	if ! git tag | grep -q "^v$$VERSION$$"; then \
 		echo -e "$(FONT_CYAN)$(INFO) Creating git tag v$$VERSION$(FONT_RESET)"; \
 		git tag -a "v$$VERSION" -m "Release v$$VERSION"; \
 	fi; \
-	\
-	# Push tag to GitHub
 	echo -e "$(FONT_CYAN)$(INFO) Pushing tag to GitHub$(FONT_RESET)"; \
 	git push origin "v$$VERSION"; \
-	\
-	# Create GitHub release using gh CLI if available
 	if command -v gh >/dev/null 2>&1; then \
 		echo -e "$(FONT_CYAN)$(INFO) Creating GitHub release$(FONT_RESET)"; \
 		gh release create "v$$VERSION" \
