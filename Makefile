@@ -177,6 +177,7 @@ help: ## 🛠️ Show this help message
 	@echo -e "  $(FONT_PURPLE)new-tool$(FONT_RESET)        Create new tool interactively"
 	@echo -e "  $(FONT_PURPLE)test-tool$(FONT_RESET)       Test specific tool (use TOOL=name)"
 	@echo -e "  $(FONT_PURPLE)validate-tool$(FONT_RESET)   Validate tool compliance (TOOL=name)"
+	@echo -e "  $(FONT_PURPLE)mcp-config$(FONT_RESET)      Generate MCP config for Cursor/Claude (TOOL=name)"
 	@echo ""
 	@echo -e "$(FONT_GRAY)Examples:$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make serve TOOL=evolution-api$(FONT_RESET)"
@@ -185,6 +186,7 @@ help: ## 🛠️ Show this help message
 	@echo -e "  $(FONT_GRAY)make new-tool$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make test-tool TOOL=evolution-api$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make validate-tool TOOL=automagik-agents$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make mcp-config TOOL=discord-api$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make docker-build-sse$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make docker-run-sse PORT=8000$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make docker-compose$(FONT_RESET)"
@@ -613,6 +615,20 @@ test-pattern: ## 🔍 Run tests matching pattern
 	@echo -e "$(FONT_GRAY)Examples:$(FONT_RESET)"
 	@echo -e "$(FONT_GRAY)  pytest -k 'test_list'$(FONT_RESET)"
 	@echo -e "$(FONT_GRAY)  pytest -k 'evolution'$(FONT_RESET)"
+
+# ===========================================
+# 🔧 MCP Configuration
+# ===========================================
+.PHONY: mcp-config
+mcp-config: ## 🔧 Generate MCP configuration for Cursor/Claude (use TOOL=name)
+	@if [ -z "$(TOOL)" ]; then \
+		$(call print_error,Usage: make mcp-config TOOL=<tool-name>); \
+		echo -e "$(FONT_GRAY)Example: make mcp-config TOOL=automagik-agents$(FONT_RESET)"; \
+		echo -e "$(FONT_GRAY)Example: make mcp-config TOOL=discord-api$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	$(call print_status,Generating MCP configuration for $(TOOL)...)
+	@$(UV) run automagik-tools mcp-config $(TOOL)
 
 # ===========================================
 # 📚 Documentation

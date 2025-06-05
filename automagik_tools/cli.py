@@ -692,6 +692,146 @@ def tool(
 
 
 @app.command()
+def mcp_config(
+    tool_name: str = typer.Argument(..., help="Tool name to generate config for"),
+    format: str = typer.Option("cursor", help="Output format: cursor or claude"),
+):
+    """Generate MCP configuration for a tool to use in Cursor or Claude"""
+    import json
+    
+    # Special handling for dynamic OpenAPI tools
+    if tool_name == "discord-api":
+        config = {
+            "discord-api": {
+                "command": "uvx",
+                "args": [
+                    "automagik-tools@latest",
+                    "serve", 
+                    "--openapi-url",
+                    "https://raw.githubusercontent.com/discord/discord-api-spec/refs/heads/main/specs/openapi.json",
+                    "--transport",
+                    "stdio"
+                ],
+                "env": {
+                    "DISCORD_TOKEN": "YOUR_DISCORD_TOKEN_HERE"
+                }
+            }
+        }
+        console.print("[yellow]⚠️  Discord API tool uses dynamic OpenAPI - requires latest automagik-tools[/yellow]")
+        console.print("[yellow]   Replace YOUR_DISCORD_TOKEN_HERE with your actual Discord token[/yellow]")
+        console.print("\n[green]MCP Configuration for Cursor:[/green]")
+        console.print(json.dumps(config, indent=2))
+        return
+    
+    # Check if tool exists
+    tools = discover_tools()
+    
+    if tool_name not in tools:
+        console.print(f"[red]Tool '{tool_name}' not found[/red]")
+        console.print(f"Available tools: {', '.join(tools.keys())}")
+        
+        # Suggest discord-api for common mistakes
+        if "discord" in tool_name.lower():
+            console.print("\n[yellow]💡 Did you mean 'discord-api'? Try:[/yellow]")
+            console.print("[blue]automagik-tools mcp-config discord-api[/blue]")
+        return
+    
+    # Load tool to get its configuration requirements
+    tool_data = tools[tool_name]
+    
+    # Basic MCP configuration
+    config = {
+        tool_name: {
+            "command": "uvx",
+            "args": [
+                "automagik-tools@latest",
+                "serve",
+                "--tool",
+                tool_name,
+                "--transport",
+                "stdio"
+            ]
+        }
+    }
+    
+    # Add environment variables if tool has config requirements
+    if "module" in tool_data:
+        try:
+            schema = tool_data["module"].get_config_schema()
+            env_vars = {}
+            
+            # Map configuration properties to environment variables
+            for prop, details in schema.get("properties", {}).items():
+                env_var = f"{tool_name.upper().replace('-', '_')}_{prop.upper()}"
+                required = prop in schema.get("required", [])
+                
+                # Set example values based on property type
+                if details.get("type") == "string":
+                    if "url" in prop.lower():
+                        value = "YOUR_API_URL_HERE"
+                    elif "key" in prop.lower() or "token" in prop.lower():
+                        value = "YOUR_API_KEY_HERE"
+                    else:
+                        value = "YOUR_VALUE_HERE"
+                elif details.get("type") == "integer":
+                    value = "30"  # Default timeout value
+                else:
+                    value = "YOUR_VALUE_HERE"
+                
+                env_vars[env_var] = value
+                
+                if required:
+                    console.print(f"[yellow]⚠️  {env_var} is required - replace {value} with actual value[/yellow]")
+            
+            if env_vars:
+                config[tool_name]["env"] = env_vars
+        except Exception:
+            # If we can't get config schema, just continue without env vars
+            pass
+    
+    # Special configurations for known tools
+    if tool_name == "automagik-agents":
+        config[tool_name]["env"] = {
+            "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY_HERE",
+            "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+            "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+            "AUTOMAGIK_AGENTS_TIMEOUT": "1000"
+        }
+        console.print("[yellow]⚠️  Configure the environment variables above with your Automagik Agents instance[/yellow]")
+    elif tool_name == "evolution-api":
+        config[tool_name]["env"] = {
+            "EVOLUTION_API_BASE_URL": "http://localhost:8080",
+            "EVOLUTION_API_API_KEY": "YOUR_API_KEY_HERE"
+        }
+        console.print("[yellow]⚠️  Configure the environment variables above with your Evolution API instance[/yellow]")
+    elif tool_name == "evolution-api-v2":
+        config[tool_name]["env"] = {
+            "EVOLUTION_API_V2_BASE_URL": "http://localhost:8080",
+            "EVOLUTION_API_V2_API_KEY": "YOUR_API_KEY_HERE"
+        }
+        console.print("[yellow]⚠️  Configure the environment variables above with your Evolution API v2 instance[/yellow]")
+    
+    # Output the configuration
+    console.print(f"\n[green]MCP Configuration for {format.capitalize()}:[/green]")
+    console.print(json.dumps(config, indent=2))
+    
+    console.print("\n[blue]To use this configuration:[/blue]")
+    if format == "cursor":
+        console.print("1. Copy the JSON above")
+        console.print("2. Open ~/.cursor/mcp.json (or create it)")
+        console.print("3. Add this configuration to the 'mcpServers' section")
+        console.print("4. Restart Cursor")
+    else:
+        console.print("1. Copy the JSON above")
+        console.print("2. Open Claude Desktop settings")
+        console.print("3. Go to Developer > Edit Config")
+        console.print("4. Add this configuration to the 'mcpServers' section")
+        console.print("5. Restart Claude Desktop")
+    
+    console.print("\n[green]✅ Configuration generated successfully![/green]")
+
+
+@app.command()
 def version():
     """Show version information"""
     from . import __version__
