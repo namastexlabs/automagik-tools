@@ -1,35 +1,102 @@
-# automagik-tools
+<p align="center">
+  <img src=".github/images/automagik_logo.png" alt="AutoMagik Tools Logo" width="600"/>
+</p>
 
-🚀 **The Premier Repository for Model Context Protocol (MCP) Tools**
+# 🪄 AutoMagik Tools
 
-A **self-discovering**, **zero-configuration** monorepo for MCP tools. Just drop your tool in the `tools/` directory and it's automatically available - no registration needed!
+## Turn Any API into an AI-Ready Tool in Seconds™
 
-**✨ Key Features:**
-- 🔍 **Auto-Discovery** - Tools are found automatically, no manual registration
-- 📦 **Self-Contained** - Each tool is completely independent
-- 🚀 **Zero Config** - Just add your tool folder and it works
-- 🛠️ **FastMCP Powered** - Built on the robust FastMCP framework
-- 🎯 **5-Minute Setup** - Add a new tool in minutes, not hours
+**The most comprehensive collection of Model Context Protocol (MCP) tools**. Drop an OpenAPI spec, get an MCP tool. It's that simple.
 
-**Our Vision**: To become the largest and most comprehensive collection of MCP tools, making it trivially easy for developers to add new integrations and for users to discover and use them.
+Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools transforms the way AI agents interact with the real world. We're building the infrastructure that makes **every API on the internet instantly accessible to AI**.
+
+### 🎯 Why AutoMagik Tools?
+
+**The Problem**: AI agents need to interact with thousands of APIs, but creating MCP tools is time-consuming and repetitive.
+
+**Our Solution**: 
+- 🚀 **Instant API → MCP Tool**: Drop any OpenAPI.json, get a fully functional MCP tool
+- 🤖 **Coming Soon: Smart Tools™**: Natural language API calls - just describe what you want
+- 🔌 **Zero Configuration**: Auto-discovery means tools just work
+- 🌐 **Universal Compatibility**: Works with Claude, Cursor, and any MCP-compatible AI
+
+### 🌟 Game-Changing Features
+
+1. **OpenAPI Magic** ✨
+   ```bash
+   # Turn any API into an MCP tool in one command
+   uvx automagik-tools tool --url https://api.example.com/openapi.json
+   
+   # Or if you're in the repo:
+   make tool URL=https://api.example.com/openapi.json
+   ```
+
+2. **Auto-Discovery Engine** 🔍
+   - Drop tools in the `tools/` folder
+   - They're instantly available - no registration, no config
+   - Dynamic loading at runtime
+
+3. **Production-Ready** 🏭
+   - FastMCP framework for reliability
+   - Built-in auth, rate limiting, error handling
+   - Battle-tested at Namastex Labs
+
+### 🚀 The Future: Smart Tools™ (Coming Q1 2025)
+
+Imagine describing what you want in plain English and having AI automatically:
+- Find the right API
+- Understand its documentation
+- Make the correct calls
+- Handle authentication
+- Process responses
+
+**"Hey, get me all unread messages from Slack and create tasks in Notion"** → Done. No configuration needed.
 
 ---
 
-## 🚀 Features
+## 💡 Quick Demo
 
-### 🎯 For Tool Developers
-- **Zero Registration** - Just create a folder in `tools/` and it's discovered
-- **Self-Contained Tools** - Each tool is independent with its own config
-- **Auto-Discovery** - The hub automatically finds and mounts all tools
-- **FastMCP Compliant** - Built on FastMCP with proper patterns
-- **5-Minute Setup** - Add a new tool faster than making coffee
+```bash
+# No installation needed - just run with uvx!
+uvx automagik-tools list
 
-### 🛠️ For Tool Users
-- **One Command** - `make fastmcp-hub` runs everything
-- **Multi-tool Server** - All tools available on one server
-- **Dynamic Loading** - Tools are discovered and loaded at runtime
-- **CLI Interface** - List, run, and manage tools easily
-- **Type-Safe Config** - Pydantic-based settings with environment variables
+# Turn any API into an MCP tool
+uvx automagik-tools tool --url https://api.stripe.com/v1/openapi.json
+
+# Your Stripe MCP tool is ready! 🎉
+uvx automagik-tools serve --tool stripe
+```
+
+That's it. You now have a fully functional MCP tool for Stripe that any AI can use.
+
+### Alternative: Traditional Installation
+
+```bash
+# If you prefer pip installation
+pip install automagik-tools
+
+# Then use the same commands without uvx
+automagik-tools serve --tool stripe
+```
+
+---
+
+## 🎯 Perfect For
+
+### AI Engineers & Developers 👩‍💻
+- **Build once, use everywhere**: Your tools work with any MCP-compatible AI
+- **OpenAPI → MCP in seconds**: Stop writing boilerplate integration code
+- **Focus on business logic**: We handle the MCP protocol complexity
+
+### Companies & Startups 🏢
+- **Instant AI integration**: Connect your APIs to AI agents immediately
+- **Future-proof**: Works with Claude, GPT-4, and upcoming AI models
+- **Enterprise-ready**: Built for scale with proper auth and rate limiting
+
+### AI Power Users 🚀
+- **1000+ tools coming**: Access the world's APIs through one interface
+- **Mix and match**: Combine tools for complex workflows
+- **No coding required**: Just configuration and natural language
 
 ---
 
@@ -114,7 +181,7 @@ automagik-tools serve --tool automagik-agents
 uvx automagik-tools serve-all --tools automagik-agents
 
 # Or using pip-installed version  
-automagik-tools serve-all --tools automagik-agents,evolution-api,example-hello
+automagik-tools serve-all --tools automagik-agents,evolution-api,evolution-api-v2
 ```
 
 - Each tool is mounted at its own path, e.g., `/automagik-agents/mcp`, `/evolution-api/mcp`
@@ -126,7 +193,7 @@ You can connect your automagik-tools server to any MCP-compatible client using v
 
 #### Method 1: stdio Transport (Recommended for Desktop Clients)
 
-##### Using uvx (no installation required)
+##### Using uvx (requires local path until next release)
 
 ```json
 {
@@ -134,7 +201,7 @@ You can connect your automagik-tools server to any MCP-compatible client using v
     "automagik-agents": {
       "transport": "stdio",
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["--from", "/path/to/automagik-tools", "automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
       "env": {
         "AUTOMAGIK_AGENTS_API_KEY": "your_api_key_here",
         "AUTOMAGIK_AGENTS_BASE_URL": "http://your-server:8881",
@@ -145,6 +212,8 @@ You can connect your automagik-tools server to any MCP-compatible client using v
   }
 }
 ```
+
+> **Note**: The automagik-agents tool is not yet available in the PyPI release. Use the local path method above or wait for version 0.1.2.
 
 ##### Using pip-installed version
 
@@ -483,7 +552,7 @@ def create_server(config=None):
     pass
 ```
 
-**Try it:** Run `make fastmcp-hub` and your tool is automatically mounted!
+**Try it:** Run `make serve-all` and your tool is automatically mounted!
 
 ---
 
@@ -560,25 +629,117 @@ See [docs/TOOL_CREATION_GUIDE.md](docs/TOOL_CREATION_GUIDE.md) for detailed cont
 
 ---
 
+## 🔥 Current Tools & Integrations
+
+### ⭐ Featured: AutoMagik Agents Integration
+
+**[AutoMagik Agents](https://github.com/namastexlabs/automagik-agents)** - Our flagship integration showcases the power of OpenAPI → MCP transformation:
+
+```json
+{
+  "mcpServers": {
+    "automagik-agents": {
+      "command": "uvx",
+      "args": ["automagik-tools", "serve", "--tool", "automagik-agents"],
+      "env": {
+        "AUTOMAGIK_AGENTS_API_KEY": "your-key",
+        "AUTOMAGIK_AGENTS_BASE_URL": "http://your-server:8881"
+      }
+    }
+  }
+}
+```
+
+This single tool gives you access to an entire AI agent ecosystem with:
+- 🤖 Template-based agent creation
+- 💾 Persistent memory with variable injection
+- 🔧 Production-ready FastAPI endpoints
+- 🧠 Knowledge graph integration
+
+### 📦 Available Tools
+
+| Tool | Description | Type | Status |
+|------|-------------|------|--------|
+| **automagik-agents** | Full AI agent system with memory & tools | 🌟 OpenAPI | ✅ Live |
+| **evolution-api** | WhatsApp Business integration (legacy) | 📱 Messaging | ✅ Live |
+| **evolution-api-v2** | WhatsApp Business integration v2 | 🌟 OpenAPI | ✅ Live |
+| **stripe** | Payment processing | 💳 OpenAPI | 🚀 1-click setup |
+| **github** | Repository management | 🐙 OpenAPI | 🚀 1-click setup |
+| **slack** | Team communication | 💬 OpenAPI | 🚀 1-click setup |
+| **notion** | Workspace & docs | 📝 OpenAPI | 🚀 1-click setup |
+
+*🚀 1-click setup = Just run: `uvx automagik-tools tool --url [api-url]` or `make tool URL=[api-url]`*
+
+---
+
+## 🗺️ Roadmap: The Future of AI-API Integration
+
+### Phase 1: Foundation (Completed ✅)
+- ✅ Auto-discovery framework
+- ✅ OpenAPI → MCP tool generation
+- ✅ Multi-tool server with dynamic loading
+- ✅ Production-ready deployment
+
+### Phase 2: Scale (Q4 2024 - In Progress 🏗️)
+- 🏗️ Tool marketplace with 100+ integrations
+- 🏗️ One-click tool installation from registry
+- 🏗️ Advanced authentication handling (OAuth2, JWT, API keys)
+- 🏗️ Tool composition and chaining
+
+### Phase 3: Intelligence (Q1 2025 - The Game Changer 🚀)
+
+#### **Smart Tools™** - Natural Language API Orchestration
+
+Imagine this conversation:
+```
+User: "Monitor my Stripe transactions and create Notion tasks for failed payments"
+AI: "I'll set that up for you. Connecting to Stripe and Notion..."
+[AI automatically discovers APIs, handles auth, sets up monitoring]
+AI: "Done! I'm now monitoring your Stripe account and will create Notion tasks for any failed payments."
+```
+
+**How Smart Tools Will Work:**
+1. **Natural Language Understanding**: Describe what you want in plain English
+2. **Automatic API Discovery**: AI finds the right APIs and endpoints
+3. **Intelligent Mapping**: Understands API docs and creates optimal integrations
+4. **Self-Healing**: Adapts to API changes automatically
+5. **Context Awareness**: Remembers your preferences and patterns
+
+### Phase 4: Ecosystem (Q2 2025 🌍)
+- **Tool Studio**: Visual tool builder for non-developers
+- **Community Hub**: Share and monetize your tools
+- **Enterprise Gateway**: Managed tool hosting with SLAs
+- **AI Tool Mesh**: Tools that discover and integrate with each other
+
+---
+
 ## 📚 Documentation
 
-- [Tool Creation Guide](docs/TOOL_CREATION_GUIDE.md) - Comprehensive guide for building new tools
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp) - MCP framework documentation
-- [MCP Specification](https://modelcontextprotocol.io) - Model Context Protocol specification
-- [API Reference](docs/API.md) - Detailed API documentation (coming soon)
+### For End Users
+- 🚀 [Quick Start Guide](docs/end-users/quick-start.md) - Get up and running in 2 minutes
+- 🤖 [Claude Desktop Integration](docs/end-users/claude-integration.md) - Step-by-step Claude setup
+- 💻 [Cursor Integration](docs/end-users/cursor-integration.md) - AI-powered coding with MCP tools
+- 📝 [Configuration Examples](docs/end-users/configuration-examples.md) - Ready-to-use configs
+- 🔧 [Troubleshooting](docs/end-users/troubleshooting.md) - Common issues and solutions
 
-### Available Tools
+### For Developers
+- 🏁 [Getting Started](docs/developers/getting-started.md) - Development environment setup
+- 🛠️ [Creating Tools](docs/developers/creating-tools.md) - Build your own MCP tools
+- 🧪 [Testing Guide](docs/developers/testing-guide.md) - Testing best practices
+- 📖 [API Reference](docs/developers/api-reference.md) - Complete API documentation
 
-| Tool | Description | Status |
-|------|-------------|--------|
-| automagik-agents | OpenAPI-based agent system for task automation | ✅ Ready |
-| evolution-api | WhatsApp integration via Evolution API | ✅ Ready |
-| example-hello | Simple example tool for learning | ✅ Ready |
-| discord | Discord bot integration | 🚧 Planned |
-| notion | Notion workspace integration | 🚧 Planned |
-| github | GitHub API integration | 🚧 Planned |
+### Technical Guides
+- 📖 [Tool Creation Guide](docs/TOOL_CREATION_GUIDE.md) - Build MCP tools from scratch
+- 🚀 [OpenAPI Integration](docs/OPENAPI_GUIDE.md) - Convert any API to MCP
+- 🛠️ [Tool Development Guide](docs/TOOL_DEVELOPMENT_GUIDE.md) - Advanced development
+- ✅ [FastMCP Compliance](docs/FASTMCP_COMPLIANCE.md) - Framework compliance guide
 
-Want to add a tool? Check our [contribution guide](docs/TOOL_CREATION_GUIDE.md)!
+### Deployment
+- 🐳 [Docker Deployment Guide](deploy/README.md) - Deploy to AWS, Google Cloud, Railway, and more
+
+### External Resources
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp) - Framework reference
+- [MCP Specification](https://modelcontextprotocol.io) - Protocol details
 
 ---
 
@@ -659,4 +820,43 @@ Tests are configured via `pytest.ini`. Key features:
 - **Test markers** for categorizing tests (`unit`, `integration`, `mcp`, etc.)
 - **Timeout protection** for long-running tests
 
---- 
+---
+
+## 🌟 Join the AI Revolution
+
+**AutoMagik Tools is reshaping how AI interacts with the digital world.** We're not just building tools; we're creating the infrastructure that will power the next generation of AI applications.
+
+### Why This Matters
+
+Every API on the internet is a capability waiting to be unlocked. With AutoMagik Tools:
+- **Today**: Convert any OpenAPI spec to an MCP tool in seconds
+- **Tomorrow**: AI that understands and uses any API through natural language
+- **The Future**: A world where AI agents seamlessly orchestrate thousands of services
+
+### Get Started Now
+
+```bash
+# No installation needed - just run!
+uvx automagik-tools list
+
+# You're 30 seconds away from your first AI-powered API integration
+```
+
+---
+
+<p align="center">
+  <b>🪄 Part of the AutoMagik Ecosystem</b><br>
+  <a href="https://github.com/namastexlabs/automagik">AutoMagik</a> |
+  <a href="https://github.com/namastexlabs/automagik-agents">AutoMagik Agents</a> |
+  <a href="https://github.com/namastexlabs/automagik-tools">AutoMagik Tools</a> |
+  <a href="https://github.com/namastexlabs/automagik-ui">AutoMagik UI</a>
+</p>
+
+<p align="center">
+  <b>Built with ❤️ by <a href="https://namastex.com">Namastex Labs</a></b><br>
+  <i>Because we believe AI should talk to everything, everywhere, all at once.</i>
+</p>
+
+**AutoMagik Tools is open source and always will be.** We use it daily at Namastex Labs to build production AI systems. Join us in making every API on the internet AI-ready.
+
+🚀 **The future of AI is connected. The future is AutoMagik.** 

@@ -1,0 +1,118 @@
+# Kubernetes deployment for GKE or any K8s cluster
+# Apply with: kubectl apply -f kubernetes-deployment.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: automagik-tools
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automagik-mcp
+  namespace: automagik-tools
+  labels:
+    app: automagik-mcp
+    transport: sse
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: automagik-mcp
+  template:
+    metadata:
+      labels:
+        app: automagik-mcp
+        transport: sse
+    spec:
+      containers:
+      - name: automagik
+        image: gcr.io/PROJECT_ID/automagik-mcp:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: TRANSPORT
+          value: "sse"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8000"
+        envFrom:
+        - secretRef:
+            name: automagik-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: automagik-mcp-service
+  namespace: automagik-tools
+spec:
+  selector:
+    app: automagik-mcp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: LoadBalancer
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: automagik-secrets
+  namespace: automagik-tools
+type: Opaque
+stringData:
+  EVOLUTION_API_BASE_URL: "https://your-api.com"
+  EVOLUTION_API_KEY: "your-api-key"
+  OPENAI_API_KEY: "sk-..."
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: automagik-mcp-hpa
+  namespace: automagik-tools
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: automagik-mcp
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

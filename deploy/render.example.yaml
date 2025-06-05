@@ -1,0 +1,41 @@
+# Render deployment configuration example
+# Copy this file to render.yaml in your project root when deploying
+
+services:
+  - type: web
+    name: automagik-mcp
+    runtime: docker
+    dockerfilePath: ./deploy/docker/Dockerfile.sse  # Change transport as needed
+    plan: free  # or "starter" for paid plan
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Environment variables
+    envVars:
+      - key: TRANSPORT
+        value: sse
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000  # 8000 for SSE, 8080 for HTTP
+      
+      # Add your API keys as environment variables in Render dashboard
+      # for security (don't commit them here)
+      # - key: EVOLUTION_API_BASE_URL
+      #   sync: false  # Set in dashboard
+      # - key: EVOLUTION_API_KEY
+      #   sync: false  # Set in dashboard
+      # - key: OPENAI_API_KEY
+      #   sync: false  # Set in dashboard
+    
+    # Auto-deploy from GitHub
+    buildCommand: ""  # Docker handles the build
+    startCommand: python -m automagik_tools serve-all --transport sse --host 0.0.0.0 --port 8000
+    
+    # Scaling
+    numInstances: 1
+    
+    # Resources (for paid plans)
+    # cpu: 0.5
+    # memory: 512

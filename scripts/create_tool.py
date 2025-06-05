@@ -139,36 +139,7 @@ def create(
         
         console.print(f"[green]✓[/green] Created {test_file.relative_to(project_root)}")
     
-    # Update pyproject.toml
-    pyproject_path = project_root / "pyproject.toml"
-    with open(pyproject_path, "r") as f:
-        content = f.read()
-    
-    # Add entry point
-    entry_point_line = f'{tool_name_kebab} = "automagik_tools.tools.{tool_name_lower}:create_tool"'
-    if entry_point_line not in content:
-        # Find the entry points section
-        pattern = r'(\[project\.entry-points\."automagik_tools\.plugins"\]\n)([^\[]*?)'
-        match = re.search(pattern, content, re.MULTILINE)
-        if match:
-            existing_entries = match.group(2).strip()
-            new_entries = existing_entries + "\n" + entry_point_line
-            content = content.replace(match.group(0), match.group(1) + new_entries + "\n")
-            
-            # Update packages list
-            packages_pattern = r'(packages = \[)([^\]]*)\]'
-            packages_match = re.search(packages_pattern, content)
-            if packages_match:
-                existing_packages = packages_match.group(2)
-                new_package = f'"automagik_tools.tools.{tool_name_lower}"'
-                if new_package not in existing_packages:
-                    new_packages = existing_packages.rstrip() + f", {new_package}"
-                    content = content.replace(packages_match.group(0), packages_match.group(1) + new_packages + "]")
-            
-            with open(pyproject_path, "w") as f:
-                f.write(content)
-            
-            console.print(f"[green]✓[/green] Updated pyproject.toml")
+    # No need to update pyproject.toml - tools are auto-discovered!
     
     # Update CLI config
     cli_path = project_root / "automagik_tools" / "cli.py"

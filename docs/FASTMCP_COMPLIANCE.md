@@ -64,11 +64,11 @@ fastmcp dev automagik_tools.servers.hub:hub
 ### Using Make Commands
 
 ```bash
-# FastMCP native commands
-make fastmcp-hub        # Run hub server
-make fastmcp-evolution  # Run Evolution API only
-make fastmcp-hello      # Run Example Hello only
-make fastmcp-dev        # Run with MCP Inspector
+# Standard commands (recommended)
+make serve-all              # Run hub server with all tools
+make serve TOOL=evolution-api  # Run Evolution API only
+make serve TOOL=example-hello  # Run Example Hello only
+make watch                  # Run with auto-restart on changes
 ```
 
 ### Testing with FastMCP Client

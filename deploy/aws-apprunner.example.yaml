@@ -1,0 +1,44 @@
+# AWS App Runner deployment configuration example
+# This file demonstrates the configuration for AWS App Runner
+
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "No build commands"
+
+# App Runner will use the Dockerfile specified
+# Configure environment variables in the AWS Console or via CLI
+
+run:
+  runtime-version: latest
+  network:
+    port: 8000  # Change to 8080 for HTTP transport
+    env: PORT
+  env:
+    - name: TRANSPORT
+      value: "sse"  # Change to "http" or "stdio" as needed
+    - name: HOST
+      value: "0.0.0.0"
+    # Add your API keys as secrets in App Runner console
+    # - name: EVOLUTION_API_BASE_URL
+    #   value: "https://your-api.com"
+    # - name: EVOLUTION_API_KEY
+    #   value: "<set in AWS console as secret>"
+
+# Health check configuration
+health_check:
+  path: "/health"
+  interval: 30
+  timeout: 5
+  healthy_threshold: 2
+  unhealthy_threshold: 3
+
+# Auto-scaling configuration
+auto_scaling_configuration:
+  min_size: 1
+  max_size: 10
+  # Scale based on concurrent requests
+  scale_in_cooldown: 60
+  scale_out_cooldown: 60

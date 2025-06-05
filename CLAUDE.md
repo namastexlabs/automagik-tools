@@ -24,7 +24,6 @@ make install              # Install in development mode with all dependencies
 ### Testing
 ```bash
 make test                 # Run all tests
-make test-working         # Run only stable tests (unit and CLI)
 make test-unit            # Run unit tests only
 make test-mcp             # Run MCP protocol compliance tests
 make test-coverage        # Run tests with coverage report
@@ -117,6 +116,16 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 2. **Documentation Site**: Interactive tool explorer
 3. **Discord Community**: Support and collaboration
 4. **Tool Templates**: Quickstart templates for common integrations
+
+## Recent Makefile Updates
+
+- Removed `serve-evolution` command (tool-specific, replaced by generic `serve` command)
+- Removed `test-working` command (was only testing 2 specific files)
+- Removed `fastmcp-*` commands (dead code - duplicated existing functionality)
+- Added generic `serve` command: `make serve TOOL=toolname TRANSPORT=stdio|sse|http`
+- Added `watch` command to help system (was missing from help but existed)
+- Kept `publish-test` command (uploads to TestPyPI for testing releases)
+- Updated help system, examples, and documentation references
 
 ## Design Principles
 

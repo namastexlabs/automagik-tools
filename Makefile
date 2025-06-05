@@ -134,11 +134,10 @@ help: ## 🛠️ Show this help message
 	@echo -e "$(FONT_CYAN)$(ROCKET) Quick Start:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Install development environment"
 	@echo -e "  $(FONT_PURPLE)list$(FONT_RESET)            List available tools"
-	@echo -e "  $(FONT_PURPLE)serve-evolution$(FONT_RESET) Run Evolution API (Claude Desktop ready)"
+	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on multi-tool server"
 	@echo ""
 	@echo -e "$(FONT_CYAN)$(TOOLS) Development:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)test$(FONT_RESET)            Run all tests"
-	@echo -e "  $(FONT_PURPLE)test-working$(FONT_RESET)    Run stable tests only"
 	@echo -e "  $(FONT_PURPLE)test-unit$(FONT_RESET)       Run unit tests"
 	@echo -e "  $(FONT_PURPLE)test-mcp$(FONT_RESET)        Run MCP protocol tests"
 	@echo -e "  $(FONT_PURPLE)test-coverage$(FONT_RESET)   Run tests with coverage"
@@ -149,23 +148,47 @@ help: ## 🛠️ Show this help message
 	@echo ""
 	@echo -e "$(FONT_CYAN)📦 Build & Publish:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)build$(FONT_RESET)           Build package"
-	@echo -e "  $(FONT_PURPLE)publish-test$(FONT_RESET)    Upload to TestPyPI"
+	@echo -e "  $(FONT_PURPLE)bump-dev$(FONT_RESET)        Create dev version (0.1.2pre1)"
+	@echo -e "  $(FONT_PURPLE)publish-dev$(FONT_RESET)     Publish dev version to PyPI"
+	@echo -e "  $(FONT_PURPLE)finalize-version$(FONT_RESET) Remove 'pre' suffix (0.1.2pre3 -> 0.1.2)"
+	@echo -e "  $(FONT_PURPLE)publish-test$(FONT_RESET)    Upload current version to TestPyPI"
 	@echo -e "  $(FONT_PURPLE)publish$(FONT_RESET)         Upload to PyPI + GitHub release"
 	@echo -e "  $(FONT_PURPLE)bump-patch$(FONT_RESET)      Bump patch version (x.x.1)"
 	@echo -e "  $(FONT_PURPLE)bump-minor$(FONT_RESET)      Bump minor version (x.1.0)"
 	@echo -e "  $(FONT_PURPLE)bump-major$(FONT_RESET)      Bump major version (1.0.0)"
 	@echo -e "  $(FONT_PURPLE)clean$(FONT_RESET)           Clean build artifacts"
 	@echo ""
+	@echo -e "$(FONT_CYAN)🐳 Docker Commands:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)docker-build$(FONT_RESET)    Build all Docker images"
+	@echo -e "  $(FONT_PURPLE)docker-build-sse$(FONT_RESET) Build SSE transport image"
+	@echo -e "  $(FONT_PURPLE)docker-build-http$(FONT_RESET) Build HTTP transport image"
+	@echo -e "  $(FONT_PURPLE)docker-run-sse$(FONT_RESET)  Run SSE server in Docker"
+	@echo -e "  $(FONT_PURPLE)docker-run-http$(FONT_RESET) Run HTTP server in Docker"
+	@echo -e "  $(FONT_PURPLE)docker-compose$(FONT_RESET)  Run multi-transport setup"
+	@echo -e "  $(FONT_PURPLE)docker-deploy$(FONT_RESET)   Deploy to cloud (PROVIDER=railway|aws|gcloud|render)"
+	@echo ""
 	@echo -e "$(FONT_CYAN)$(SPARKLES) Tool Commands:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)serve TOOL=name$(FONT_RESET)  Serve single tool (with optional TRANSPORT=)"
+	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on multi-tool server"
+	@echo -e "  $(FONT_PURPLE)dev-server$(FONT_RESET)      Development server with hot-reload"
 	@echo -e "  $(FONT_PURPLE)info TOOL=name$(FONT_RESET)  Show tool information"
 	@echo -e "  $(FONT_PURPLE)run TOOL=name$(FONT_RESET)   Run tool standalone"
-	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools"
 	@echo -e "  $(FONT_PURPLE)tool URL=url$(FONT_RESET)    Create tool from OpenAPI spec"
+	@echo -e "  $(FONT_PURPLE)new-tool$(FONT_RESET)        Create new tool interactively"
+	@echo -e "  $(FONT_PURPLE)test-tool$(FONT_RESET)       Test specific tool (use TOOL=name)"
+	@echo -e "  $(FONT_PURPLE)validate-tool$(FONT_RESET)   Validate tool compliance (TOOL=name)"
 	@echo ""
 	@echo -e "$(FONT_GRAY)Examples:$(FONT_RESET)"
-	@echo -e "  $(FONT_GRAY)make info TOOL=evolution-api$(FONT_RESET)"
-	@echo -e "  $(FONT_GRAY)make test-unit$(FONT_RESET)"
-	@echo -e "  $(FONT_GRAY)uvx automagik-tools serve --tool evolution-api$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make serve TOOL=evolution-api$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make serve TOOL=automagik-agents TRANSPORT=sse$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make dev-server$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make new-tool$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make test-tool TOOL=evolution-api$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make validate-tool TOOL=automagik-agents$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make docker-build-sse$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make docker-run-sse PORT=8000$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make docker-compose$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make docker-deploy PROVIDER=aws$(FONT_RESET)"
 	@echo ""
 
 # ===========================================
@@ -183,14 +206,10 @@ install: ## $(ROCKET) Install development environment with uv
 # ===========================================
 # 🧪 Testing
 # ===========================================
-.PHONY: test test-working test-unit test-mcp test-coverage
+.PHONY: test test-unit test-mcp test-coverage
 test: ## 🧪 Run all tests
 	$(call print_status,Running all tests...)
 	@$(UV) run pytest tests/ -v
-
-test-working: ## ✅ Run stable/working tests only
-	$(call print_status,Running stable tests...)
-	@$(UV) run pytest tests/test_unit_fast.py tests/test_cli_simple.py -v
 
 test-unit: ## 🔬 Run unit tests
 	$(call print_status,Running unit tests...)
@@ -269,11 +288,13 @@ check-release: ## 🔍 Check if ready for release (clean working directory)
 
 publish-test: build check-dist ## 🧪 Upload to TestPyPI
 	$(call print_status,Publishing to TestPyPI...)
-	@if [ -z "$(PYPI_TOKEN)" ]; then \
-		$(call print_error,PYPI_TOKEN not set); \
+	@if [ -z "$(TESTPYPI_TOKEN)" ]; then \
+		$(call print_error,TESTPYPI_TOKEN not set); \
+		echo -e "$(FONT_YELLOW)💡 Get your TestPyPI token at: https://test.pypi.org/manage/account/token/$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)💡 Set with: export TESTPYPI_TOKEN=pypi-xxxxx$(FONT_RESET)"; \
 		exit 1; \
 	fi
-	@$(UV) run twine upload --repository testpypi dist/* -u __token__ -p "$(PYPI_TOKEN)"
+	@$(UV) run twine upload --repository testpypi dist/* -u __token__ -p "$(TESTPYPI_TOKEN)"
 	$(call print_success,Published to TestPyPI!)
 
 publish: check-release build check-dist ## $(ROCKET) Upload to PyPI and create GitHub release
@@ -313,9 +334,72 @@ publish: check-release build check-dist ## $(ROCKET) Upload to PyPI and create G
 	$(call print_success,Published to PyPI and GitHub!)
 
 # ===========================================
+# 🐳 Docker Commands
+# ===========================================
+.PHONY: docker-build docker-build-sse docker-build-http docker-build-stdio docker-run-sse docker-run-http docker-compose docker-deploy
+docker-build: ## 🐳 Build all Docker images
+	$(call print_status,Building all Docker images...)
+	@$(MAKE) docker-build-sse
+	@$(MAKE) docker-build-http
+	@$(MAKE) docker-build-stdio
+	$(call print_success,All Docker images built successfully!)
+
+docker-build-sse: ## 🌊 Build SSE transport Docker image
+	$(call print_status,Building SSE Docker image...)
+	@docker build -f deploy/docker/Dockerfile.sse -t automagik-tools:sse .
+	$(call print_success,SSE image built: automagik-tools:sse)
+
+docker-build-http: ## 🌐 Build HTTP transport Docker image
+	$(call print_status,Building HTTP Docker image...)
+	@docker build -f deploy/docker/Dockerfile.http -t automagik-tools:http .
+	$(call print_success,HTTP image built: automagik-tools:http)
+
+docker-build-stdio: ## 💻 Build STDIO transport Docker image
+	$(call print_status,Building STDIO Docker image...)
+	@docker build -f deploy/docker/Dockerfile.stdio -t automagik-tools:stdio .
+	$(call print_success,STDIO image built: automagik-tools:stdio)
+
+docker-run-sse: ## 🚀 Run SSE server in Docker (PORT=8000)
+	$(call print_status,Starting SSE server in Docker...)
+	@$(call check_env_file)
+	@docker run --rm -it \
+		--env-file .env \
+		-p ${PORT:-8000}:8000 \
+		--name automagik-sse \
+		automagik-tools:sse
+		
+docker-run-http: ## 🚀 Run HTTP server in Docker (PORT=8080)
+	$(call print_status,Starting HTTP server in Docker...)
+	@$(call check_env_file)
+	@docker run --rm -it \
+		--env-file .env \
+		-p ${PORT:-8080}:8080 \
+		--name automagik-http \
+		automagik-tools:http
+
+docker-compose: ## 🎼 Run multi-transport setup with docker-compose
+	$(call print_status,Starting multi-transport Docker setup...)
+	@$(call check_env_file)
+	@docker-compose -f deploy/docker/docker-compose.yml up -d
+	$(call print_success,Services started!)
+	@echo -e "$(FONT_CYAN)📡 SSE server: http://localhost:8000$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)🌐 HTTP server: http://localhost:8080$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)💡 Stop with: docker-compose -f deploy/docker/docker-compose.yml down$(FONT_RESET)"
+
+docker-deploy: ## 🚢 Deploy Docker container to cloud (PROVIDER=railway|aws|gcloud|render)
+	$(call print_status,Deploying to cloud provider...)
+	@if [ -z "$(PROVIDER)" ]; then \
+		$(call print_error,PROVIDER not specified); \
+		echo -e "$(FONT_YELLOW)Usage: make docker-deploy PROVIDER=railway$(FONT_RESET)"; \
+		echo -e "$(FONT_GRAY)Available providers: railway, aws, gcloud, render$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	@$(UV) run python scripts/deploy_docker.py --provider $(PROVIDER)
+
+# ===========================================
 # 📈 Version Management
 # ===========================================
-.PHONY: bump-patch bump-minor bump-major
+.PHONY: bump-patch bump-minor bump-major bump-dev publish-dev finalize-version
 bump-patch: ## 📈 Bump patch version (0.1.0 -> 0.1.1)
 	$(call print_status,Bumping patch version...)
 	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
@@ -337,6 +421,54 @@ bump-major: ## 📈 Bump major version (0.1.0 -> 1.0.0)
 	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$NEW_VERSION\"/" pyproject.toml; \
 	echo -e "$(FONT_GREEN)✅ Version bumped from $$CURRENT_VERSION to $$NEW_VERSION$(FONT_RESET)"
 
+bump-dev: ## 🧪 Create dev version (0.1.2 -> 0.1.2pre1, 0.1.2pre1 -> 0.1.2pre2)
+	$(call print_status,Creating dev pre-release version...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	if echo "$$CURRENT_VERSION" | grep -q "pre"; then \
+		BASE_VERSION=$$(echo "$$CURRENT_VERSION" | cut -d'p' -f1); \
+		PRE_NUM=$$(echo "$$CURRENT_VERSION" | sed 's/.*pre\([0-9]*\)/\1/'); \
+		NEW_PRE_NUM=$$((PRE_NUM + 1)); \
+		NEW_VERSION="$${BASE_VERSION}pre$${NEW_PRE_NUM}"; \
+	else \
+		NEW_VERSION="$${CURRENT_VERSION}pre1"; \
+	fi; \
+	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$NEW_VERSION\"/" pyproject.toml; \
+	echo -e "$(FONT_GREEN)✅ Dev version created: $$CURRENT_VERSION → $$NEW_VERSION$(FONT_RESET)"; \
+	echo -e "$(FONT_CYAN)💡 Ready for: make publish-dev$(FONT_RESET)"
+
+publish-dev: build check-dist ## 🚀 Build and publish dev version to PyPI
+	$(call print_status,Publishing dev version to PyPI...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	if ! echo "$$CURRENT_VERSION" | grep -q "pre"; then \
+		$(call print_error,Not a dev version! Use 'make bump-dev' first); \
+		echo -e "$(FONT_GRAY)Current version: $$CURRENT_VERSION$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(PYPI_TOKEN)" ]; then \
+		$(call print_error,PYPI_TOKEN not set); \
+		echo -e "$(FONT_YELLOW)💡 Get your PyPI token at: https://pypi.org/manage/account/token/$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)💡 Set with: export PYPI_TOKEN=pypi-xxxxx$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	@echo -e "$(FONT_CYAN)🚀 Publishing $$CURRENT_VERSION to PyPI for beta testing...$(FONT_RESET)"
+	@$(UV) run twine upload dist/* -u __token__ -p "$(PYPI_TOKEN)"
+	@echo -e "$(FONT_GREEN)✅ Dev version published to PyPI!$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)💡 Users can install with: pip install automagik-tools==$$CURRENT_VERSION$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)💡 Or latest pre-release: pip install --pre automagik-tools$(FONT_RESET)"
+
+finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
+	$(call print_status,Finalizing version for release...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	if ! echo "$$CURRENT_VERSION" | grep -q "pre"; then \
+		$(call print_error,Not a pre-release version!); \
+		echo -e "$(FONT_GRAY)Current version: $$CURRENT_VERSION$(FONT_RESET)"; \
+		exit 1; \
+	fi; \
+	FINAL_VERSION=$$(echo "$$CURRENT_VERSION" | cut -d'p' -f1); \
+	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$FINAL_VERSION\"/" pyproject.toml; \
+	echo -e "$(FONT_GREEN)✅ Version finalized: $$CURRENT_VERSION → $$FINAL_VERSION$(FONT_RESET)"; \
+	echo -e "$(FONT_CYAN)💡 Ready for: make publish$(FONT_RESET)"
+
 # ===========================================
 # 🧹 Maintenance
 # ===========================================
@@ -356,7 +488,7 @@ clean: ## 🧹 Clean build artifacts and cache
 # ===========================================
 # $(SPARKLES) Tool Commands
 # ===========================================
-.PHONY: list info run serve-evolution serve-all
+.PHONY: list info run serve serve-all
 list: ## 📋 List available tools
 	@$(UV) run automagik-tools list
 
@@ -376,16 +508,15 @@ run: ## $(ROCKET) Run tool standalone (use TOOL=name)
 	fi
 	@$(UV) run automagik-tools run $(TOOL)
 
-serve-evolution: ## 🚀 Run Evolution API (Claude Desktop ready)
-	$(call print_status,Starting Evolution API in stdio mode...)
+serve: ## 🚀 Serve single tool (use TOOL=name TRANSPORT=stdio|sse|http)
+	@if [ -z "$(TOOL)" ]; then \
+		$(call print_error,Usage: make serve TOOL=<tool-name> [TRANSPORT=stdio|sse|http]); \
+		echo -e "$(FONT_GRAY)Example: make serve TOOL=evolution-api TRANSPORT=stdio$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	$(call print_status,Starting $(TOOL) with $(or $(TRANSPORT),stdio) transport...)
 	@$(call check_env_file)
-	@if [ -n "$(EVOLUTION_API_BASE_URL)" ]; then \
-		echo -e "$(FONT_CYAN)Using EVOLUTION_API_BASE_URL: $(EVOLUTION_API_BASE_URL)$(FONT_RESET)"; \
-	fi
-	@if [ -n "$(EVOLUTION_API_KEY)" ]; then \
-		echo -e "$(FONT_CYAN)Using EVOLUTION_API_KEY: ***$(FONT_RESET)"; \
-	fi
-	@uvx automagik-tools serve --tool evolution-api --transport stdio
+	@$(UV) run automagik-tools serve --tool $(TOOL) --transport $(or $(TRANSPORT),stdio) --host $(HOST) --port $(PORT)
 
 serve-all: ## 🌐 Serve all tools on single server
 	$(call print_status,Starting multi-tool server on $(HOST):$(PORT)...)
@@ -394,7 +525,7 @@ serve-all: ## 🌐 Serve all tools on single server
 # ===========================================
 # 🔧 Tool Creation
 # ===========================================
-.PHONY: tool
+.PHONY: tool new-tool test-tool validate-tool
 tool: ## 🔧 Create new tool from OpenAPI spec (use URL=<openapi-url> NAME=<tool-name>)
 	@if [ -z "$(URL)" ]; then \
 		$(call print_error,Usage: make tool URL=<openapi-json-url> [NAME=<tool-name>]); \
@@ -409,25 +540,45 @@ tool: ## 🔧 Create new tool from OpenAPI spec (use URL=<openapi-url> NAME=<too
 	fi
 	$(call print_success,Tool created successfully!)
 
+new-tool: ## 🔧 Create new tool interactively
+	$(call print_status,Creating new tool interactively...)
+	@$(UV) run python scripts/create_tool.py
+	$(call print_success,Tool created successfully!)
+
+test-tool: ## 🧪 Test specific tool (use TOOL=name)
+	@if [ -z "$(TOOL)" ]; then \
+		$(call print_error,Usage: make test-tool TOOL=<tool-name>); \
+		echo -e "$(FONT_GRAY)Example: make test-tool TOOL=evolution-api$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	$(call print_status,Testing tool: $(TOOL)...)
+	@$(UV) run pytest tests/tools/test_$(TOOL).py -v
+
+validate-tool: ## ✅ Validate tool compliance (use TOOL=name)
+	@if [ -z "$(TOOL)" ]; then \
+		$(call print_error,Usage: make validate-tool TOOL=<tool-name>); \
+		echo -e "$(FONT_GRAY)Example: make validate-tool TOOL=evolution-api$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	$(call print_status,Validating tool: $(TOOL)...)
+	@if [ -f "scripts/validate_tool.py" ]; then \
+		$(UV) run python scripts/validate_tool.py $(TOOL); \
+	else \
+		$(call print_warning,Validation script not yet implemented); \
+		echo -e "$(FONT_YELLOW)Tool validation framework coming soon!$(FONT_RESET)"; \
+	fi
+
 # ===========================================
-# 🚀 FastMCP Native Commands
+# 🔥 Development
 # ===========================================
-.PHONY: fastmcp-hub fastmcp-evolution fastmcp-hello fastmcp-dev
-fastmcp-hub: ## 🌐 Run hub server with FastMCP CLI
-	$(call print_status,Starting hub server with FastMCP...)
-	@$(UV) run fastmcp run automagik_tools.servers.hub:hub
-
-fastmcp-evolution: ## 📱 Run Evolution API with FastMCP CLI
-	$(call print_status,Starting Evolution API with FastMCP...)
-	@$(UV) run fastmcp run automagik_tools.servers.evolution_api:mcp
-
-fastmcp-hello: ## 👋 Run Example Hello with FastMCP CLI
-	$(call print_status,Starting Example Hello with FastMCP...)
-	@$(UV) run fastmcp run automagik_tools.servers.example_hello:mcp
-
-fastmcp-dev: ## 🔧 Run hub with FastMCP Inspector
-	$(call print_status,Starting hub with MCP Inspector...)
-	@$(UV) run fastmcp dev automagik_tools.servers.hub:hub
+.PHONY: dev-server
+dev-server: ## 🔥 Start development server with hot-reload
+	$(call print_status,Starting development server with hot-reload...)
+	@$(UV) run watchmedo auto-restart \
+		--directory automagik_tools \
+		--pattern "*.py" \
+		--recursive \
+		-- make serve-all HOST=$(HOST) PORT=$(PORT)
 
 # ===========================================
 # 🧪 Advanced Testing

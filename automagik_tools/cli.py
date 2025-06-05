@@ -5,6 +5,7 @@ CLI for automagik-tools
 import os
 import sys
 from typing import Dict, Any, Optional, List
+from pathlib import Path
 import importlib
 import importlib.metadata
 import typer
@@ -73,48 +74,49 @@ def create_multi_mcp_lifespan(loaded_tools: Dict[str, FastMCP]):
 
 
 def discover_tools() -> Dict[str, Any]:
-    """Discover tools from entry points"""
+    """Discover tools from the tools directory"""
     tools = {}
     
-    try:
-        entry_points = importlib.metadata.entry_points()
-        if hasattr(entry_points, 'select'):
-            # Python 3.10+
-            tool_entry_points = entry_points.select(group='automagik_tools.plugins')
-        else:
-            # Python 3.9 and earlier
-            tool_entry_points = entry_points.get('automagik_tools.plugins', [])
-        
-        for ep in tool_entry_points:
-            try:
-                # Get the module name from the entry point
-                module_name = ep.value.split(':')[0]
-                # Import the module directly
-                module = importlib.import_module(module_name)
+    # Get the tools directory
+    tools_dir = Path(__file__).parent / "tools"
+    
+    if tools_dir.exists():
+        for tool_path in tools_dir.iterdir():
+            if tool_path.is_dir() and not tool_path.name.startswith('_'):
+                tool_name_snake = tool_path.name
+                # Convert snake_case to kebab-case for the tool name
+                tool_name = tool_name_snake.replace('_', '-')
                 
-                metadata = module.get_metadata() if hasattr(module, 'get_metadata') else {}
-                tools[ep.name] = {
-                    'name': ep.name,
-                    'module': module,
-                    'entry_point': ep,
-                    'metadata': metadata,
-                    'type': 'Static',
-                    'status': '⚪ Available',
-                    'description': metadata.get('description', f'{ep.name} tool')
-                }
-            except Exception as e:
-                console.print(f"[yellow]Warning: Failed to load {ep.name}: {e}[/yellow]")
-                # Still add it for backwards compatibility
-                tools[ep.name] = {
-                    'name': ep.name,
-                    'entry_point': ep,
-                    'metadata': {'description': f'{ep.name} tool'},
-                    'type': 'Static',
-                    'status': '⚪ Available',
-                    'description': f'{ep.name} tool'
-                }
-    except Exception as e:
-        console.print(f"[red]Error discovering tools: {e}[/red]")
+                try:
+                    # Import the tool module
+                    module_name = f"automagik_tools.tools.{tool_name_snake}"
+                    module = importlib.import_module(module_name)
+                    
+                    # Get metadata if available
+                    metadata = module.get_metadata() if hasattr(module, 'get_metadata') else {}
+                    
+                    # Create a fake entry point for compatibility
+                    class FakeEntryPoint:
+                        def __init__(self, name, value):
+                            self.name = name
+                            self.value = value
+                        
+                        def load(self):
+                            return getattr(module, 'create_tool', None)
+                    
+                    tools[tool_name] = {
+                        'name': tool_name,
+                        'module': module,
+                        'entry_point': FakeEntryPoint(tool_name, f"{module_name}:create_tool"),
+                        'metadata': metadata,
+                        'type': 'Auto-discovered',
+                        'status': '⚪ Available',
+                        'description': metadata.get('description', f'{tool_name} tool')
+                    }
+                except Exception as e:
+                    console.print(f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]")
+    else:
+        console.print(f"[red]Tools directory not found: {tools_dir}[/red]")
     
     return tools
 
@@ -467,6 +469,48 @@ def run(
         config = create_config_for_tool(tool_name, tools)
         server = load_tool(tool_name, tools)
         server.run(transport="sse", host=host, port=port)
+
+
+@app.command()
+def tool(
+    url: str = typer.Option(..., "--url", "-u", help="OpenAPI specification URL"),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Tool name (optional)"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing tool")
+):
+    """Create a new MCP tool from an OpenAPI specification"""
+    import subprocess
+    
+    console.print(f"[blue]Creating tool from OpenAPI specification...[/blue]")
+    console.print(f"URL: {url}")
+    
+    # Build the command
+    cmd = ["python", "scripts/create_tool_from_openapi_v2.py", "--url", url]
+    if name:
+        cmd.extend(["--name", name])
+    if force:
+        cmd.append("--force")
+    
+    try:
+        # Run the script
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            console.print(f"[green]✅ Tool created successfully![/green]")
+            if result.stdout:
+                console.print(result.stdout)
+        else:
+            console.print(f"[red]❌ Failed to create tool[/red]")
+            if result.stderr:
+                console.print(f"[red]{result.stderr}[/red]")
+            sys.exit(1)
+            
+    except FileNotFoundError:
+        console.print(f"[red]❌ OpenAPI tool creation script not found[/red]")
+        console.print(f"[yellow]Make sure you're running from the automagik-tools repository root[/yellow]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]❌ Error creating tool: {e}[/red]")
+        sys.exit(1)
 
 
 @app.command()

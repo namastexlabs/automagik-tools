@@ -1,0 +1,19 @@
+# Railway deployment configuration example
+# Copy this file to railway.toml in your project root when deploying
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/docker/Dockerfile.sse"  # Change to deploy/docker/Dockerfile.http or deploy/docker/Dockerfile.stdio as needed
+
+[deploy]
+startCommand = "python -m automagik_tools serve-all --transport sse --host 0.0.0.0 --port $PORT"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[environment]
+# Add your environment variables here
+# EVOLUTION_API_BASE_URL = "https://your-api.com"
+# EVOLUTION_API_KEY = "your-key"
+# OPENAI_API_KEY = "sk-..."

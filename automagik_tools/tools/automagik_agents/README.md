@@ -1,10 +1,24 @@
-# Automagik Agents MCP Tool
+# mcp-automagik-agents: An Automagik Agents MCP Server
 
-Automagik agents templates and API
+<div align="center">
 
-This tool uses FastMCP's native OpenAPI support to automatically generate MCP components from an OpenAPI specification.
+![Namastex Logo](https://namastex.com/logo.png)
 
-## Features
+**Powered by Namastex Labs**
+
+</div>
+
+## Overview
+
+A Model Context Protocol server for Automagik Agents API interaction and automation. This server provides seamless integration with Automagik Agents through dynamic OpenAPI-based tool generation, enabling Large Language Models to interact with agent workflows, templates, and automation systems.
+
+The server uses FastMCP's native OpenAPI support to automatically discover and generate MCP components from the Automagik Agents API specification, providing type-safe operations and intelligent route mapping.
+
+### Tools
+
+All tools are dynamically generated from the Automagik Agents OpenAPI specification, providing direct access to all available API endpoints as MCP tools and resources.
+
+### Features
 
 - **Automatic API Discovery**: Fetches and parses OpenAPI specification
 - **Dynamic Component Generation**: Converts API endpoints to appropriate MCP components
@@ -15,59 +29,239 @@ This tool uses FastMCP's native OpenAPI support to automatically generate MCP co
   - GET endpoints with path parameters → MCP Resource Templates
   - POST/PUT/DELETE endpoints → MCP Tools
 
+## Installation
+
+### Using uvx (recommended)
+
+The easiest way to use automagik-tools is with [uvx](https://docs.astral.sh/uv/guides/tools/), which runs the tool in an isolated environment without affecting your system Python:
+
+```bash
+# Run directly without installation
+uvx automagik-tools serve --tool automagik-agents
+
+# List available tools
+uvx automagik-tools list
+```
+
+### Alternative: Development Installation
+
+For development, clone the repository and use uv:
+
+```bash
+git clone https://github.com/namastexlabs/automagik-tools.git
+cd automagik-tools
+uv sync --all-extras
+
+# Run with uv
+uv run automagik-tools serve --tool automagik-agents
+```
+
 ## Configuration
 
-### Required Environment Variables
+### Environment Variables
+
+Configure your environment variables using a `.env` file. Copy `.env.example` to `.env` and fill in your values:
 
 ```bash
-# API authentication key
+cp .env.example .env
+```
+
+Add the following configuration to your `.env` file:
+
+```env
+# API authentication key (required)
 AUTOMAGIK_AGENTS_API_KEY=your-api-key-here
 
-# Base URL for the API
-AUTOMAGIK_AGENTS_BASE_URL=http://192.168.112.148:8881
+# Base URL for the API (required)
+AUTOMAGIK_AGENTS_BASE_URL=http://localhost:8881
 
 # URL to fetch OpenAPI specification (optional)
-AUTOMAGIK_AGENTS_OPENAPI_URL=http://192.168.112.148:8881/api/v1/openapi.json
+AUTOMAGIK_AGENTS_OPENAPI_URL=http://localhost:8881/api/v1/openapi.json
 
-# Request timeout in seconds (optional, defaults to 30)
-AUTOMAGIK_AGENTS_TIMEOUT=30
+# Request timeout in milliseconds (optional, defaults to 300)
+AUTOMAGIK_AGENTS_TIMEOUT=300
 ```
 
-## Usage
+### Usage with Claude Desktop
 
-### With automagik-tools CLI
+Add this to your `claude_desktop_config.json`:
+
+<details>
+<summary>Using uvx (recommended)</summary>
+
+```json
+{
+  "mcpServers": {
+    "automagik-agents": {
+      "command": "uvx",
+      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "env": {
+        "AUTOMAGIK_AGENTS_API_KEY": "namastex888",
+        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+        "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+      }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary>Using development installation</summary>
+
+```json
+{
+  "mcpServers": {
+    "automagik-agents": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/automagik-tools", "run", "automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "env": {
+        "AUTOMAGIK_AGENTS_API_KEY": "your-api-key-here",
+        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+        "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+      }
+    }
+  }
+}
+```
+</details>
+
+### Usage with Cursor
+
+For Cursor integration, add the following to your Cursor settings or project configuration:
+
+<details>
+<summary>Using uvx (recommended)</summary>
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "automagik-agents": {
+        "command": "uvx",
+        "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+        "env": {
+          "AUTOMAGIK_AGENTS_API_KEY": "your-api-key-here",
+          "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+          "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+          "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+        }
+      }
+    }
+  }
+}
+```
+</details>
+
+You can also create a `.vscode/mcp.json` file in your workspace to share the configuration:
+
+```json
+{
+  "servers": {
+    "automagik-agents": {
+      "command": "uvx",
+      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "env": {
+        "AUTOMAGIK_AGENTS_API_KEY": "your-api-key-here",
+        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+        "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+      }
+    }
+  }
+}
+```
+
+### Usage with VS Code
+
+Add the following JSON block to your User Settings (JSON) file in VS Code:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "automagik-agents": {
+        "command": "uvx",
+        "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+        "env": {
+          "AUTOMAGIK_AGENTS_API_KEY": "your-api-key-here",
+          "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+          "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+          "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+        }
+      }
+    }
+  }
+}
+```
+
+## Debugging
+
+You can use the MCP inspector to debug the server:
 
 ```bash
-# List available tools
-automagik-tools list
+# Install MCP Inspector
+npm install -g @modelcontextprotocol/inspector
 
-# Serve this specific tool
-automagik-tools serve automagik-agents
-
-# Serve all tools
-automagik-tools serve-all
+# Debug using uvx
+npx @modelcontextprotocol/inspector uvx automagik-tools serve --tool automagik-agents
 ```
 
-### In Python Code
+For detailed logging, check the MCP logs:
 
-```python
-from automagik_tools.tools.automagik_agents import create_server
+```bash
+# On macOS
+tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
 
-# Create and run server
-server = create_server()
-# Server is now ready to handle MCP requests
+# On Linux
+tail -n 20 -f ~/.local/share/Claude/logs/mcp*.log
 ```
 
-## How It Works
+## Development
 
-1. **Fetches OpenAPI Spec**: On startup, the tool fetches the OpenAPI specification from the configured URL
-2. **Analyzes Endpoints**: FastMCP analyzes all API endpoints and their parameters
-3. **Generates MCP Components**: Each endpoint is converted to the appropriate MCP component type
-4. **Handles Requests**: When MCP clients call tools/resources, requests are proxied to the actual API
+### Running Tests
 
-## Customization
+```bash
+# Run tests for the automagik-agents tool
+pytest tests/tools/test_automagik_agents.py -v
+```
 
-You can customize how endpoints are mapped to MCP components by editing the `route_maps` in the tool implementation:
+### Local Development
+
+For local development and testing:
+
+1. **Using MCP Inspector**:
+   ```bash
+   cd /path/to/automagik-tools
+   npx @modelcontextprotocol/inspector uv run automagik-tools serve --tool automagik-agents
+   ```
+
+2. **Using Claude Desktop** - Add to your `claude_desktop_config.json`:
+   ```json
+   {
+     "mcpServers": {
+       "automagik-agents-dev": {
+         "command": "uv",
+         "args": [
+           "--directory", "/path/to/automagik-tools",
+           "run", "automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"
+         ],
+         "env": {
+           "AUTOMAGIK_AGENTS_API_KEY": "your-api-key-here",
+           "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+           "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json",
+           "AUTOMAGIK_AGENTS_TIMEOUT": "300"
+         }
+       }
+     }
+   }
+   ```
+
+### Customization
+
+You can customize how endpoints are mapped to MCP components by editing the route configuration:
 
 ```python
 from fastmcp.server.openapi import RouteMap, MCPType
@@ -84,50 +278,48 @@ route_maps=[
 ]
 ```
 
-## Development
-
-### Running Tests
-
-```bash
-pytest tests/tools/test_automagik_agents.py -v
-```
-
-### Testing with MCP Inspector
-
-```bash
-# Install MCP Inspector
-npm install -g @anthropic/mcp-inspector
-
-# Run the tool
-automagik-tools serve automagik-agents
-
-# In another terminal, connect with inspector
-mcp-inspector stdio automagik-tools serve automagik-agents
-```
-
 ## Troubleshooting
 
 ### OpenAPI Fetch Issues
 
-If the tool can't fetch the OpenAPI specification:
-1. Check that the OPENAPI_URL is accessible
-2. Verify any required authentication headers
-3. The tool will fall back to a minimal spec if fetch fails
+If the server can't fetch the OpenAPI specification:
+1. Verify that `AUTOMAGIK_AGENTS_OPENAPI_URL` is accessible
+2. Check network connectivity to the Automagik Agents API
+3. Ensure proper authentication headers are configured
+4. The server will fall back to a minimal spec if fetch fails
 
 ### Authentication Issues
 
-1. Verify your API key is correctly set
-2. Check if the API uses a different header name for authentication
-3. Some APIs may require additional headers - customize the client creation
+1. Verify your `AUTOMAGIK_AGENTS_API_KEY` is correctly set
+2. Check that the API key has proper permissions
+3. Ensure the `AUTOMAGIK_AGENTS_BASE_URL` is correct
+4. Test API connectivity with curl or similar tools
 
 ### Component Generation
 
-- By default, GET endpoints become resources and other methods become tools
-- Use route_maps to customize this behavior
-- Check the FastMCP logs to see how endpoints were mapped
+- GET endpoints become resources, other methods become tools by default
+- Use route_maps to customize endpoint-to-component mapping
+- Check the server logs to see how endpoints were discovered and mapped
+- Use the MCP inspector to verify available tools and resources
 
 ## API Reference
 
-This tool dynamically generates MCP components based on the OpenAPI specification. The available tools and resources depend on the API endpoints discovered.
+This server dynamically generates MCP components from the Automagik Agents OpenAPI specification. All API endpoints are automatically converted to corresponding MCP tools and resources.
 
-To see all available components, use the MCP Inspector or check the API's OpenAPI documentation.
+To explore available components:
+- Use the MCP Inspector: `npx @modelcontextprotocol/inspector uvx automagik-tools serve --tool automagik-agents`
+- Check the OpenAPI documentation at `{BASE_URL}/api/v1/openapi.json`
+
+## License
+
+This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License.
+
+---
+
+<div align="center">
+
+**Built with ❤️ by [Namastex Labs](https://namastex.com)**
+
+*Empowering AI automation through intelligent agent orchestration*
+
+</div>

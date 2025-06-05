@@ -1,0 +1,44 @@
+# Dockerfile for SSE (Server-Sent Events) Transport
+# Optimized for web-based MCP clients
+
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 mcp && \
+    mkdir -p /app && \
+    chown -R mcp:mcp /app
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache .
+
+# Copy application
+COPY --chown=mcp:mcp . .
+
+# Switch to non-root user
+USER mcp
+
+# SSE-specific environment
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV TRANSPORT=sse
+ENV HOST=0.0.0.0
+ENV PORT=8000
+
+# Expose port for SSE
+EXPOSE 8000
+
+# Health check for SSE endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Start SSE server
+CMD ["python", "-m", "automagik_tools", "serve-all", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # SSE Server - for web-based MCP clients
+  automagik-sse:
+    build:
+      context: .
+      dockerfile: Dockerfile.sse
+    container_name: automagik-sse
+    ports:
+      - "8000:8000"
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8000
+      # Tool-specific environment variables (add as needed)
+      - EVOLUTION_API_BASE_URL=${EVOLUTION_API_BASE_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    networks:
+      - automagik-network
+    labels:
+      - "com.automagik.service=sse"
+      - "com.automagik.transport=sse"
+
+  # HTTP Server - for REST API-style integrations
+  automagik-http:
+    build:
+      context: .
+      dockerfile: Dockerfile.http
+    container_name: automagik-http
+    ports:
+      - "8080:8080"
+    environment:
+      - TRANSPORT=http
+      - HOST=0.0.0.0
+      - PORT=8080
+      # Tool-specific environment variables (add as needed)
+      - EVOLUTION_API_BASE_URL=${EVOLUTION_API_BASE_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    networks:
+      - automagik-network
+    labels:
+      - "com.automagik.service=http"
+      - "com.automagik.transport=http"
+
+  # Optional: Nginx reverse proxy for production deployments
+  nginx:
+    image: nginx:alpine
+    container_name: automagik-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - automagik-sse
+      - automagik-http
+    networks:
+      - automagik-network
+    profiles:
+      - production
+
+  # Optional: Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: automagik-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - automagik-network
+    profiles:
+      - with-cache
+
+networks:
+  automagik-network:
+    driver: bridge
+
+volumes:
+  redis-data:

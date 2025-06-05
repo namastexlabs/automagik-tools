@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.1.1"
+version = "0.1.2pre2"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
     {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},
@@ -86,11 +86,13 @@ Issues = "https://github.com/namastexlabs/automagik-tools/issues"
 automagik-tools = "automagik_tools.cli:main"
 
 [project.entry-points."automagik_tools.plugins"]
-evolution-api = "automagik_tools.tools.evolution_api:create_tool"
-example-hello = "automagik_tools.tools.example_hello:create_tool"
-automagik-agents = "automagik_tools.tools.automagik_agents:create_tool"
+# Tools are auto-discovered from the automagik_tools/tools/ directory
+# No need to manually register them here
 [tool.setuptools]
-packages = ["automagik_tools", "automagik_tools.tools", "automagik_tools.tools.evolution_api", "automagik_tools.tools.example_hello"]
+# Use find_packages to automatically discover all packages
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["automagik_tools*"]
 
 [tool.setuptools.package-data]
 automagik_tools = ["py.typed"]

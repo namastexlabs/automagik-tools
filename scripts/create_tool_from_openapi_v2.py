@@ -23,10 +23,18 @@ app = typer.Typer()
 
 def to_snake_case(name: str) -> str:
     """Convert a name to snake_case"""
+    # First, handle common acronyms as single units
+    name = re.sub(r'\bAPI\b', 'api', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bURL\b', 'url', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bHTTP\b', 'http', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bJSON\b', 'json', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bXML\b', 'xml', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bID\b', 'id', name, flags=re.IGNORECASE)
+    
     # Replace spaces and hyphens with underscores
     name = re.sub(r'[\s\-]+', '_', name)
-    # Insert underscore before uppercase letters
-    name = re.sub(r'(?<!^)(?=[A-Z])', '_', name)
+    # Insert underscore before uppercase letters (but not if already preceded by underscore)
+    name = re.sub(r'(?<!^)(?<!_)(?=[A-Z])', '_', name)
     # Remove non-alphanumeric characters except underscores
     name = re.sub(r'[^\w_]', '', name)
     # Replace multiple underscores with single ones
@@ -44,10 +52,18 @@ def to_class_case(name: str) -> str:
 
 def to_kebab_case(name: str) -> str:
     """Convert a name to kebab-case"""
+    # First, handle common acronyms as single units
+    name = re.sub(r'\bAPI\b', 'api', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bURL\b', 'url', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bHTTP\b', 'http', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bJSON\b', 'json', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bXML\b', 'xml', name, flags=re.IGNORECASE)
+    name = re.sub(r'\bID\b', 'id', name, flags=re.IGNORECASE)
+    
     # Replace spaces and underscores with hyphens
     name = re.sub(r'[\s_]+', '-', name)
-    # Insert hyphen before uppercase letters
-    name = re.sub(r'(?<!^)(?=[A-Z])', '-', name)
+    # Insert hyphen before uppercase letters (but not if already preceded by hyphen)
+    name = re.sub(r'(?<!^)(?<!-)(?=[A-Z])', '-', name)
     # Remove non-alphanumeric characters except hyphens
     name = re.sub(r'[^\w\-]', '', name)
     # Replace multiple hyphens with single ones
@@ -651,26 +667,7 @@ if __name__ == "__main__":
         f.write(main_code)
     console.print(f"[green]✓[/green] Created {main_file.relative_to(project_root)}")
     
-    # Update pyproject.toml
-    pyproject_path = project_root / "pyproject.toml"
-    with open(pyproject_path, "r") as f:
-        content = f.read()
-    
-    # Add entry point
-    entry_point_line = f'{tool_name_kebab} = "automagik_tools.tools.{tool_name_lower}:create_tool"'
-    if entry_point_line not in content:
-        # Find the entry points section
-        pattern = r'(\[project\.entry-points\."automagik_tools\.plugins"\]\n)([^\[]*)'
-        match = re.search(pattern, content, re.MULTILINE)
-        if match:
-            existing_entries = match.group(2).strip()
-            new_entries = existing_entries + "\n" + entry_point_line
-            content = content.replace(match.group(0), match.group(1) + new_entries + "\n")
-            
-            with open(pyproject_path, "w") as f:
-                f.write(content)
-            
-            console.print(f"[green]✓[/green] Updated pyproject.toml")
+    # No need to update pyproject.toml - tools are auto-discovered!
     
     # Update .env.example reminder
     console.print(f"\n[yellow]Note:[/yellow] Add configuration to .env.example:")

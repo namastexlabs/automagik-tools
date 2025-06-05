@@ -126,7 +126,7 @@ Set these environment variables:
 python -m automagik_tools.tools.my_awesome_tool
 
 # Or use the hub
-make fastmcp-hub
+make serve-all
 ```
 ```
 
