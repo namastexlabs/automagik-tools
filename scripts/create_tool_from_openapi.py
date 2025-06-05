@@ -18,6 +18,27 @@ from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from pydantic import BaseModel, Field
 
+# Import AI processor - use the local script version which has static generation support
+try:
+    from openapi_static_processor import (
+        StaticOpenAPIProcessor,
+        ProcessedOpenAPIFunctions,
+        FunctionInfo,
+        sanitize_python_name,
+        enhance_parameter_description
+    )
+    AI_PROCESSOR_AVAILABLE = True
+except ImportError:
+    AI_PROCESSOR_AVAILABLE = False
+    ProcessedOpenAPIFunctions = None  # For type hints
+
+# Import streaming processor if available
+try:
+    from openapi_streaming_processor import StreamingOpenAPIProcessor
+    STREAMING_PROCESSOR_AVAILABLE = True
+except ImportError:
+    STREAMING_PROCESSOR_AVAILABLE = False
+
 console = Console()
 app = typer.Typer()
 
@@ -182,12 +203,21 @@ def sanitize_function_name(name: str) -> str:
 
 
 def generate_tool_code(parser: OpenAPIParser, tool_name: str, tool_name_lower: str, 
-                       tool_name_class: str, tool_name_kebab: str, tool_description: str) -> str:
+                       tool_name_class: str, tool_name_kebab: str, tool_description: str,
+                       ai_processed: Optional[ProcessedOpenAPIFunctions] = None) -> str:
     """Generate the main tool implementation code"""
     
     auth_info = parser.get_auth_info()
     endpoints = parser.get_endpoints()
     base_url = parser.get_base_url()
+    
+    # Create function name mapping from AI processor if available
+    ai_function_map = {}
+    ai_function_info = {}
+    if ai_processed:
+        ai_function_map = ai_processed.function_mappings
+        for func in ai_processed.functions:
+            ai_function_info[func.operation_id] = func
     
     # Group endpoints by tag for better organization
     endpoints_by_tag = {}
@@ -302,7 +332,13 @@ async def make_api_request(
             code += f'# {tag.title()} Operations\n\n'
             
         for endpoint in tag_endpoints:
-            func_name = sanitize_function_name(endpoint.operation_id)
+            # Use AI-generated function name if available
+            if endpoint.operation_id in ai_function_map:
+                func_name = ai_function_map[endpoint.operation_id]
+                func_info = ai_function_info.get(endpoint.operation_id)
+            else:
+                func_name = sanitize_function_name(endpoint.operation_id)
+                func_info = None
             
             # Build function signature
             params = []
@@ -312,7 +348,12 @@ async def make_api_request(
             for param in endpoint.parameters:
                 param_name = to_snake_case(param.get('name', ''))
                 param_type, required = parser.get_parameter_type(param)
-                param_desc = param.get('description', '')
+                
+                # Use AI-enhanced parameter description if available
+                if func_info and param.get('name') in func_info.parameter_descriptions:
+                    param_desc = func_info.parameter_descriptions[param.get('name')]
+                else:
+                    param_desc = param.get('description', '')
                 
                 if required:
                     params.append(f"{param_name}: {param_type}")
@@ -337,10 +378,16 @@ async def make_api_request(
             # Generate function
             params_str = ", ".join(params) if params else ""
             
+            # Use AI-generated description and docstring if available
+            if func_info and func_info.tool_description:
+                tool_desc = func_info.tool_description
+            else:
+                tool_desc = endpoint.summary or endpoint.description or f"{endpoint.method} {endpoint.path}"
+            
             code += f'''@mcp.tool()
 async def {func_name}({params_str}) -> Dict[str, Any]:
     """
-    {endpoint.summary or endpoint.description or f"{endpoint.method} {endpoint.path}"}
+    {tool_desc}
     
     Endpoint: {endpoint.method} {endpoint.path}
 '''
@@ -838,6 +885,11 @@ def create(
     description: str = typer.Option(None, "--description", "-d", help="Tool description"),
     output_dir: str = typer.Option(None, "--output", "-o", help="Output directory (defaults to automagik_tools/tools/)"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing tool without prompting"),
+    update: bool = typer.Option(False, "--update", "-U", help="Update existing tool, overwriting all files"),
+    use_ai: bool = typer.Option(False, "--use-ai", help="Use AI to generate human-friendly function names and descriptions"),
+    ai_model: str = typer.Option("gpt-4.1", "--ai-model", help="AI model to use for processing (gpt-4.1, gpt-4o, gpt-3.5-turbo)"),
+    openai_key: Optional[str] = typer.Option(None, "--openai-key", help="OpenAI API key (uses OPENAI_API_KEY env var if not provided)"),
+    use_streaming: bool = typer.Option(False, "--use-streaming", help="Use streaming processor for real-time progress (experimental)"),
 ):
     """Create a new tool from OpenAPI specification"""
     
@@ -891,6 +943,73 @@ def create(
     console.print(f"[dim]Endpoints:[/dim] {len(endpoints)}")
     console.print(f"[dim]Authentication:[/dim] {parser.get_auth_info().get('type', 'none')}")
     
+    # Process with AI if requested
+    ai_processed = None
+    if use_ai:
+        if not AI_PROCESSOR_AVAILABLE:
+            console.print("[yellow]Warning: AI processor not available. Install 'agno' and 'openai' packages.[/yellow]")
+        else:
+            console.print(f"\n[cyan]Processing with AI ({ai_model})...[/cyan]")
+            
+            # Get API key - try multiple sources
+            api_key = openai_key
+            if not api_key:
+                # Try environment variable
+                api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                # Try reading from .env file directly
+                try:
+                    from dotenv import load_dotenv
+                    load_dotenv()
+                    api_key = os.getenv("OPENAI_API_KEY")
+                except ImportError:
+                    pass
+            if not api_key:
+                # Try reading .env manually
+                try:
+                    env_file = Path(".env")
+                    if env_file.exists():
+                        with open(env_file) as f:
+                            for line in f:
+                                if line.startswith("OPENAI_API_KEY="):
+                                    api_key = line.split("=", 1)[1].strip()
+                                    break
+                except Exception:
+                    pass
+            
+            if not api_key:
+                console.print("[red]Error: OpenAI API key required for AI processing. Set OPENAI_API_KEY in .env or use --openai-key[/red]")
+                raise typer.Exit(1)
+            
+            try:
+                # Choose processor based on streaming option
+                if use_streaming and STREAMING_PROCESSOR_AVAILABLE:
+                    console.print("[cyan]Using streaming processor for real-time progress...[/cyan]")
+                    processor = StreamingOpenAPIProcessor(model_id=ai_model, api_key=api_key)
+                else:
+                    # Use the StaticOpenAPIProcessor from the local script
+                    processor = StaticOpenAPIProcessor(model_id=ai_model, api_key=api_key)
+                
+                # The method name should match what's in the processor
+                if hasattr(processor, 'process_for_static_generation'):
+                    ai_processed = processor.process_for_static_generation(
+                        openapi_spec=spec,
+                        tool_name=tool_name,
+                        base_description=description
+                    )
+                else:
+                    # Fallback if method doesn't exist
+                    console.print("[yellow]Warning: AI processor method not found, using standard generation[/yellow]")
+                    ai_processed = None
+                
+                console.print(f"[green]✓[/green] AI processing complete!")
+                console.print(f"[dim]Generated {len(ai_processed.functions)} enhanced function definitions[/dim]")
+                console.print(f"[dim]Categories: {', '.join(ai_processed.categories)}[/dim]")
+                
+            except Exception as e:
+                console.print(f"[red]AI processing failed: {str(e)}[/red]")
+                console.print("[yellow]Continuing with standard generation...[/yellow]")
+    
     # Paths
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
@@ -903,10 +1022,14 @@ def create(
     test_file = project_root / "tests" / "tools" / f"test_{tool_name_lower}.py"
     
     # Check if tool already exists
-    if target_dir.exists() and not force:
+    if target_dir.exists() and not (force or update):
         if not Confirm.ask(f"[yellow]Tool '{tool_name_lower}' already exists. Overwrite?[/yellow]"):
             console.print("[yellow]Aborted.[/yellow]")
             raise typer.Exit(0)
+    
+    # Show update mode message
+    if update and target_dir.exists():
+        console.print(f"[cyan]Update mode: Overwriting existing '{tool_name_lower}' tool files[/cyan]")
     
     # Create directories
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -916,7 +1039,7 @@ def create(
     console.print(f"\n[cyan]Generating tool files...[/cyan]")
     
     # Generate __init__.py
-    init_code = generate_tool_code(parser, tool_name, tool_name_lower, tool_name_class, tool_name_kebab, description)
+    init_code = generate_tool_code(parser, tool_name, tool_name_lower, tool_name_class, tool_name_kebab, description, ai_processed)
     init_file = target_dir / "__init__.py"
     with open(init_file, "w") as f:
         f.write(init_code)

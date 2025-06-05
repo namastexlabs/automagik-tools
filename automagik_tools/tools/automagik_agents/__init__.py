@@ -1,257 +1,1429 @@
 """
 Automagik agents templates and API
 
-This tool provides MCP integration for Automagik Agents API using FastMCP's native OpenAPI support.
+This tool provides MCP integration for Automagik Agents API.
+Auto-generated from OpenAPI specification.
 """
 
+import os
+from typing import Dict, Any, Optional, List
+from contextlib import suppress
 import httpx
-from typing import Optional, Dict, Any
-from fastmcp import FastMCP
-from fastmcp.server.openapi import RouteMap, MCPType
+from pydantic import BaseModel, Field
 
+from fastmcp import FastMCP, Context
 from .config import AutomagikAgentsConfig
 
 # Global config instance
 config: Optional[AutomagikAgentsConfig] = None
 
-# Global MCP instance
-mcp: Optional[FastMCP] = None
+# Create FastMCP instance
+mcp = FastMCP(
+    "Automagik Agents",
+    instructions="""
+Automagik agents templates and API
+
+Base URL: https://api.example.com
+Authentication: api_key
+"""
+)
 
 
-def get_custom_mcp_names() -> Dict[str, str]:
-    """
-    Create custom MCP names for long operationIds to respect the 56-character limit.
-    Maps operationId -> friendly_name with natural, user-friendly names.
-    """
-    return {
-        # Claude Code agent operations
-        "run_claude_code_workflow_api_v1_agent_claude_code__workflow_name__run_post": "run_workflow",
-        "get_claude_code_run_status_api_v1_agent_claude_code_run__run_id__status_get": "get_run_status",
-        "list_claude_code_workflows_api_v1_agent_claude_code_workflows_get": "list_workflows",
-        
-        # Genie agent operations
-        "approve_epic_step_api_v1_agent_genie_approve__epic_id___approval_id__post": "approve_step",
-        
-        # Agent prompt management
-        "get_prompt_api_v1_agent__agent_id__prompt__prompt_id__get": "get_prompt",
-        "update_prompt_api_v1_agent__agent_id__prompt__prompt_id__put": "update_prompt",
-        "delete_prompt_api_v1_agent__agent_id__prompt__prompt_id__delete": "delete_prompt",
-        "activate_prompt_api_v1_agent__agent_id__prompt__prompt_id__activate_post": "activate_prompt",
-        "deactivate_prompt_api_v1_agent__agent_id__prompt__prompt_id__deactivate_post": "deactivate_prompt",
-        
-        # Session management
-        "get_session_route_api_v1_sessions__session_id_or_name__get": "get_session",
-        "delete_session_route_api_v1_sessions__session_id_or_name__delete": "delete_session",
-        
-        # Memory management
-        "delete_memory_endpoint_api_v1_memories__memory_id__delete": "delete_memory",
-        
-        # MCP Server management (more specific names to avoid conflicts)
-        "delete_mcp_server_api_v1_mcp_servers__server_name__delete": "delete_server",
-        "start_mcp_server_api_v1_mcp_servers__server_name__start_post": "start_server",
-        "stop_mcp_server_api_v1_mcp_servers__server_name__stop_post": "stop_server",
-        "restart_mcp_server_api_v1_mcp_servers__server_name__restart_post": "restart_server",
-        "list_mcp_server_tools_api_v1_mcp_servers__server_name__tools_get": "list_server_tools",
-        "list_mcp_server_resources_api_v1_mcp_servers__server_name__resources_get": "list_server_resources",
-        
-        # Agent tools
-        "list_agent_mcp_tools_api_v1_mcp_agents__agent_name__tools_get": "list_agent_tools",
-    }
+# Pydantic models for request/response validation
 
-
-def create_custom_route_maps(config: AutomagikAgentsConfig):
-    """
-    Create custom route maps for better organization and naming.
-    """
-    route_maps = [
-        # Admin/Management endpoints as tools
-        RouteMap(
-            methods=["POST", "PUT", "DELETE"], 
-            pattern=r"^/api/v1/mcp/.*", 
-            mcp_type=MCPType.TOOL
-        ),
-        
-        # Agent management endpoints as tools
-        RouteMap(
-            methods=["POST", "PUT", "DELETE"], 
-            pattern=r"^/api/v1/agent/.*/prompt/.*", 
-            mcp_type=MCPType.TOOL
-        ),
-        
-        # Make workflow runs tools (even though they're GET with params)
-        RouteMap(
-            methods=["GET"], 
-            pattern=r"^/api/v1/agent/.*/run/.*", 
-            mcp_type=MCPType.TOOL
-        ),
-    ]
+async def make_api_request(
+    method: str,
+    endpoint: str,
+    params: Optional[Dict[str, Any]] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+    ctx: Optional[Context] = None
+) -> Dict[str, Any]:
+    """Make HTTP request to the API"""
+    global config
+    if not config:
+        raise ValueError("Tool not configured")
     
-    # Conditionally exclude health endpoints
-    if config.exclude_health_endpoints:
-        route_maps.append(
-            RouteMap(
-                pattern=r".*/health$", 
-                mcp_type=MCPType.EXCLUDE
-            )
-        )
+    url = f"{config.base_url}{endpoint}"
     
-    return route_maps
-
-
-def clean_operation_name(operation_id: str) -> str:
-    """
-    Clean an operationId to make it more natural and user-friendly.
-    
-    Args:
-        operation_id: The original operationId from OpenAPI spec
-        
-    Returns:
-        Cleaned, more natural name
-    """
-    name = operation_id
-    
-    # Remove common API prefixes and suffixes
-    prefixes_to_remove = [
-        "api_v1_", "api_v2_", "api_", 
-        "endpoint_", "route_", "_endpoint", "_route"
-    ]
-    
-    suffixes_to_remove = [
-        "_get", "_post", "_put", "_delete", "_patch", "_head", "_options"
-    ]
-    
-    # Remove prefixes
-    for prefix in prefixes_to_remove:
-        if name.startswith(prefix):
-            name = name[len(prefix):]
-            break
-    
-    # Remove suffixes
-    for suffix in suffixes_to_remove:
-        if name.endswith(suffix):
-            name = name[:-len(suffix)]
-            break
-    
-    # Extract meaningful part before first double underscore (path parameters)
-    name = name.split("__")[0]
-    
-    # Clean up common patterns
-    replacements = {
-        "_api_v1_": "_",
-        "_api_": "_",
-        "mcp_servers": "server",
-        "mcp_agents": "agent", 
-        "claude_code": "workflow",
-        "session_route": "session",
-        "memory_endpoint": "memory",
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
     }
     
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    
-    # Remove duplicate underscores
-    while "__" in name:
-        name = name.replace("__", "_")
-    
-    # Remove leading/trailing underscores
-    name = name.strip("_")
-    
-    return name
-
-
-def validate_component_names(openapi_spec: Dict[str, Any], mcp_names: Dict[str, str], config: AutomagikAgentsConfig) -> Dict[str, str]:
-    """
-    Validate and ensure all component names are within limits.
-    Returns the validated mcp_names dict.
-    """
-    validated_names = {}
-    max_length = config.max_component_name_length
-    
-    for path, path_item in openapi_spec.get("paths", {}).items():
-        for method, operation in path_item.items():
-            if method.lower() in ["get", "post", "put", "delete", "patch", "options", "head"]:
-                operation_id = operation.get("operationId")
-                if operation_id:
-                    # Use custom name if provided, otherwise clean the operationId
-                    if operation_id in mcp_names:
-                        name = mcp_names[operation_id]
-                    else:
-                        name = clean_operation_name(operation_id)
-                    
-                    # Ensure name is within configured character limit
-                    if config.auto_truncate_names and len(name) > max_length:
-                        name = name[:max_length]
-                    elif len(name) > max_length:
-                        # Log warning but don't truncate if auto_truncate is disabled
-                        print(f"Warning: Component name '{name}' ({len(name)} chars) exceeds limit ({max_length} chars)")
-                    
-                    validated_names[operation_id] = name
-    
-    return validated_names
-
-
-def create_mcp_from_openapi(tool_config: AutomagikAgentsConfig) -> FastMCP:
-    """Create MCP server from OpenAPI specification"""
-
-    # Create HTTP client with authentication
-    headers = {}
-    if tool_config.api_key:
-        headers["X-API-Key"] = tool_config.api_key
-        # Also support Authorization header
-        headers["Authorization"] = f"Bearer {tool_config.api_key}"
-
-    client = httpx.AsyncClient(
-        base_url=tool_config.base_url, headers=headers, timeout=tool_config.timeout
-    )
-
-    # Fetch OpenAPI spec
     try:
-        # Try the configured OpenAPI URL first
-        openapi_url = (
-            tool_config.openapi_url or "http://192.168.112.148:8881/api/v1/openapi.json"
-        )
-        response = httpx.get(openapi_url, timeout=30)
-        response.raise_for_status()
-        openapi_spec = response.json()
-    except Exception:
-        # Fallback to a minimal spec if we can't fetch
-        openapi_spec = {
-            "openapi": "3.0.0",
-            "info": {
-                "title": "Automagik Agents",
-                "description": "Automagik agents templates and API",
-                "version": "1.0.0",
-            },
-            "servers": [{"url": tool_config.base_url}],
-            "paths": {},
-        }
+        async with httpx.AsyncClient(timeout=config.timeout) as client:
+            response = await client.request(
+                method=method,
+                url=url,
+                headers=headers,
+                params=params,
+                json=json_data
+            )
+            response.raise_for_status()
+            
+            # Return JSON if available, otherwise return text
+            if "application/json" in response.headers.get("content-type", ""):
+                return response.json()
+            else:
+                return {"result": response.text}
+                
+    except httpx.HTTPStatusError as e:
+        if ctx:
+            ctx.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+        return {"error": f"HTTP {e.response.status_code}: {str(e)}"}
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Request failed: {str(e)}")
+        return {"error": str(e)}
 
-    # Get custom names and validate them
-    custom_names = get_custom_mcp_names()
-    validated_names = validate_component_names(openapi_spec, custom_names, tool_config)
 
-    # Create MCP server from OpenAPI spec
-    mcp_server = FastMCP.from_openapi(
-        openapi_spec=openapi_spec,
-        client=client,
-        name="automagik_agents",  # Shorter server name
-        timeout=tool_config.timeout,
-        mcp_names=validated_names,  # Custom component names
-        route_maps=create_custom_route_maps(tool_config),  # Custom route mapping
+# System Operations
+
+@mcp.tool()
+async def get_service_info(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Retrieve service information and status for Automagik Agents
+    
+    Endpoint: GET /
+    """
+    if ctx:
+        ctx.info(f"Calling GET /")
+    
+    endpoint = "/"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
     )
 
-    return mcp_server
+
+@mcp.tool()
+async def get_health_status(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Check health and operational status of Automagik service
+    
+    Endpoint: GET /health
+    """
+    if ctx:
+        ctx.info(f"Calling GET /health")
+    
+    endpoint = "/health"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Agents Operations
+
+@mcp.tool()
+async def list_agents(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all registered agents with database metadata
+    
+    Endpoint: GET /api/v1/agent/list
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/list")
+    
+    endpoint = "/api/v1/agent/list"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def run_agent(agent_name: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Execute an agent with optional LangGraph orchestration
+    
+    Endpoint: POST /api/v1/agent/{agent_name}/run
+
+    Args:
+        agent_name: Name of the agent to execute (string, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/{agent_name}/run")
+    
+    endpoint = f"/api/v1/agent/{agent_name}/run"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def run_agent_async(agent_name: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Start an agent run asynchronously and return a run ID
+    
+    Endpoint: POST /api/v1/agent/{agent_name}/run/async
+
+    Args:
+        agent_name: Name of the agent to execute (string, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/{agent_name}/run/async")
+    
+    endpoint = f"/api/v1/agent/{agent_name}/run/async"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Check the status of an asynchronous agent run by run ID
+    
+    Endpoint: GET /api/v1/run/{run_id}/status
+
+    Args:
+        run_id: Run ID of the asynchronous execution (string, required, returned by run_agent_async)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/run/{run_id}/status")
+    
+    endpoint = f"/api/v1/run/{run_id}/status"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Prompts Operations
+
+@mcp.tool()
+async def list_prompts(agent_id: int, status_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List prompts for a specified agent, filtered by status key
+    
+    Endpoint: GET /api/v1/agent/{agent_id}/prompt
+
+    Args:
+        agent_id: ID of the agent to list prompts for (integer, required)
+        status_key: Optional status key filter (string, e.g., 'active', default: None)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/{agent_id}/prompt")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt"
+    
+    params = {}
+    if status_key is not None:
+        params["status_key"] = status_key
+    
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def create_prompt(agent_id: int, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Create a new prompt for a specific agent
+    
+    Endpoint: POST /api/v1/agent/{agent_id}/prompt
+
+    Args:
+        agent_id: ID of the agent to create prompt for (integer, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/{agent_id}/prompt")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_prompt(agent_id: int, prompt_id: int, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Retrieve details for a specific prompt by prompt and agent ID
+    
+    Endpoint: GET /api/v1/agent/{agent_id}/prompt/{prompt_id}
+
+    Args:
+        agent_id: ID of the agent (integer, required)
+        prompt_id: ID of the prompt to retrieve (integer, required)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/{agent_id}/prompt/{prompt_id}")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def update_prompt(agent_id: int, prompt_id: int, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Update the content or status of an existing prompt
+    
+    Endpoint: PUT /api/v1/agent/{agent_id}/prompt/{prompt_id}
+
+    Args:
+        agent_id: Agent's unique ID (integer, required)
+        prompt_id: Prompt's unique ID to update (integer, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling PUT /api/v1/agent/{agent_id}/prompt/{prompt_id}")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="PUT",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def delete_prompt(agent_id: int, prompt_id: int, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete a prompt from an agent by prompt ID
+    
+    Endpoint: DELETE /api/v1/agent/{agent_id}/prompt/{prompt_id}
+
+    Args:
+        agent_id: ID of the agent (integer, required)
+        prompt_id: ID of the prompt to delete (integer, required)
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/agent/{agent_id}/prompt/{prompt_id}")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def activate_prompt(agent_id: int, prompt_id: int, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Activate a prompt for an agent and deactivate other prompts
+    
+    Endpoint: POST /api/v1/agent/{agent_id}/prompt/{prompt_id}/activate
+
+    Args:
+        agent_id: ID of the agent (integer, required)
+        prompt_id: ID of the prompt to activate (integer, required)
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/{agent_id}/prompt/{prompt_id}/activate")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}/activate"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def deactivate_prompt(agent_id: int, prompt_id: int, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Deactivate a prompt for an agent, making it inactive
+    
+    Endpoint: POST /api/v1/agent/{agent_id}/prompt/{prompt_id}/deactivate
+
+    Args:
+        agent_id: ID of the agent (integer, required)
+        prompt_id: ID of the prompt to deactivate (integer, required)
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/{agent_id}/prompt/{prompt_id}/deactivate")
+    
+    endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}/deactivate"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Sessions Operations
+
+@mcp.tool()
+async def list_sessions(page: Optional[int] = None, page_size: Optional[int] = None, sort_desc: Optional[bool] = False, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all sessions with pagination and sorting options
+    
+    Endpoint: GET /api/v1/sessions
+
+    Args:
+        page: Results page number (integer, min: 1, default: 1)
+        page_size: Number of sessions per page (integer, 1-100, default: 50)
+        sort_desc: Sort by most recent first (boolean, default: True)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/sessions")
+    
+    endpoint = "/api/v1/sessions"
+    
+    params = {}
+    if page is not None:
+        params["page"] = page
+    if page_size is not None:
+        params["page_size"] = page_size
+    if sort_desc is not None:
+        params["sort_desc"] = sort_desc
+    
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_session_history(session_id_or_name: str, page: Optional[int] = None, page_size: Optional[int] = None, sort_desc: Optional[bool] = False, hide_tools: Optional[bool] = False, show_system_prompt: Optional[bool] = False, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Retrieve a session's message history by ID or name
+    
+    Endpoint: GET /api/v1/sessions/{session_id_or_name}
+
+    Args:
+        session_id_or_name: Identifier of session (UUID or string, required)
+        page: Results page number (integer, min: 1, default: 1)
+        page_size: Messages per page (integer, 1-100, default: 50)
+        sort_desc: Sort by most recent first (boolean, default: True)
+        hide_tools: Exclude tool calls/outputs (boolean, default: False)
+        show_system_prompt: Include system prompt in details (boolean, default: False)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/sessions/{session_id_or_name}")
+    
+    endpoint = f"/api/v1/sessions/{session_id_or_name}"
+    
+    params = {}
+    if page is not None:
+        params["page"] = page
+    if page_size is not None:
+        params["page_size"] = page_size
+    if sort_desc is not None:
+        params["sort_desc"] = sort_desc
+    if hide_tools is not None:
+        params["hide_tools"] = hide_tools
+    if show_system_prompt is not None:
+        params["show_system_prompt"] = show_system_prompt
+    
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def delete_session(session_id_or_name: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete a session and all its message history by ID or name
+    
+    Endpoint: DELETE /api/v1/sessions/{session_id_or_name}
+
+    Args:
+        session_id_or_name: Identifier (UUID or string) of the session to delete (required)
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/sessions/{session_id_or_name}")
+    
+    endpoint = f"/api/v1/sessions/{session_id_or_name}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Users Operations
+
+@mcp.tool()
+async def list_users(page: Optional[int] = None, page_size: Optional[int] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Return paginated list of users with profile metadata
+    
+    Endpoint: GET /api/v1/users
+
+    Args:
+        page: Results page number (integer, min: 1, default: 1)
+        page_size: Number of users per page (integer, 1-100, default: 20)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/users")
+    
+    endpoint = "/api/v1/users"
+    
+    params = {}
+    if page is not None:
+        params["page"] = page
+    if page_size is not None:
+        params["page_size"] = page_size
+    
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def create_user(data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Create a new user with optional email, phone, and custom data
+    
+    Endpoint: POST /api/v1/users
+
+    Args:
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/users")
+    
+    endpoint = "/api/v1/users"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_user(user_identifier: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Retrieve user details by ID, email, or phone number
+    
+    Endpoint: GET /api/v1/users/{user_identifier}
+
+    Args:
+        user_identifier: Unique user identifier (ID, email, or phone number, required)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/users/{user_identifier}")
+    
+    endpoint = f"/api/v1/users/{user_identifier}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def update_user(user_identifier: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Update an existing user's details or metadata
+    
+    Endpoint: PUT /api/v1/users/{user_identifier}
+
+    Args:
+        user_identifier: ID, email, or phone number for lookup (string, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling PUT /api/v1/users/{user_identifier}")
+    
+    endpoint = f"/api/v1/users/{user_identifier}"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="PUT",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def delete_user(user_identifier: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete a user account by ID, email, or phone number
+    
+    Endpoint: DELETE /api/v1/users/{user_identifier}
+
+    Args:
+        user_identifier: ID, email, or phone number of user to delete (string, required)
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/users/{user_identifier}")
+    
+    endpoint = f"/api/v1/users/{user_identifier}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Memories Operations
+
+@mcp.tool()
+async def list_memories(user_id: Optional[str] = None, agent_id: Optional[str] = None, session_id: Optional[str] = None, page: Optional[int] = None, page_size: Optional[int] = None, sort_desc: Optional[bool] = False, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all memories with filtering, pagination, and sorting options
+    
+    Endpoint: GET /api/v1/memories
+
+    Args:
+        user_id: User ID (UUID, optional) to filter (e.g., '123e4567-e89b-12d3-a456-426614174000')
+        agent_id: Agent ID to filter (integer, optional)
+        session_id: Session ID to filter (string, optional)
+        page: Page number for paging (integer, default: 1)
+        page_size: Items per results page (integer, default: 50)
+        sort_desc: Sort order, most recent first if True (boolean, default: True)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/memories")
+    
+    endpoint = "/api/v1/memories"
+    
+    params = {}
+    if user_id is not None:
+        params["user_id"] = user_id
+    if agent_id is not None:
+        params["agent_id"] = agent_id
+    if session_id is not None:
+        params["session_id"] = session_id
+    if page is not None:
+        params["page"] = page
+    if page_size is not None:
+        params["page_size"] = page_size
+    if sort_desc is not None:
+        params["sort_desc"] = sort_desc
+    
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def create_memory(data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Create a new memory with the provided details
+    
+    Endpoint: POST /api/v1/memories
+
+    Args:
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/memories")
+    
+    endpoint = "/api/v1/memories"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def create_memories_batch(data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Create multiple memory records in a single batch operation
+    
+    Endpoint: POST /api/v1/memories/batch
+
+    Args:
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/memories/batch")
+    
+    endpoint = "/api/v1/memories/batch"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_memory(memory_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Retrieve a specific memory record by memory ID
+    
+    Endpoint: GET /api/v1/memories/{memory_id}
+
+    Args:
+        memory_id: Unique ID of memory to retrieve (string, required)
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/memories/{memory_id}")
+    
+    endpoint = f"/api/v1/memories/{memory_id}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def update_memory(memory_id: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Update an existing memory record's details by memory ID
+    
+    Endpoint: PUT /api/v1/memories/{memory_id}
+
+    Args:
+        memory_id: ID of the memory to update (string, required)
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling PUT /api/v1/memories/{memory_id}")
+    
+    endpoint = f"/api/v1/memories/{memory_id}"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="PUT",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def delete_memory(memory_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete a memory from the database by memory ID
+    
+    Endpoint: DELETE /api/v1/memories/{memory_id}
+
+    Args:
+        memory_id: Memory ID to delete (string, required)
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/memories/{memory_id}")
+    
+    endpoint = f"/api/v1/memories/{memory_id}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Messages Operations
+
+@mcp.tool()
+async def delete_message(message_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete a message by its unique ID from Automagik system
+    
+    Endpoint: DELETE /api/v1/messages/{message_id}
+
+    Args:
+        message_id: Unique identifier of the message to delete (UUID string, required)
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/messages/{message_id}")
+    
+    endpoint = f"/api/v1/messages/{message_id}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Mcp Operations
+
+@mcp.tool()
+async def configure_mcp_servers(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Configure multiple MCP servers using server config format
+    
+    Endpoint: POST /api/v1/mcp/configure
+
+    Args:
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/configure")
+    
+    endpoint = "/api/v1/mcp/configure"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_mcp_health(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Get health status of the MCP system and components
+    
+    Endpoint: GET /api/v1/mcp/health
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/health")
+    
+    endpoint = "/api/v1/mcp/health"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def list_mcp_servers(x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all MCP servers and their runtime states
+    
+    Endpoint: GET /api/v1/mcp/servers
+
+    Args:
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/servers")
+    
+    endpoint = "/api/v1/mcp/servers"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def create_mcp_server(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Create a new MCP server configuration
+    
+    Endpoint: POST /api/v1/mcp/servers
+
+    Args:
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/servers")
+    
+    endpoint = "/api/v1/mcp/servers"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Get full details for a specific MCP server by name
+    
+    Endpoint: GET /api/v1/mcp/servers/{server_name}
+
+    Args:
+        server_name: Name of the server to retrieve (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/servers/{server_name}")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def update_mcp_server(server_name: str, x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Update MCP server configuration by server name
+    
+    Endpoint: PUT /api/v1/mcp/servers/{server_name}
+
+    Args:
+        server_name: MCP server's name to update (string, required)
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling PUT /api/v1/mcp/servers/{server_name}")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="PUT",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def delete_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Delete an MCP server from configuration by server name
+    
+    Endpoint: DELETE /api/v1/mcp/servers/{server_name}
+
+    Args:
+        server_name: Server name to delete from registry (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling DELETE /api/v1/mcp/servers/{server_name}")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="DELETE",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def start_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Start a managed MCP server by server name
+    
+    Endpoint: POST /api/v1/mcp/servers/{server_name}/start
+
+    Args:
+        server_name: Name of the server to start (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/servers/{server_name}/start")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}/start"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def stop_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Stop a running MCP server by its server name
+    
+    Endpoint: POST /api/v1/mcp/servers/{server_name}/stop
+
+    Args:
+        server_name: MCP server to stop (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/servers/{server_name}/stop")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}/stop"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def restart_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Restart a managed MCP server by server name
+    
+    Endpoint: POST /api/v1/mcp/servers/{server_name}/restart
+
+    Args:
+        server_name: Name of MCP server to restart (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/servers/{server_name}/restart")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}/restart"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def call_mcp_tool(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Call a specific tool on an MCP server
+    
+    Endpoint: POST /api/v1/mcp/tools/call
+
+    Args:
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/tools/call")
+    
+    endpoint = "/api/v1/mcp/tools/call"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def access_mcp_resource(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Access a managed resource on an MCP server
+    
+    Endpoint: POST /api/v1/mcp/resources/access
+
+    Args:
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/mcp/resources/access")
+    
+    endpoint = "/api/v1/mcp/resources/access"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def list_mcp_server_tools(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all tools available on a specific MCP server
+    
+    Endpoint: GET /api/v1/mcp/servers/{server_name}/tools
+
+    Args:
+        server_name: Name of the MCP server (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/servers/{server_name}/tools")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}/tools"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def list_mcp_server_resources(server_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all resources managed by a specific MCP server
+    
+    Endpoint: GET /api/v1/mcp/servers/{server_name}/resources
+
+    Args:
+        server_name: Name of MCP server (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/servers/{server_name}/resources")
+    
+    endpoint = f"/api/v1/mcp/servers/{server_name}/resources"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def list_agent_mcp_tools(agent_name: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all MCP tools available to a specific agent
+    
+    Endpoint: GET /api/v1/mcp/agents/{agent_name}/tools
+
+    Args:
+        agent_name: Agent name (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/mcp/agents/{agent_name}/tools")
+    
+    endpoint = f"/api/v1/mcp/agents/{agent_name}/tools"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Claude-Code Operations
+
+@mcp.tool()
+async def run_claude_code_workflow(workflow_name: str, x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Start a Claude-Code workflow asynchronously and return run ID
+    
+    Endpoint: POST /api/v1/agent/claude-code/{workflow_name}/run
+
+    Args:
+        workflow_name: Claude-Code workflow to run (string, required, e.g., 'bug-fixer')
+        x_api_key: 
+        data: Request body data
+    """
+    if ctx:
+        ctx.info(f"Calling POST /api/v1/agent/claude-code/{workflow_name}/run")
+    
+    endpoint = f"/api/v1/agent/claude-code/{workflow_name}/run"
+    params = None
+    json_data = data
+    
+    return await make_api_request(
+        method="POST",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_claude_code_run_status(run_id: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Get status and results of a specific Claude-Code workflow run
+    
+    Endpoint: GET /api/v1/agent/claude-code/run/{run_id}/status
+
+    Args:
+        run_id: Run ID for Claude-Code workflow (string, required)
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/claude-code/run/{run_id}/status")
+    
+    endpoint = f"/api/v1/agent/claude-code/run/{run_id}/status"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def list_claude_code_workflows(x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    List all available Claude-Code workflows and status
+    
+    Endpoint: GET /api/v1/agent/claude-code/workflows
+
+    Args:
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/claude-code/workflows")
+    
+    endpoint = "/api/v1/agent/claude-code/workflows"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+@mcp.tool()
+async def get_claude_code_health(x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    Check health and status of Claude-Code agent and workflows
+    
+    Endpoint: GET /api/v1/agent/claude-code/health
+
+    Args:
+        x_api_key: 
+    """
+    if ctx:
+        ctx.info(f"Calling GET /api/v1/agent/claude-code/health")
+    
+    endpoint = "/api/v1/agent/claude-code/health"
+    params = None
+    json_data = None
+    
+    return await make_api_request(
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx
+    )
+
+
+# Resources
+@mcp.resource("automagik-agents://config")
+async def get_api_config(ctx: Optional[Context] = None) -> str:
+    """Get the API configuration and available endpoints"""
+    return """
+This tool was auto-generated from an OpenAPI specification.
+Base URL: https://api.example.com
+Total endpoints: 47
+Use the tool functions to interact with the API.
+"""
+
+
+# Prompts
+@mcp.prompt()
+def api_explorer(endpoint: str = "") -> str:
+    """Generate a prompt for exploring Automagik Agents API endpoints"""
+    if endpoint:
+        return f"""
+Help me explore the {endpoint} endpoint of Automagik Agents API.
+What parameters does it accept and what does it return?
+"""
+    else:
+        return f"""
+What endpoints are available in the Automagik Agents API?
+List the main operations I can perform.
+"""
 
 
 # Tool creation functions (required by automagik-tools)
 def create_tool(tool_config: Optional[AutomagikAgentsConfig] = None) -> FastMCP:
     """Create the MCP tool instance"""
-    global config, mcp
+    global config
     config = tool_config or AutomagikAgentsConfig()
-
-    if mcp is None:
-        mcp = create_mcp_from_openapi(config)
-
     return mcp
 
 
@@ -280,8 +1452,7 @@ def get_required_env_vars() -> Dict[str, str]:
     """Get required environment variables"""
     return {
         "AUTOMAGIK_AGENTS_API_KEY": "API key for authentication",
-        "AUTOMAGIK_AGENTS_BASE_URL": "Base URL for the API",
-        "AUTOMAGIK_AGENTS_OPENAPI_URL": "URL to fetch OpenAPI spec (optional)",
+        "AUTOMAGIK_AGENTS_BASE_URL": "Base URL for the API (optional)",
     }
 
 
@@ -294,13 +1465,12 @@ def get_metadata() -> Dict[str, Any]:
         "author": "Automagik Team",
         "category": "api",
         "tags": ["api", "integration", "openapi"],
-        "config_env_prefix": "AUTOMAGIK_AGENTS_",
+        "config_env_prefix": "AUTOMAGIK_AGENTS_"
     }
 
 
 def run_standalone(host: str = "0.0.0.0", port: int = 8000):
     """Run the tool as a standalone service"""
     import uvicorn
-
     server = create_server()
     uvicorn.run(server.asgi(), host=host, port=port)

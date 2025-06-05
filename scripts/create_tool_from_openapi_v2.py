@@ -82,11 +82,19 @@ This tool provides MCP integration for {tool_name} API using FastMCP's native Op
 """
 
 import httpx
+import os
 from typing import Optional, Dict, Any
 from fastmcp import FastMCP
 from fastmcp.server.openapi import RouteMap, MCPType
 
 from .config import {tool_name_class}Config
+
+# Import AI processor if available
+try:
+    from automagik_tools.ai_processors import OpenAPIProcessor
+    AI_PROCESSOR_AVAILABLE = True
+except ImportError:
+    AI_PROCESSOR_AVAILABLE = False
 
 # Global config instance
 config: Optional[{tool_name_class}Config] = None
@@ -131,12 +139,26 @@ def create_mcp_from_openapi(tool_config: {tool_name_class}Config) -> FastMCP:
             "paths": {{}}
         }}
     
+    # Process with AI if configured
+    mcp_names = {{}}
+    if tool_config.use_ai_processor and AI_PROCESSOR_AVAILABLE:
+        api_key = tool_config.openai_api_key or os.getenv("OPENAI_API_KEY")
+        if api_key:
+            try:
+                processor = OpenAPIProcessor(model_id=tool_config.ai_model_id, api_key=api_key)
+                result = processor.process_openapi_spec(openapi_spec)
+                mcp_names = result.name_mappings
+                print(f"AI processed {{len(mcp_names)}} operations")
+            except Exception as e:
+                print(f"AI processing failed: {{e}}")
+    
     # Create MCP server from OpenAPI spec
     mcp_server = FastMCP.from_openapi(
         openapi_spec=openapi_spec,
         client=client,
         name="{tool_name}",
         timeout=tool_config.timeout,
+        mcp_names=mcp_names,  # Use AI-generated names if available
         route_maps=[
             # You can customize route mapping here
             # Example: Make all analytics endpoints tools
@@ -249,6 +271,24 @@ class {tool_name_class}Config(BaseSettings):
         default=30,
         description="Request timeout in seconds",
         alias="{tool_name_lower.upper()}_TIMEOUT"
+    )
+    
+    use_ai_processor: bool = Field(
+        default=False,
+        description="Use AI to process OpenAPI specs into human-friendly names",
+        alias="{tool_name_lower.upper()}_USE_AI_PROCESSOR"
+    )
+    
+    ai_model_id: str = Field(
+        default="gpt-4o",
+        description="OpenAI model ID to use for AI processing",
+        alias="{tool_name_lower.upper()}_AI_MODEL"
+    )
+    
+    openai_api_key: str = Field(
+        default="",
+        description="OpenAI API key for AI processing (uses OPENAI_API_KEY env var if not set)",
+        alias="{tool_name_lower.upper()}_OPENAI_API_KEY"
     )
     
     model_config = {{
@@ -535,6 +575,7 @@ def create(
     description: str = typer.Option(None, "--description", "-d", help="Tool description"),
     output_dir: str = typer.Option(None, "--output", "-o", help="Output directory (defaults to automagik_tools/tools/)"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing tool without prompting"),
+    update: bool = typer.Option(False, "--update", "-U", help="Update existing tool, overwriting all files"),
 ):
     """Create a new tool from OpenAPI specification using FastMCP"""
     
@@ -599,10 +640,14 @@ def create(
     test_file = project_root / "tests" / "tools" / f"test_{tool_name_lower}.py"
     
     # Check if tool already exists
-    if target_dir.exists() and not force:
+    if target_dir.exists() and not (force or update):
         if not Confirm.ask(f"[yellow]Tool '{tool_name_lower}' already exists. Overwrite?[/yellow]"):
             console.print("[yellow]Aborted.[/yellow]")
             raise typer.Exit(0)
+    
+    # Show update mode message
+    if update and target_dir.exists():
+        console.print(f"[cyan]Update mode: Overwriting existing '{tool_name_lower}' tool files[/cyan]")
     
     # Create directories
     target_dir.mkdir(parents=True, exist_ok=True)

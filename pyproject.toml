@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.1.3"
+version = "0.1.3pre1"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
     {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},
@@ -40,6 +40,8 @@ dependencies = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
     "psutil>=7.0.0",
+    "agno>=1.5.8",
+    "openai>=1.84.0",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +53,8 @@ evolution-api = [
 automagik-agents = [
     "httpx>=0.28.1",
     "python-dotenv>=1.1.0",
+    "agno>=0.1.0",
+    "openai>=1.0.0",
 ]
 
 discord = [
@@ -94,6 +98,7 @@ automagik-tools = "automagik_tools.cli:main"
 [project.entry-points."automagik_tools.plugins"]
 # Tools are auto-discovered from the automagik_tools/tools/ directory
 # No need to manually register them here
+automagik-agents = "automagik_tools.tools.automagik_agents:create_tool"
 [tool.setuptools]
 # Use find_packages to automatically discover all packages
 [tool.setuptools.packages.find]
