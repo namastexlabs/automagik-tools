@@ -6,68 +6,66 @@
 
 ## Turn Any API into an AI-Ready Tool in Seconds™
 
-**The most comprehensive collection of Model Context Protocol (MCP) tools**. Drop an OpenAPI spec, get an MCP tool. It's that simple.
+**The killer MCP feature**: Drop any OpenAPI URL → Get a live, auto-updating MCP server. When the API updates, your tool updates automatically. No code, no maintenance, just magic. ✨
 
-Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools transforms the way AI agents interact with the real world. We're building the infrastructure that makes **every API on the internet instantly accessible to AI**.
+Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools makes **every API on the internet instantly accessible to AI agents**.
 
-## 🚀 Quick Start
-
-### Using uvx (Recommended - No Installation)
+## 🌟 The Killer Feature: Dynamic OpenAPI → MCP
 
 ```bash
-# List available tools
-uvx automagik-tools list
+# Example: Discord Bot in ONE command
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
+  --transport stdio
+```
 
-# Instant MCP server from any OpenAPI spec
+**That's it!** Your AI can now:
+- Send Discord messages
+- Manage channels and servers  
+- React to messages
+- Handle voice channels
+- Everything in Discord's API
+
+**The Magic**: 
+- 🔄 **Always Up-to-Date**: Fetches the OpenAPI spec on every start - if Discord updates their API, your tool automatically has the new endpoints!
+- 🚀 **Zero Code**: No writing tool definitions, no maintenance
+- 🔐 **Secure**: API keys stay in your environment
+- 🌐 **Universal**: Works with ANY OpenAPI spec (Stripe, Slack, GitHub, your internal APIs...)
+
+## 🚀 Quick Start (30 seconds to your first AI tool)
+
+### 1️⃣ Test it instantly (no install needed):
+
+```bash
+# Try with Discord API
 uvx automagik-tools serve \
   --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
   --transport stdio
 
-# Serve a built-in tool
+# Or try AutoMagik Agents (our AI orchestration tool)
 uvx automagik-tools serve --tool automagik-agents --transport stdio
-
-# Generate MCP config for Claude/Cursor
-uvx automagik-tools mcp-config discord-api
-uvx automagik-tools mcp-config automagik-agents
 ```
 
-### Local Installation
+### 2️⃣ Add to Claude/Cursor:
 
 ```bash
-# Install with uv
-uv pip install automagik-tools
-
-# Or clone and install from source
-git clone https://github.com/namastexlabs/automagik-tools
-cd automagik-tools
-make install  # Uses uv internally
-
-# Then use commands without uvx
-automagik-tools serve --tool evolution-api
-```
-
-## 🎯 For Claude/Cursor Users
-
-### 1. Generate your MCP configuration:
-
-```bash
-# For Discord API (dynamic OpenAPI)
+# Generate config automatically
 uvx automagik-tools mcp-config discord-api
 
-# For built-in tools
-uvx automagik-tools mcp-config automagik-agents
+# Copy the output to:
+# - Cursor: ~/.cursor/mcp.json
+# - Claude Desktop: Settings → Developer → Edit Config
 ```
 
-### 2. Add to your MCP config file:
-- **Cursor**: `~/.cursor/mcp.json`
-- **Claude Desktop**: Settings → Developer → Edit Config
+### 3️⃣ That's it! Your AI now has superpowers 🚀
 
-### 3. Example configuration:
+## 📋 Real-World Examples
 
+### Discord Bot (using official Discord OpenAPI)
 ```json
 {
   "mcpServers": {
-    "discord-api": {
+    "discord": {
       "command": "uvx",
       "args": [
         "automagik-tools@latest",
@@ -78,70 +76,71 @@ uvx automagik-tools mcp-config automagik-agents
         "stdio"
       ],
       "env": {
-        "DISCORD_TOKEN": "YOUR_DISCORD_TOKEN"
-      }
-    },
-    "automagik-agents": {
-      "command": "uvx",
-      "args": [
-        "automagik-tools@latest",
-        "serve",
-        "--tool",
-        "automagik-agents",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY",
-        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
-        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json"
+        "DISCORD_TOKEN": "YOUR_BOT_TOKEN"  // Get from https://discord.com/developers
       }
     }
   }
 }
 ```
 
-## 🌟 Key Features
-
-### 1. **Instant OpenAPI → MCP** ✨
+### More OpenAPI Examples
 ```bash
-# Any OpenAPI URL becomes an MCP server instantly
-uvx automagik-tools serve --openapi-url <url> --transport stdio
+# Stripe Payments
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json \
+  --api-key $STRIPE_API_KEY
 
-# With authentication
-uvx automagik-tools serve --openapi-url <url> --api-key YOUR_KEY
+# GitHub API  
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json \
+  --api-key $GITHUB_TOKEN
 
-# Custom base URL
-uvx automagik-tools serve --openapi-url <url> --base-url https://api.custom.com
+# Your Internal API
+uvx automagik-tools serve \
+  --openapi-url https://api.yourcompany.com/openapi.json \
+  --api-key $YOUR_API_KEY
 ```
 
-### 2. **Auto-Discovery Engine** 🔍
-- Drop tools in the `tools/` folder
-- They're instantly available - no registration, no config
-- Dynamic loading at runtime
+## 🛠️ Built-in Tools
 
-### 3. **Production-Ready** 🏭
-- FastMCP framework for reliability
-- Built-in auth, rate limiting, error handling
-- Battle-tested at Namastex Labs
+### AutoMagik Agents 🤖
+Our flagship AI orchestration platform - perfect for complex workflows:
 
-## 📦 Built-in Tools
+```bash
+# Quick test
+uvx automagik-tools serve --tool automagik-agents --transport stdio
+```
 
-| Tool | Description |
-|------|-------------|
-| **evolution-api** | WhatsApp automation via Evolution API |
-| **evolution-api-v2** | Enhanced WhatsApp with media support |
-| **automagik-agents** | AI agent orchestration platform |
+**Features:**
+- Multi-agent orchestration
+- Tool composition & chaining
+- Memory management
+- Async execution
+- Built-in safety rails
 
-## 🎯 Why AutoMagik Tools?
+### Evolution API (WhatsApp) 📱
+Complete WhatsApp automation:
+- Send/receive messages
+- Media support (images, documents)
+- Group management
+- Status updates
 
-**The Problem**: AI agents need to interact with thousands of APIs, but creating MCP tools is time-consuming and repetitive.
+## 🎯 Why This Changes Everything
 
-**Our Solution**: 
-- 🚀 **Instant API → MCP Tool**: Drop any OpenAPI.json, get a fully functional MCP tool
-- 🤖 **Coming Soon: Smart Tools™**: Natural language API calls - just describe what you want
-- 🔌 **Zero Configuration**: Auto-discovery means tools just work
-- 🌐 **Universal Compatibility**: Works with Claude, Cursor, and any MCP-compatible AI
+**Before AutoMagik Tools:**
+1. Find an API you want to use
+2. Read documentation for hours
+3. Write tool definitions manually
+4. Test and debug
+5. Maintain when API changes
+6. Repeat for every API 😭
+
+**With AutoMagik Tools:**
+1. Find the OpenAPI URL
+2. Run one command
+3. Done! 🎉
+
+**The killer part**: When the API provider updates their OpenAPI spec, your tool automatically gets the new endpoints. No code changes, no maintenance.
 
 <details>
 <summary><b>🛠️ Developer Documentation</b></summary>

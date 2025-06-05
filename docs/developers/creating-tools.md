@@ -21,6 +21,9 @@ make new-tool
 
 # From OpenAPI specification
 make tool URL=https://api.example.com/openapi.json
+
+# NEW: Dynamic OpenAPI deployment (no generation needed)
+uvx automagik-tools serve --openapi-url https://api.example.com/openapi.json
 ```
 
 ### Manual Creation
@@ -315,7 +318,9 @@ async def safe_list_repos(**kwargs) -> List[Dict[str, Any]]:
 # tests/tools/test_github.py
 import pytest
 from unittest.mock import patch, AsyncMock
+import httpx
 from automagik_tools.tools.github import mcp
+from fastmcp.exceptions import ToolError
 
 @pytest.mark.asyncio
 async def test_list_repos():
@@ -715,7 +720,7 @@ make validate-tool TOOL=github
 
 ```bash
 # Unit tests
-make test-tool TOOL=github
+uv run pytest tests/tools/test_github.py -v
 
 # Integration test
 make serve TOOL=github
@@ -850,6 +855,13 @@ async def test_function():
 # Run it
 import asyncio
 asyncio.run(test_function())
+```
+
+### 4. Test with Dynamic OpenAPI
+
+```bash
+# Test OpenAPI tool directly
+uvx automagik-tools serve --openapi-url https://api.github.com/openapi.json --api-key YOUR_TOKEN
 ```
 
 ## Next Steps

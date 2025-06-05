@@ -46,7 +46,9 @@ tests/
 # tests/tools/test_weather.py
 import pytest
 from unittest.mock import patch, AsyncMock
+import httpx
 from automagik_tools.tools.weather import mcp
+from fastmcp.exceptions import ToolError
 
 class TestWeatherTool:
     """Test suite for weather tool."""
@@ -312,7 +314,7 @@ async def test_stdio_transport():
     
     # Start server process
     proc = await asyncio.create_subprocess_exec(
-        "python", "-m", "automagik_tools", "serve", 
+        "uv", "run", "python", "-m", "automagik_tools", "serve", 
         "--tool", "weather", "--transport", "stdio",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
@@ -457,28 +459,30 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+    
     - name: Install dependencies
       run: |
-        pip install uv
         uv sync --all-extras
     
     - name: Run unit tests
       run: |
-        pytest tests/test_unit_fast.py -v
+        uv run pytest tests/test_unit_fast.py -v
     
     - name: Run MCP protocol tests
       run: |
-        pytest tests/test_mcp_protocol.py -v
+        uv run pytest tests/test_mcp_protocol.py -v
     
     - name: Run integration tests
       env:
         GITHUB_TOKEN: ${{ secrets.TEST_GITHUB_TOKEN }}
       run: |
-        pytest tests/test_integration.py -v -m integration
+        uv run pytest tests/test_integration.py -v -m integration
     
     - name: Generate coverage report
       run: |
-        pytest --cov=automagik_tools --cov-report=xml
+        uv run pytest --cov=automagik_tools --cov-report=xml
     
     - name: Upload coverage
       uses: codecov/codecov-action@v3
@@ -493,7 +497,7 @@ repos:
     hooks:
       - id: pytest-unit
         name: Unit Tests
-        entry: pytest tests/test_unit_fast.py
+        entry: uv run pytest tests/test_unit_fast.py
         language: system
         pass_filenames: false
         always_run: true
@@ -654,26 +658,26 @@ async def test_concurrent_requests():
 make test
 
 # Run specific test file
-pytest tests/tools/test_weather.py
+uv run pytest tests/tools/test_weather.py
 
 # Run specific test
-pytest tests/tools/test_weather.py::test_get_weather
+uv run pytest tests/tools/test_weather.py::test_get_weather
 
 # Run with coverage
-pytest --cov=automagik_tools --cov-report=html
+uv run pytest --cov=automagik_tools --cov-report=html
 
 # Run only marked tests
-pytest -m "not integration"  # Skip integration tests
-pytest -m "unit"  # Only unit tests
+uv run pytest -m "not integration"  # Skip integration tests
+uv run pytest -m "unit"  # Only unit tests
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run with print statements
-pytest -s
+uv run pytest -s
 
 # Run in parallel
-pytest -n auto  # Use all CPU cores
+uv run pytest -n auto  # Use all CPU cores
 ```
 
 ### Debugging Tests
@@ -721,11 +725,11 @@ exclude_lines = [
 
 ```bash
 # Find slow tests
-pytest --durations=10
+uv run pytest --durations=10
 
 # Find flaky tests
-pytest --lf  # Run last failed
-pytest --ff  # Run failed first
+uv run pytest --lf  # Run last failed
+uv run pytest --ff  # Run failed first
 ```
 
 ### 2. Maintain Test Quality

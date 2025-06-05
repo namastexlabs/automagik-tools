@@ -25,7 +25,9 @@ cd automagik-tools
 make install
 
 # Or manually with uv
-pip install uv
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Then sync dependencies
 uv sync --all-extras
 ```
 
@@ -57,11 +59,12 @@ make dev-server
 automagik-tools/
 ├── automagik_tools/          # Main package
 │   ├── cli.py               # CLI entry point
-│   ├── servers/             # Server implementations
-│   │   ├── hub.py          # Multi-tool server
-│   │   └── *.py            # Individual servers
-│   └── tools/               # Tool implementations
+│   ├── hub.py               # Multi-tool server
+│   └── tools/               # Tool implementations (self-contained)
 │       ├── evolution_api/   # WhatsApp integration
+│       │   ├── __init__.py  # Tool server implementation
+│       │   ├── config.py    # Configuration
+│       │   └── __main__.py  # FastMCP CLI compatibility
 │       ├── automagik_agents/# AI agents
 │       └── your_tool/       # Your new tool here!
 ├── scripts/                  # Utility scripts
@@ -83,6 +86,9 @@ make new-tool
 
 # Or from OpenAPI spec
 make tool URL=https://api.example.com/openapi.json
+
+# NEW: Dynamic OpenAPI deployment (no generation needed)
+uvx automagik-tools serve --openapi-url https://api.example.com/openapi.json --api-key YOUR_KEY
 ```
 
 ### 2. Implement Your Tool
@@ -118,7 +124,7 @@ my-tool = "automagik_tools.tools.my_tool:mcp"
 
 ```bash
 # Run unit tests
-make test-tool TOOL=my-tool
+uv run pytest tests/tools/test_my-tool.py -v
 
 # Validate MCP compliance
 make validate-tool TOOL=my-tool
@@ -229,6 +235,7 @@ async def get_forecast(city: str, days: int = 5) -> list:
 # tests/tools/test_weather.py
 import pytest
 from unittest.mock import patch, AsyncMock
+import httpx
 from automagik_tools.tools.weather import mcp
 
 @pytest.mark.asyncio
@@ -422,10 +429,10 @@ make dev-server
 
 ```bash
 # Install MCP Inspector
-npm install -g @modelcontextprotocol/inspector
+npx @modelcontextprotocol/inspector
 
 # Inspect your tool
-mcp-inspector uvx automagik-tools serve --tool my-tool --transport stdio
+npx @modelcontextprotocol/inspector uvx automagik-tools serve --tool my-tool --transport stdio
 ```
 
 ## Next Steps

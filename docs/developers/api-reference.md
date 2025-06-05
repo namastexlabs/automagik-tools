@@ -2,6 +2,70 @@
 
 Complete API reference for AutoMagik Tools development.
 
+## 🌟 Dynamic OpenAPI Integration
+
+The killer feature that sets AutoMagik Tools apart - turn any OpenAPI spec into a live MCP server.
+
+### How It Works
+
+```python
+# Under the hood, we use FastMCP's native OpenAPI support
+from fastmcp import FastMCP
+
+# This happens automatically when you use --openapi-url
+mcp = FastMCP.from_openapi(
+    openapi_url="https://api.example.com/openapi.json",
+    api_key=api_key,  # Optional authentication
+    base_url=base_url  # Optional base URL override
+)
+```
+
+### Key Benefits
+
+1. **Zero Code**: No tool definitions to write
+2. **Always Current**: Fetches spec on startup - API updates = tool updates
+3. **Full Feature Support**: All OpenAPI features work (auth, parameters, schemas)
+4. **Universal**: Works with any valid OpenAPI 3.0+ specification
+
+### Common OpenAPI Sources
+
+```bash
+# Discord
+https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json
+
+# Stripe
+https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json
+
+# GitHub
+https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+
+# Slack
+https://api.slack.com/specs/openapi/v2/slack_web.json
+
+# Your API
+https://api.yourcompany.com/v1/openapi.json
+```
+
+### Authentication Patterns
+
+```bash
+# Bearer token (most common)
+uvx automagik-tools serve \
+  --openapi-url https://api.example.com/openapi.json \
+  --api-key "Bearer YOUR_TOKEN"
+
+# API key header
+uvx automagik-tools serve \
+  --openapi-url https://api.example.com/openapi.json \
+  --api-key "YOUR_API_KEY"
+
+# Environment variable (recommended for security)
+export API_KEY="YOUR_SECRET_KEY"
+uvx automagik-tools serve \
+  --openapi-url https://api.example.com/openapi.json \
+  --api-key $API_KEY
+```
+
 ## Core Components
 
 ### FastMCP Server
@@ -46,7 +110,7 @@ async def tool_function(param1: str, param2: int = 10) -> dict:
 ### Main Commands
 
 ```bash
-automagik-tools [OPTIONS] COMMAND [ARGS]...
+uvx automagik-tools [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Commands:**
@@ -60,31 +124,65 @@ automagik-tools [OPTIONS] COMMAND [ARGS]...
 ### Serve Command
 
 ```bash
-automagik-tools serve [OPTIONS]
+uvx automagik-tools serve [OPTIONS]
 ```
 
 **Options:**
-- `--tool TEXT` - Tool name to serve (required)
+- `--tool TEXT` - Tool name to serve (use with built-in tools)
+- `--openapi-url TEXT` - **Dynamic OpenAPI spec URL** (the killer feature!)
 - `--transport [stdio|sse|http]` - Transport type (default: stdio)
 - `--host TEXT` - Host for SSE/HTTP (default: 127.0.0.1)
 - `--port INTEGER` - Port for SSE/HTTP (default: 8000)
+- `--api-key TEXT` - API key for OpenAPI service
+- `--base-url TEXT` - Override base URL for OpenAPI
+
+#### 🌟 Dynamic OpenAPI Mode (The Magic)
+
+This is what makes AutoMagik Tools special. Instead of writing tool definitions, just point to an OpenAPI spec:
+
+```bash
+# Discord API - instantly available to your AI
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
+  --transport stdio
+
+# With authentication
+uvx automagik-tools serve \
+  --openapi-url https://api.stripe.com/openapi/spec3.json \
+  --api-key $STRIPE_API_KEY
+
+# Custom base URL (for proxies or local development)
+uvx automagik-tools serve \
+  --openapi-url https://api.internal.com/openapi.json \
+  --base-url https://proxy.internal.com \
+  --api-key $API_KEY
+```
+
+**How it works:**
+1. Fetches the OpenAPI spec from the URL on startup
+2. Automatically generates MCP tools for every endpoint
+3. Handles authentication, parameters, and responses
+4. **Auto-updates**: If the API changes, just restart to get new endpoints!
 
 **Examples:**
 ```bash
-# Serve via stdio for MCP clients
-automagik-tools serve --tool evolution-api --transport stdio
+# Serve built-in tool
+uvx automagik-tools serve --tool evolution-api --transport stdio
 
-# Serve via SSE for web clients
-automagik-tools serve --tool evolution-api --transport sse --port 8080
+# Serve any OpenAPI spec
+uvx automagik-tools serve --openapi-url https://api.example.com/openapi.json
 
-# Serve via HTTP API
-automagik-tools serve --tool evolution-api --transport http --host 0.0.0.0
+# SSE transport for web apps
+uvx automagik-tools serve --tool evolution-api --transport sse --port 8080
+
+# HTTP API mode
+uvx automagik-tools serve --openapi-url <url> --transport http --host 0.0.0.0
 ```
 
 ### Serve-All Command
 
 ```bash
-automagik-tools serve-all [OPTIONS]
+uvx automagik-tools serve-all [OPTIONS]
 ```
 
 **Options:**
@@ -95,7 +193,7 @@ automagik-tools serve-all [OPTIONS]
 ### Tool Command
 
 ```bash
-automagik-tools tool --url OPENAPI_URL
+uvx automagik-tools tool --url OPENAPI_URL
 ```
 
 **Options:**
@@ -103,7 +201,7 @@ automagik-tools tool --url OPENAPI_URL
 
 **Example:**
 ```bash
-automagik-tools tool --url https://api.stripe.com/openapi/v3.json
+uvx automagik-tools tool --url https://api.stripe.com/openapi/v3.json
 ```
 
 ## Configuration
@@ -462,7 +560,7 @@ class SearchParams(BaseModel):
 @mcp.tool()
 async def search(params: SearchParams) -> list:
     """Search with validated parameters."""
-    validated = params.dict()
+    validated = params.model_dump()
     return await perform_search(**validated)
 ```
 
@@ -557,8 +655,12 @@ async def time_limited_operation(user_id: str) -> str:
 FROM python:3.11-slim as builder
 
 WORKDIR /build
+# Install uv
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    
 COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv pip install --system .
+RUN /root/.cargo/bin/uv pip install --system .
 
 FROM python:3.11-slim
 
