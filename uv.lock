@@ -223,6 +223,10 @@ all = [
     { name = "pygithub" },
     { name = "python-dotenv" },
 ]
+automagik-agents = [
+    { name = "httpx" },
+    { name = "python-dotenv" },
+]
 dev = [
     { name = "black" },
     { name = "mypy" },
@@ -258,12 +262,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "automagik-tools", extras = ["evolution-api", "discord", "notion", "github"], marker = "extra == 'all'" },
+    { name = "automagik-tools", extras = ["evolution-api", "automagik-agents", "discord", "notion", "github"], marker = "extra == 'all'" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "build", specifier = ">=1.2.2.post1" },
     { name = "discord-py", marker = "extra == 'discord'", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "fastmcp", specifier = ">=2.5.0" },
+    { name = "httpx", marker = "extra == 'automagik-agents'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'evolution-api'", specifier = ">=0.28.1" },
     { name = "importlib-metadata", specifier = ">=6.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -276,6 +281,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "python-dotenv", marker = "extra == 'automagik-agents'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'discord'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'evolution-api'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'github'", specifier = ">=1.1.0" },
@@ -288,7 +294,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.24.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
-provides-extras = ["evolution-api", "discord", "notion", "github", "dev", "all"]
+provides-extras = ["evolution-api", "automagik-agents", "discord", "notion", "github", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [
