@@ -4,7 +4,7 @@ Complete API reference for AutoMagik Tools development.
 
 ## 🌟 Dynamic OpenAPI Integration
 
-The killer feature that sets AutoMagik Tools apart - turn any OpenAPI spec into a live MCP server.
+Turn any OpenAPI spec into a live MCP server instantly.
 
 ### How It Works
 
@@ -129,16 +129,16 @@ uvx automagik-tools serve [OPTIONS]
 
 **Options:**
 - `--tool TEXT` - Tool name to serve (use with built-in tools)
-- `--openapi-url TEXT` - **Dynamic OpenAPI spec URL** (the killer feature!)
+- `--openapi-url TEXT` - Dynamic OpenAPI spec URL
 - `--transport [stdio|sse|http]` - Transport type (default: stdio)
 - `--host TEXT` - Host for SSE/HTTP (default: 127.0.0.1)
 - `--port INTEGER` - Port for SSE/HTTP (default: 8000)
 - `--api-key TEXT` - API key for OpenAPI service
 - `--base-url TEXT` - Override base URL for OpenAPI
 
-#### 🌟 Dynamic OpenAPI Mode (The Magic)
+#### Dynamic OpenAPI Mode
 
-This is what makes AutoMagik Tools special. Instead of writing tool definitions, just point to an OpenAPI spec:
+Instead of writing tool definitions, just point to an OpenAPI spec:
 
 ```bash
 # Discord API - instantly available to your AI
