@@ -144,3 +144,7 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 4. **Reliability**: Proper error handling and recovery
 5. **Security**: Safe by default, no credential leaks
 6. **Performance**: Efficient resource usage, async throughout
+
+## Memories
+
+- Always use uv to run python or pytest, and uvx for testing the application

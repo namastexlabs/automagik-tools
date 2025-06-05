@@ -7,7 +7,6 @@ This tool provides MCP integration for Evolution API v2 API using FastMCP's nati
 import httpx
 from typing import Optional, Dict, Any
 from fastmcp import FastMCP
-from fastmcp.server.openapi import RouteMap, MCPType
 
 from .config import EvolutionApiV2Config
 
@@ -20,40 +19,41 @@ mcp: Optional[FastMCP] = None
 
 def create_mcp_from_openapi(tool_config: EvolutionApiV2Config) -> FastMCP:
     """Create MCP server from OpenAPI specification"""
-    
+
     # Create HTTP client with authentication
     headers = {}
     if tool_config.api_key:
         headers["X-API-Key"] = tool_config.api_key
         # Also support Authorization header
         headers["Authorization"] = f"Bearer {tool_config.api_key}"
-    
+
     client = httpx.AsyncClient(
-        base_url=tool_config.base_url,
-        headers=headers,
-        timeout=tool_config.timeout
+        base_url=tool_config.base_url, headers=headers, timeout=tool_config.timeout
     )
-    
+
     # Fetch OpenAPI spec
     try:
         # Try the configured OpenAPI URL first
-        openapi_url = tool_config.openapi_url or "https://raw.githubusercontent.com/EvolutionAPI/docs-evolution/refs/heads/main/openapi/openapi-v2.json"
+        openapi_url = (
+            tool_config.openapi_url
+            or "https://raw.githubusercontent.com/EvolutionAPI/docs-evolution/refs/heads/main/openapi/openapi-v2.json"
+        )
         response = httpx.get(openapi_url, timeout=30)
         response.raise_for_status()
         openapi_spec = response.json()
-    except Exception as e:
+    except Exception:
         # Fallback to a minimal spec if we can't fetch
         openapi_spec = {
             "openapi": "3.0.0",
             "info": {
                 "title": "Evolution API v2",
                 "description": "WhatsApp integration via Evolution API v2",
-                "version": "1.0.0"
+                "version": "1.0.0",
             },
             "servers": [{"url": tool_config.base_url}],
-            "paths": {}
+            "paths": {},
         }
-    
+
     # Create MCP server from OpenAPI spec
     mcp_server = FastMCP.from_openapi(
         openapi_spec=openapi_spec,
@@ -64,12 +64,11 @@ def create_mcp_from_openapi(tool_config: EvolutionApiV2Config) -> FastMCP:
             # You can customize route mapping here
             # Example: Make all analytics endpoints tools
             # RouteMap(methods=["GET"], pattern=r"^/analytics/.*", mcp_type=MCPType.TOOL),
-            
             # Example: Exclude admin endpoints
             # RouteMap(pattern=r"^/admin/.*", mcp_type=MCPType.EXCLUDE),
-        ]
+        ],
     )
-    
+
     return mcp_server
 
 
@@ -78,10 +77,10 @@ def create_tool(tool_config: Optional[EvolutionApiV2Config] = None) -> FastMCP:
     """Create the MCP tool instance"""
     global config, mcp
     config = tool_config or EvolutionApiV2Config()
-    
+
     if mcp is None:
         mcp = create_mcp_from_openapi(config)
-    
+
     return mcp
 
 
@@ -124,12 +123,13 @@ def get_metadata() -> Dict[str, Any]:
         "author": "Automagik Team",
         "category": "api",
         "tags": ["api", "integration", "openapi"],
-        "config_env_prefix": "EVOLUTION_API_V2_"
+        "config_env_prefix": "EVOLUTION_API_V2_",
     }
 
 
 def run_standalone(host: str = "0.0.0.0", port: int = 8000):
     """Run the tool as a standalone service"""
     import uvicorn
+
     server = create_server()
     uvicorn.run(server.asgi(), host=host, port=port)

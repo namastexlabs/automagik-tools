@@ -16,10 +16,19 @@ from .config import EvolutionAPIConfig
 class SendTextMessage(BaseModel):
     number: str = Field(description="Number to receive the message (with country code)")
     text: str = Field(description="Text message to send")
-    delay: Optional[int] = Field(default=None, description="Presence time in milliseconds before sending message")
-    linkPreview: Optional[bool] = Field(default=True, description="Shows a preview of the target website if there's a link")
-    mentionsEveryOne: Optional[bool] = Field(default=False, description="Mention everyone when the message is sent")
-    mentioned: Optional[List[str]] = Field(default=None, description="Numbers to mention")
+    delay: Optional[int] = Field(
+        default=None, description="Presence time in milliseconds before sending message"
+    )
+    linkPreview: Optional[bool] = Field(
+        default=True,
+        description="Shows a preview of the target website if there's a link",
+    )
+    mentionsEveryOne: Optional[bool] = Field(
+        default=False, description="Mention everyone when the message is sent"
+    )
+    mentioned: Optional[List[str]] = Field(
+        default=None, description="Numbers to mention"
+    )
 
 
 class InstanceConfig(BaseModel):
@@ -38,30 +47,28 @@ class ProfileUpdate(BaseModel):
 # Store config at module level to avoid passing it around
 _config = None
 
+
 # Helper function to make Evolution API requests
 async def make_evolution_request(
     method: str,
     endpoint: str,
     instance: str,
     data: Optional[Dict] = None,
-    ctx: Optional[Context] = None
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """Make authenticated request to Evolution API"""
     global _config
     if not _config or not _config.api_key:
         raise ValueError("Evolution API key is required but not configured")
-    
+
     # Remove trailing slash from base URL and ensure proper URL construction
-    base_url = _config.base_url.rstrip('/')
+    base_url = _config.base_url.rstrip("/")
     url = f"{base_url}/{endpoint.format(instance=instance)}"
-    headers = {
-        "apikey": _config.api_key,
-        "Content-Type": "application/json"
-    }
-    
+    headers = {"apikey": _config.api_key, "Content-Type": "application/json"}
+
     if ctx:
         await ctx.info(f"Making {method} request to Evolution API: {url}")
-    
+
     async with httpx.AsyncClient(timeout=_config.timeout) as client:
         try:
             if method.upper() == "GET":
@@ -74,12 +81,14 @@ async def make_evolution_request(
                 response = await client.delete(url, headers=headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
-            
+
             response.raise_for_status()
             return response.json()
-        
+
         except httpx.HTTPStatusError as e:
-            error_msg = f"Evolution API error: {e.response.status_code} - {e.response.text}"
+            error_msg = (
+                f"Evolution API error: {e.response.status_code} - {e.response.text}"
+            )
             if ctx:
                 await ctx.error(error_msg)
             raise ValueError(error_msg)
@@ -94,12 +103,12 @@ def create_tool(config: Any) -> FastMCP:
     """Create the Evolution API MCP tool"""
     global _config
     _config = config
-    
+
     mcp = FastMCP(
         "Evolution API Tool",
-        instructions="Use this tool to interact with WhatsApp via Evolution API. Ensure you have a valid instance before sending messages."
+        instructions="Use this tool to interact with WhatsApp via Evolution API. Ensure you have a valid instance before sending messages.",
     )
-    
+
     # MCP Tools
     @mcp.tool(
         annotations={
@@ -114,11 +123,11 @@ def create_tool(config: Any) -> FastMCP:
         text: str,
         delay: Optional[int] = None,
         link_preview: bool = True,
-        ctx: Context = None
+        ctx: Context = None,
     ) -> Dict[str, Any]:
         """
         Send a plain text message via Evolution API
-        
+
         Args:
             instance: Name of the WhatsApp instance
             number: Phone number to send message to (with country code)
@@ -127,18 +136,15 @@ def create_tool(config: Any) -> FastMCP:
             link_preview: Whether to show link previews
         """
         message_data = SendTextMessage(
-            number=number,
-            text=text,
-            delay=delay,
-            linkPreview=link_preview
+            number=number, text=text, delay=delay, linkPreview=link_preview
         )
-        
+
         return await make_evolution_request(
             "POST",
             "message/sendText/{instance}",
             instance,
             message_data.model_dump(exclude_none=True),
-            ctx
+            ctx,
         )
 
     @mcp.tool(
@@ -152,29 +158,26 @@ def create_tool(config: Any) -> FastMCP:
         instance_name: str,
         integration: str = "WHATSAPP-BAILEYS",
         token: Optional[str] = None,
-        ctx: Context = None
+        ctx: Context = None,
     ) -> Dict[str, Any]:
         """
         Create a new WhatsApp instance
-        
+
         Args:
             instance_name: Name for the new instance
             integration: Integration type (default: WHATSAPP-BAILEYS)
             token: Optional instance token
         """
         instance_data = InstanceConfig(
-            instanceName=instance_name,
-            integration=integration,
-            token=token
+            instanceName=instance_name, integration=integration, token=token
         )
-        
+
         return await make_evolution_request(
             "POST",
             "instance/create",
             instance_name,
             instance_data.model_dump(exclude_none=True),
             ctx,
-            config
         )
 
     @mcp.tool(
@@ -187,7 +190,7 @@ def create_tool(config: Any) -> FastMCP:
     async def get_instance_info(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Get information about a WhatsApp instance
-        
+
         Args:
             instance: Name of the instance to query
         """
@@ -196,7 +199,6 @@ def create_tool(config: Any) -> FastMCP:
             "instance/fetchInstances?instanceName={instance}",
             instance,
             ctx=ctx,
-            config=config
         )
 
     @mcp.tool(
@@ -206,10 +208,12 @@ def create_tool(config: Any) -> FastMCP:
             "openWorldHint": True,
         }
     )
-    async def get_connection_state(instance: str, ctx: Context = None) -> Dict[str, Any]:
+    async def get_connection_state(
+        instance: str, ctx: Context = None
+    ) -> Dict[str, Any]:
         """
         Get the connection state of a WhatsApp instance
-        
+
         Args:
             instance: Name of the instance to check
         """
@@ -218,23 +222,18 @@ def create_tool(config: Any) -> FastMCP:
             "instance/connectionState/{instance}",
             instance,
             ctx=ctx,
-            config=config
         )
 
     @mcp.tool()
     async def restart_instance(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Restart a WhatsApp instance
-        
+
         Args:
             instance: Name of the instance to restart
         """
         return await make_evolution_request(
-            "PUT",
-            "instance/restart/{instance}",
-            instance,
-            ctx=ctx,
-            config=config
+            "PUT", "instance/restart/{instance}", instance, ctx=ctx
         )
 
     @mcp.tool(
@@ -247,16 +246,12 @@ def create_tool(config: Any) -> FastMCP:
     async def delete_instance(instance: str, ctx: Context = None) -> Dict[str, Any]:
         """
         Delete a WhatsApp instance
-        
+
         Args:
             instance: Name of the instance to delete
         """
         return await make_evolution_request(
-            "DELETE",
-            "instance/delete/{instance}",
-            instance,
-            ctx=ctx,
-            config=config
+            "DELETE", "instance/delete/{instance}", instance, ctx=ctx
         )
 
     @mcp.tool(
@@ -267,67 +262,50 @@ def create_tool(config: Any) -> FastMCP:
         }
     )
     async def check_whatsapp_number(
-        instance: str,
-        numbers: List[str],
-        ctx: Context = None
+        instance: str, numbers: List[str], ctx: Context = None
     ) -> Dict[str, Any]:
         """
         Check if phone numbers are registered on WhatsApp
-        
+
         Args:
             instance: Name of the instance
             numbers: List of phone numbers to check
         """
         data = {"numbers": numbers}
         return await make_evolution_request(
-            "POST",
-            "chat/whatsappNumbers/{instance}",
-            instance,
-            data,
-            ctx,
-            config
+            "POST", "chat/whatsappNumbers/{instance}", instance, data, ctx
         )
 
     @mcp.tool()
-    async def fetch_profile(instance: str, number: str, ctx: Context = None) -> Dict[str, Any]:
+    async def fetch_profile(
+        instance: str, number: str, ctx: Context = None
+    ) -> Dict[str, Any]:
         """
         Fetch profile information for a WhatsApp number
-        
+
         Args:
             instance: Name of the instance
             number: Phone number to fetch profile for
         """
         data = {"number": number}
         return await make_evolution_request(
-            "POST",
-            "chat/fetchProfile/{instance}",
-            instance,
-            data,
-            ctx,
-            config
+            "POST", "chat/fetchProfile/{instance}", instance, data, ctx
         )
 
     @mcp.tool()
     async def update_profile_name(
-        instance: str,
-        name: str,
-        ctx: Context = None
+        instance: str, name: str, ctx: Context = None
     ) -> Dict[str, Any]:
         """
         Update the profile name for the instance
-        
+
         Args:
             instance: Name of the instance
             name: New profile name
         """
         data = {"name": name}
         return await make_evolution_request(
-            "POST",
-            "chat/updateProfileName/{instance}",
-            instance,
-            data,
-            ctx,
-            config
+            "POST", "chat/updateProfileName/{instance}", instance, data, ctx
         )
 
     @mcp.tool()
@@ -335,27 +313,19 @@ def create_tool(config: Any) -> FastMCP:
         instance: str,
         remote_jid: str,
         read_messages: List[Dict[str, str]],
-        ctx: Context = None
+        ctx: Context = None,
     ) -> Dict[str, Any]:
         """
         Mark messages as read
-        
+
         Args:
             instance: Name of the instance
             remote_jid: Remote JID of the chat
             read_messages: List of message IDs to mark as read
         """
-        data = {
-            "readMessages": read_messages,
-            "remoteJid": remote_jid
-        }
+        data = {"readMessages": read_messages, "remoteJid": remote_jid}
         return await make_evolution_request(
-            "POST",
-            "chat/markMessageAsRead/{instance}",
-            instance,
-            data,
-            ctx,
-            config
+            "POST", "chat/markMessageAsRead/{instance}", instance, data, ctx
         )
 
     # MCP Resources
@@ -363,7 +333,9 @@ def create_tool(config: Any) -> FastMCP:
     async def list_all_instances(ctx: Context = None) -> str:
         """Get a list of all Evolution API instances"""
         try:
-            result = await make_evolution_request("GET", "instance/fetchInstances", "", ctx=ctx)
+            result = await make_evolution_request(
+                "GET", "instance/fetchInstances", "", ctx=ctx
+            )
             return f"Available instances: {result}"
         except Exception as e:
             return f"Error fetching instances: {str(e)}"
@@ -387,25 +359,27 @@ def create_tool(config: Any) -> FastMCP:
             "timeout": _config.timeout if _config else "Not configured",
             "supported_features": [
                 "Send text messages",
-                "Instance management", 
+                "Instance management",
                 "Profile management",
                 "Message status tracking",
-                "WhatsApp number validation"
-            ]
+                "WhatsApp number validation",
+            ],
         }
         return f"Evolution API Configuration: {config_info}"
 
     # MCP Prompts
     @mcp.prompt()
-    def whatsapp_message_template(recipient: str, message_type: str = "greeting") -> str:
+    def whatsapp_message_template(
+        recipient: str, message_type: str = "greeting"
+    ) -> str:
         """Generate a WhatsApp message template"""
         templates = {
             "greeting": f"Hello! 👋 This is a message sent via Evolution API to {recipient}",
             "business": f"Dear {recipient}, thank you for your interest in our services. How can we help you today?",
             "reminder": f"Hi {recipient}, this is a friendly reminder about your upcoming appointment.",
-            "support": f"Hello {recipient}, we're here to help! Please let us know how we can assist you."
+            "support": f"Hello {recipient}, we're here to help! Please let us know how we can assist you.",
         }
-        
+
         return templates.get(message_type, templates["greeting"])
 
     @mcp.prompt()
@@ -444,7 +418,7 @@ def get_metadata() -> Dict[str, Any]:
         "author": "Automagik Team",
         "category": "communication",
         "tags": ["whatsapp", "messaging", "api"],
-        "config_env_prefix": "EVOLUTION_"
+        "config_env_prefix": "EVOLUTION_",
     }
 
 
@@ -469,12 +443,12 @@ def get_required_env_vars() -> Dict[str, str]:
     """Return required environment variables"""
     schema = EvolutionAPIConfig.model_json_schema()
     required = {}
-    
-    for field, props in schema.get('properties', {}).items():
-        if field in schema.get('required', []):
+
+    for field, props in schema.get("properties", {}).items():
+        if field in schema.get("required", []):
             env_var = f"EVOLUTION_{field.upper()}"
-            required[env_var] = props.get('description', '')
-    
+            required[env_var] = props.get("description", "")
+
     return required
 
 
@@ -482,15 +456,22 @@ def run_standalone(host: str = "0.0.0.0", port: int = 8000):
     """Run tool as standalone service"""
     config = EvolutionAPIConfig()
     server = create_server(config)
-    
+
     print(f"Starting Evolution API MCP server on {host}:{port}")
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Base URL: {config.base_url}")
     print(f"  API Key: {'***' if config.api_key else 'Not set'}")
     print(f"  Timeout: {config.timeout}s")
-    
+
     server.run(transport="sse", host=host, port=port)
 
 
-__all__ = ["create_tool", "create_server", "get_metadata", "get_config_class", 
-          "get_config_schema", "get_required_env_vars", "run_standalone"] 
+__all__ = [
+    "create_tool",
+    "create_server",
+    "get_metadata",
+    "get_config_class",
+    "get_config_schema",
+    "get_required_env_vars",
+    "run_standalone",
+]

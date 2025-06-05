@@ -5,4 +5,4 @@ This package contains all the MCP tools that can be loaded and used
 with the automagik-tools framework.
 """
 
-__all__ = [] 
+__all__ = []
