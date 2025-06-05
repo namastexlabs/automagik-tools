@@ -1392,15 +1392,16 @@ async def get_claude_code_health(x_api_key: Optional[str] = None, ctx: Optional[
 
 
 # Resources
-@mcp.resource("config")
-async def get_api_config(ctx: Optional[Context] = None) -> str:
-    """Get the API configuration and available endpoints"""
-    return """
-This tool was auto-generated from an OpenAPI specification.
-Base URL: https://api.example.com
-Total endpoints: 47
-Use the tool functions to interact with the API.
-"""
+# Temporarily disabled due to FastMCP URI validation issues
+# @mcp.resource("file:///config")
+# async def get_api_config_v2(ctx: Optional[Context] = None) -> str:
+#     """Get the API configuration and available endpoints"""
+#     return """
+# This tool was auto-generated from an OpenAPI specification.
+# Base URL: https://api.example.com
+# Total endpoints: 47
+# Use the tool functions to interact with the API.
+# """
 
 
 # Prompts

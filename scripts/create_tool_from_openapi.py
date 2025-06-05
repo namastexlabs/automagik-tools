@@ -450,17 +450,18 @@ async def {func_name}({params_str}) -> Dict[str, Any]:
 
 '''
 
-    # Add resources section
+    # Add resources section (commented out due to FastMCP URI validation issues)
     code += f'''# Resources
-@mcp.resource("config")
-async def get_api_config(ctx: Optional[Context] = None) -> str:
-    """Get the API configuration and available endpoints"""
-    return """
-This tool was auto-generated from an OpenAPI specification.
-Base URL: {base_url}
-Total endpoints: {len(endpoints)}
-Use the tool functions to interact with the API.
-"""
+# Note: Resources are temporarily disabled due to FastMCP URI validation issues
+# @mcp.resource("config")
+# async def get_api_config(ctx: Optional[Context] = None) -> str:
+#     """Get the API configuration and available endpoints"""
+#     return """
+# This tool was auto-generated from an OpenAPI specification.
+# Base URL: {base_url}
+# Total endpoints: {len(endpoints)}
+# Use the tool functions to interact with the API.
+# """
 
 
 '''
