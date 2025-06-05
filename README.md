@@ -6,17 +6,34 @@
 
 ## Turn Any API into an AI-Ready Tool in Seconds™
 
-**The killer MCP feature**: Drop any OpenAPI URL → Get a live, auto-updating MCP server. When the API updates, your tool updates automatically. No code, no maintenance, just magic. ✨
+Drop any OpenAPI URL → Get a live, auto-updating MCP server. When the API updates, your tool updates automagikally. No code, no maintenance.
 
 Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools makes **every API on the internet instantly accessible to AI agents**.
 
-## 🌟 The Killer Feature: Dynamic OpenAPI → MCP
+## 🌟 Featured Tool: AutoMagik
+
+Production-ready AI orchestration that speaks human:
 
 ```bash
-# Example: Discord Bot in ONE command
+# Get started instantly with SSE transport
+uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+```
+
+**Key features:**
+- 💬 **Natural Language**: Just describe what you want in plain English
+- ✨ **Spark**: Spawn hives of agents in seconds for parallel workflows
+- 🔄 **Task Scheduling**: Automagikally schedule recurring tasks and routines
+- 🏗️ **Framework Agnostic**: Works with PydanticAI, LangGraph, CrewAI, LangChain, etc.
+- 🤝 **Dev Friendly**: Start with natural language, deploy with full Python source
+- 🛡️ **Production Ready**: Built for real-world use
+
+## 🚀 Dynamic OpenAPI → MCP
+
+```bash
+# Example: Discord Bot with SSE transport
 uvx automagik-tools serve \
   --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
-  --transport stdio
+  --transport sse --port 8001
 ```
 
 **That's it!** Your AI can now:
@@ -26,8 +43,8 @@ uvx automagik-tools serve \
 - Handle voice channels
 - Everything in Discord's API
 
-**The Magic**: 
-- 🔄 **Always Up-to-Date**: Fetches the OpenAPI spec on every start - if Discord updates their API, your tool automatically has the new endpoints!
+**Key Benefits**: 
+- 🔄 **Always Up-to-Date**: Fetches the OpenAPI spec on every start - if Discord updates their API, your tool automagikally has the new endpoints
 - 🚀 **Zero Code**: No writing tool definitions, no maintenance
 - 🔐 **Secure**: API keys stay in your environment
 - 🌐 **Universal**: Works with ANY OpenAPI spec (Stripe, Slack, GitHub, your internal APIs...)
@@ -37,19 +54,21 @@ uvx automagik-tools serve \
 ### 1️⃣ Test it instantly (no install needed):
 
 ```bash
-# Try with Discord API
+# Try AutoMagik - AI orchestration platform
+uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+
+# Or use any OpenAPI spec (e.g., Discord API)
 uvx automagik-tools serve \
   --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
-  --transport stdio
-
-# Or try AutoMagik Agents (our AI orchestration tool)
-uvx automagik-tools serve --tool automagik-agents --transport stdio
+  --transport sse --port 8001
 ```
 
 ### 2️⃣ Add to Claude/Cursor:
 
 ```bash
 # Generate config automatically
+uvx automagik-tools mcp-config automagik-agents
+# or
 uvx automagik-tools mcp-config discord-api
 
 # Copy the output to:
@@ -60,6 +79,35 @@ uvx automagik-tools mcp-config discord-api
 ### 3️⃣ That's it! Your AI now has superpowers 🚀
 
 ## 📋 Real-World Examples
+
+### AutoMagik Configuration (for Claude/Cursor)
+```json
+{
+  "mcpServers": {
+    "automagik": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "serve",
+        "--tool",
+        "automagik-agents",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY",
+        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json"
+      }
+    }
+  }
+}
+```
+
+Now in Claude/Cursor you can say:
+- "Use AutoMagik to analyze these 10 CSV files and find patterns"
+- "Set up a workflow that monitors my GitHub repos and creates weekly summaries"
+- "Process these customer feedback emails and categorize them by sentiment"
 
 ### Discord Bot (using official Discord OpenAPI)
 ```json
@@ -103,20 +151,19 @@ uvx automagik-tools serve \
 
 ## 🛠️ Built-in Tools
 
-### AutoMagik Agents 🤖
-Our flagship AI orchestration platform - perfect for complex workflows:
+### AutoMagik 🤖
+AI orchestration that speaks human:
 
 ```bash
-# Quick test
-uvx automagik-tools serve --tool automagik-agents --transport stdio
+# Quick test with SSE
+uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
 ```
 
-**Features:**
-- Multi-agent orchestration
-- Tool composition & chaining
-- Memory management
-- Async execution
-- Built-in safety rails
+**What you can do:**
+- ✨ Use Spark to spawn hives of agents in seconds
+- 🔄 Schedule recurring AI tasks and automations
+- 💬 Natural language task descriptions
+- 🏗️ Works with any AI framework
 
 ### Evolution API (WhatsApp) 📱
 Complete WhatsApp automation:
@@ -140,7 +187,7 @@ Complete WhatsApp automation:
 2. Run one command
 3. Done! 🎉
 
-**The killer part**: When the API provider updates their OpenAPI spec, your tool automatically gets the new endpoints. No code changes, no maintenance.
+**The best part**: When the API provider updates their OpenAPI spec, your tool automagikally gets the new endpoints. No code changes, no maintenance.
 
 <details>
 <summary><b>🛠️ Developer Documentation</b></summary>
