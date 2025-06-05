@@ -1392,7 +1392,7 @@ async def get_claude_code_health(x_api_key: Optional[str] = None, ctx: Optional[
 
 
 # Resources
-@mcp.resource("automagik-agents://config")
+@mcp.resource("config")
 async def get_api_config(ctx: Optional[Context] = None) -> str:
     """Get the API configuration and available endpoints"""
     return """

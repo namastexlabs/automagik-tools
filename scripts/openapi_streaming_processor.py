@@ -145,6 +145,15 @@ class StreamingOpenAPIProcessor:
             elapsed = time.time() - start_time
             print(f"\n[Streaming AI] Completed in {elapsed:.1f} seconds")
             
+            # Show the final accumulated content for debugging
+            if accumulated_content:
+                print(f"\n[Streaming AI] Final output length: {len(accumulated_content)} characters")
+                if len(accumulated_content) < 1000:
+                    print(f"[Streaming AI] Output preview:\n{accumulated_content}")
+                else:
+                    print(f"[Streaming AI] Output preview (first 500 chars):\n{accumulated_content[:500]}...")
+                    print(f"[Streaming AI] Output preview (last 500 chars):\n...{accumulated_content[-500:]}")
+            
             # Parse the accumulated JSON
             try:
                 # Clean up the content - remove any markdown formatting

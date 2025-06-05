@@ -452,7 +452,7 @@ async def {func_name}({params_str}) -> Dict[str, Any]:
 
     # Add resources section
     code += f'''# Resources
-@mcp.resource("{tool_name_kebab}://config")
+@mcp.resource("config")
 async def get_api_config(ctx: Optional[Context] = None) -> str:
     """Get the API configuration and available endpoints"""
     return """

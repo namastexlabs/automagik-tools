@@ -622,12 +622,12 @@ test-pattern: ## 🔍 Run tests matching pattern
 .PHONY: mcp-config
 mcp-config: ## 🔧 Generate MCP configuration for Cursor/Claude (use TOOL=name)
 	@if [ -z "$(TOOL)" ]; then \
-		$(call print_error,Usage: make mcp-config TOOL=<tool-name>); \
+		echo -e "$(FONT_RED)$(ERROR) Usage: make mcp-config TOOL=<tool-name>$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Example: make mcp-config TOOL=automagik-agents$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Example: make mcp-config TOOL=discord-api$(FONT_RESET)"; \
 		exit 1; \
 	fi
-	$(call print_status,Generating MCP configuration for $(TOOL)...)
+	@echo -e "$(FONT_CYAN)$(STATUS) Generating MCP configuration for $(TOOL)...$(FONT_RESET)"
 	@$(UV) run automagik-tools mcp-config $(TOOL)
 
 # ===========================================
