@@ -2,6 +2,7 @@
 """Standalone runner for Automagik Agents"""
 
 import argparse
+import sys
 from . import create_server, get_metadata
 
 def main():
@@ -21,7 +22,8 @@ def main():
     
     # Run with the specified transport
     if args.transport == 'stdio':
-        print(f"Starting {metadata['name']} with STDIO transport", flush=True)
+        # For stdio transport, log startup message to stderr to avoid JSON-RPC corruption
+        print(f"Starting {metadata['name']} with STDIO transport", file=sys.stderr, flush=True)
         server.run(transport='stdio')
     elif args.transport == 'sse':
         print(f"Starting {metadata['name']} with SSE transport on {args.host}:{args.port}", flush=True)
