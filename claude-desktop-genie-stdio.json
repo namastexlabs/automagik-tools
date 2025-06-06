@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "genie": {
+      "command": "uv",
+      "args": [
+        "run",
+        "automagik-tools",
+        "serve",
+        "--tool",
+        "genie",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "GENIE_AUTOMAGIK_API_KEY": "namastex888",
+        "GENIE_AUTOMAGIK_BASE_URL": "http://192.168.112.148:8881",
+        "GENIE_AUTOMAGIK_TIMEOUT": "600",
+        "OPENAI_API_KEY": "your-openai-api-key-here"
+      }
+    }
+  }
+}

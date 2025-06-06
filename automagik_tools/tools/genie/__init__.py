@@ -23,7 +23,13 @@ from fastmcp import FastMCP
 from .config import GenieConfig, get_config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+# For stdio transport, we must log to stderr to avoid corrupting JSON-RPC messages
+import sys
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stderr,  # Log to stderr to avoid stdio conflicts
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # FastMCP server setup
@@ -214,10 +220,10 @@ I can also manage my own memories - creating, updating, or deleting them as need
                     tools=tools_for_agent,
                     # Output configuration
                     markdown=True,
-                    show_tool_calls=True,
-                    debug_mode=True,
-                    # Verbose logging configuration
-                    monitoring=True,
+                    show_tool_calls=config.show_tool_calls,
+                    debug_mode=False,  # MUST be False for stdio transport to avoid JSON errors
+                    # Verbose logging configuration  
+                    monitoring=False,  # MUST be False for stdio transport to avoid DEBUG output
                     # Instructions for memory management
                     instructions=[
                         "Always use your memory to provide personalized responses based on past interactions",
