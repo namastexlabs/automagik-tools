@@ -91,6 +91,8 @@ export GENIE_AUTOMAGIK_TIMEOUT="600"
 
 ### Add Genie to Claude/Cursor (Universal Orchestrator)
 
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=discord&config=eyJjb21tYW5kIjoidXZ4IGF1dG9tYWdpay10b29sc0BsYXRlc3Qgc2VydmUgLS1vcGVuYXBpLXVybCBodHRwczovL3Jhdy5naXRodWJ1c2VyY29udGVudC5jb20vZGlzY29yZC9kaXNjb3JkLWFwaS1zcGVjL21haW4vc3BlY3Mvb3BlbmFwaS5qc29uIC0tdHJhbnNwb3J0IHN0ZGlvIiwiZW52Ijp7IkRJU0NPUkRfVE9LRU4iOiJZT1VSX0JPVF9UT0tFTiJ9fQ%3D%3D)
+
 ```json
 {
   "mcpServers": {
@@ -153,6 +155,8 @@ JSON_PROCESSOR_MODEL=gpt-4.1-nano
 
 ### Copy this into Claude/Cursor for instant API orchestration:
 
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=automagik&config=eyJjb21tYW5kIjoidXZ4IGF1dG9tYWdpay10b29sc0BsYXRlc3Qgc2VydmUgLS10b29sIGF1dG9tYWdpayAtLXRyYW5zcG9ydCBzdGRpbyIsImVudiI6eyJBVVRPTUFHSUtfQUdFTlRTX0FQSV9LRVkiOiJZT1VSX0FQSV9LRVkiLCJBVVRPTUFHSUtfQUdFTlRTX0JBU0VfVVJMIjoiaHR0cDovL2xvY2FsaG9zdDo4ODgxIiwiQVVUT01BR0lLX0FHRU5UU19PUEVOQVBJX1VSTCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODg4MS9hcGkvdjEvb3BlbmFwaS5qc29uIn19)
 ```json
 {
   "mcpServers": {
