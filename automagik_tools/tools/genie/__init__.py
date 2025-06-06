@@ -25,6 +25,14 @@ from .config import GenieConfig, get_config
 # Configure logging
 # For stdio transport, we must log to stderr to avoid corrupting JSON-RPC messages
 import sys
+import os
+
+# Explicitly disable any debug environment variables that might pollute stdout
+os.environ.pop("DEBUG", None)
+os.environ.pop("AGNO_DEBUG", None)
+os.environ.pop("MCP_DEBUG", None)
+os.environ.pop("PYTHONPATH_DEBUG", None)
+
 logging.basicConfig(
     level=logging.INFO,
     stream=sys.stderr,  # Log to stderr to avoid stdio conflicts
@@ -90,6 +98,10 @@ async def ask_genie(
         from agno.memory.v2.memory import Memory
         from agno.storage.sqlite import SqliteStorage
         from agno.tools.mcp import MCPTools
+        
+        # Protect stdout during MCP operations to prevent stdio corruption
+        import contextlib
+        from io import StringIO
 
         # Use provided MCP servers or fall back to config
         if mcp_servers:
@@ -156,7 +168,15 @@ async def ask_genie(
             for server_name, mcp_tool in mcp_tools_list:
                 try:
                     logger.info(f"🔌 Initializing MCPTools for {server_name}")
-                    await mcp_tool.__aenter__()
+                    # Capture any stdout pollution during MCP tool initialization
+                    with contextlib.redirect_stdout(StringIO()) as init_stdout:
+                        await mcp_tool.__aenter__()
+                    
+                    # Log any captured stdout for debugging (to stderr)
+                    init_stdout_content = init_stdout.getvalue()
+                    if init_stdout_content.strip():
+                        logger.warning(f"⚠️ MCP init stdout pollution from {server_name}: {init_stdout_content[:200]}...")
+                    
                     entered_tools.append((server_name, mcp_tool))
                     mcp_contexts.append(mcp_tool)
 
@@ -247,11 +267,18 @@ I can also manage my own memories - creating, updating, or deleting them as need
                 # Get response from agent
                 logger.info(f"🎯 Starting agent execution for session: {session_id}")
 
-                response = await agent.arun(
-                    full_query,
-                    user_id=session_id,
-                    stream=False,  # Use non-streaming for simplicity
-                )
+                # Capture any stdout pollution during agent execution
+                with contextlib.redirect_stdout(StringIO()) as captured_stdout:
+                    response = await agent.arun(
+                        full_query,
+                        user_id=session_id,
+                        stream=False,  # Use non-streaming for simplicity
+                    )
+                
+                # Log any captured stdout for debugging (to stderr)
+                stdout_content = captured_stdout.getvalue()
+                if stdout_content.strip():
+                    logger.warning(f"⚠️ Captured stdout pollution: {stdout_content[:200]}...")
 
                 logger.info("🧞 Genie response completed")
                 return (
