@@ -1,13 +1,13 @@
 """
-Configuration for AutomagikAgents
+Configuration for Automagik
 """
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
-class AutomagikAgentsConfig(BaseSettings):
-    """Configuration for AutomagikAgents MCP Tool"""
+class AutomagikConfig(BaseSettings):
+    """Configuration for Automagik MCP Tool"""
     
     api_key: str = Field(
         default="",

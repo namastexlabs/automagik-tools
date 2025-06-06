@@ -69,7 +69,7 @@ Perfect for developers working with multiple services:
     },
     "ai-agents": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
       "env": {
         "OPENAI_API_KEY": "sk-xxx",
         "AGENT_MODEL": "gpt-4-turbo-preview",
@@ -483,7 +483,7 @@ Using environment variable indirection:
     },
     "ai": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
       "env": {
         "OPENAI_API_KEY": "sk-xxx"
       }

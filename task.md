@@ -308,7 +308,7 @@ docs/
 # Test uvx workflow
 uvx automagik-tools list
 uvx automagik-tools serve --tool evolution-api --transport stdio
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8080
+uvx automagik-tools serve --tool automagik --transport sse --port 8080
 ```
 
 ### Developer Workflow Testing

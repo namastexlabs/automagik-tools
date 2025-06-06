@@ -31,7 +31,7 @@ uvx automagik-tools serve \
 > **AI orchestration that speaks human** - Production-ready platform for complex AI workflows
 
 ```bash
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+uvx automagik-tools serve --tool automagik --transport sse --port 8000
 ```
 
 💬 Natural Language • ✨ Spark (spawn agent hives) • 🔄 Task Scheduling • 🏗️ Framework Agnostic (PydanticAI, LangGraph, CrewAI) • 🤝 Dev Friendly
@@ -74,7 +74,7 @@ uvx automagik-tools serve \
   --transport sse --port 8001
 
 # AutoMagik AI orchestration
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+uvx automagik-tools serve --tool automagik --transport sse --port 8000
 ```
 
 ## 📋 Real-World Examples
@@ -89,7 +89,7 @@ uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
         "automagik-tools@latest",
         "serve",
         "--tool",
-        "automagik-agents",
+        "automagik",
         "--transport",
         "stdio"
       ],
@@ -134,7 +134,7 @@ AI orchestration that speaks human:
 
 ```bash
 # Quick test with SSE
-uvx automagik-tools serve --tool automagik-agents --transport sse --port 8000
+uvx automagik-tools serve --tool automagik --transport sse --port 8000
 ```
 
 **What you can do:**

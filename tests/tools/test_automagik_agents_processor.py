@@ -1,5 +1,5 @@
 """
-Tests for the AI-powered OpenAPI processor in automagik_agents.
+Tests for the AI-powered OpenAPI processor in automagik.
 """
 
 import pytest
@@ -7,7 +7,7 @@ import json
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 
-from automagik_tools.tools.automagik_agents.agent_processor import (
+from automagik_tools.tools.automagik.agent_processor import (
     ToolInfo,
     ProcessedOpenAPITools,
     OpenAPIProcessor,
@@ -134,7 +134,7 @@ class TestProcessedOpenAPITools:
 class TestOpenAPIProcessor:
     """Test the OpenAPIProcessor class."""
     
-    @patch('automagik_tools.tools.automagik_agents.agent_processor.Agent')
+    @patch('automagik_tools.tools.automagik.agent_processor.Agent')
     def test_processor_initialization(self, mock_agent_class):
         """Test OpenAPIProcessor initialization."""
         processor = OpenAPIProcessor(model_id="test-model", api_key="test-key")
@@ -146,7 +146,7 @@ class TestOpenAPIProcessor:
         assert "instructions" in call_kwargs
         assert call_kwargs["response_model"] == ProcessedOpenAPITools
     
-    @patch('automagik_tools.tools.automagik_agents.agent_processor.Agent')
+    @patch('automagik_tools.tools.automagik.agent_processor.Agent')
     def test_process_openapi_spec(self, mock_agent_class, sample_openapi_spec, mock_processed_tools):
         """Test processing an OpenAPI specification."""
         # Setup mock agent
@@ -168,7 +168,7 @@ class TestOpenAPIProcessor:
         assert len(result.tools) == 2
         assert len(result.name_mappings) == 2
     
-    @patch('automagik_tools.tools.automagik_agents.agent_processor.Agent')
+    @patch('automagik_tools.tools.automagik.agent_processor.Agent')
     def test_process_single_operation(self, mock_agent_class):
         """Test processing a single operation."""
         # Setup mock agent for single operation
@@ -209,7 +209,7 @@ class TestCreateIntelligentNameMappings:
     """Test the create_intelligent_name_mappings function."""
     
     @patch('httpx.get')
-    @patch('automagik_tools.tools.automagik_agents.agent_processor.OpenAPIProcessor')
+    @patch('automagik_tools.tools.automagik.agent_processor.OpenAPIProcessor')
     def test_successful_mapping_generation(self, mock_processor_class, mock_httpx_get, sample_openapi_spec, mock_processed_tools):
         """Test successful generation of name mappings."""
         # Mock HTTP response
@@ -245,7 +245,7 @@ class TestCreateIntelligentNameMappings:
         assert result == {}
     
     @patch('httpx.get')
-    @patch('automagik_tools.tools.automagik_agents.agent_processor.OpenAPIProcessor')
+    @patch('automagik_tools.tools.automagik.agent_processor.OpenAPIProcessor')
     def test_processor_error_handling(self, mock_processor_class, mock_httpx_get, sample_openapi_spec):
         """Test handling of processor errors."""
         # Mock successful HTTP response
@@ -265,13 +265,13 @@ class TestCreateIntelligentNameMappings:
 
 
 class TestIntegration:
-    """Integration tests with the automagik_agents tool."""
+    """Integration tests with the automagik tool."""
     
     @pytest.mark.asyncio
     async def test_ai_processor_integration(self, tmp_path):
         """Test AI processor integration with the main tool."""
-        from automagik_tools.tools.automagik_agents import get_ai_processed_names
-        from automagik_tools.tools.automagik_agents.config import AutomagikAgentsConfig
+        from automagik_tools.tools.automagik import get_ai_processed_names
+        from automagik_tools.tools.automagik.config import AutomagikAgentsConfig
         
         # Create config with AI processing enabled
         config = AutomagikAgentsConfig(
@@ -281,13 +281,13 @@ class TestIntegration:
         )
         
         # Create a mock cache directory
-        cache_dir = tmp_path / ".cache" / "automagik_agents"
+        cache_dir = tmp_path / ".cache" / "automagik"
         cache_dir.mkdir(parents=True)
         
         # Test with empty spec (should handle gracefully)
         empty_spec = {"paths": {}}
         
-        with patch('automagik_tools.tools.automagik_agents.agent_processor.OpenAPIProcessor') as mock_processor_class:
+        with patch('automagik_tools.tools.automagik.agent_processor.OpenAPIProcessor') as mock_processor_class:
             mock_processor = Mock()
             mock_processor.process_openapi_spec.return_value = ProcessedOpenAPITools(
                 tools=[],

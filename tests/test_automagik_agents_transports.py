@@ -1,5 +1,5 @@
 """
-Test automagik-agents tool with different transports
+Test automagik tool with different transports
 """
 
 import asyncio
@@ -12,11 +12,11 @@ from tests.conftest import SAMPLE_MCP_INITIALIZE, SAMPLE_MCP_LIST_TOOLS, MCPTest
 
 
 class TestAutomagikAgentsTransports:
-    """Test automagik-agents tool with different transports"""
+    """Test automagik tool with different transports"""
 
     @pytest.mark.asyncio
     async def test_stdio_transport(self):
-        """Test automagik-agents with stdio transport"""
+        """Test automagik with stdio transport"""
         # Create environment with dummy config
         env = os.environ.copy()
         env.update({
@@ -32,7 +32,7 @@ class TestAutomagikAgentsTransports:
             "automagik_tools.cli",
             "serve",
             "--tool",
-            "automagik-agents",
+            "automagik",
             "--transport",
             "stdio",
         ]
@@ -66,7 +66,7 @@ class TestAutomagikAgentsTransports:
 
     @pytest.mark.asyncio
     async def test_sse_transport(self):
-        """Test automagik-agents with SSE transport"""
+        """Test automagik with SSE transport"""
         env = os.environ.copy()
         env.update({
             "AUTOMAGIK_AGENTS_BASE_URL": "http://test-api.example.com",
@@ -82,7 +82,7 @@ class TestAutomagikAgentsTransports:
             "automagik_tools.cli",
             "serve",
             "--tool",
-            "automagik-agents",
+            "automagik",
             "--transport",
             "sse",
             stdout=asyncio.subprocess.PIPE,
@@ -153,7 +153,7 @@ class TestAutomagikAgentsTransports:
             "automagik_tools.cli",
             "serve-all",
             "--tools",
-            "evolution-api,automagik-agents",
+            "evolution-api,automagik",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
@@ -196,7 +196,7 @@ class TestAutomagikAgentsTransports:
                 data = response.json()
                 assert "available_tools" in data
                 assert "evolution-api" in data["available_tools"]
-                assert "automagik-agents" in data["available_tools"]
+                assert "automagik" in data["available_tools"]
                 
         finally:
             process.terminate()

@@ -24,7 +24,7 @@ uvx automagik-tools list
 
 Available tools include:
 - `evolution-api` - WhatsApp messaging integration
-- `automagik-agents` - AI-powered automation agents
+- `automagik` - AI-powered automation agents
 - **NEW**: Dynamic OpenAPI tools - Deploy any OpenAPI spec instantly!
 - More tools added regularly!
 
@@ -138,7 +138,7 @@ Want to use multiple tools? Just add more server configurations:
     },
     "agents": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
       "env": {
         "OPENAI_API_KEY": "sk-..."
       }

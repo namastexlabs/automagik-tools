@@ -83,7 +83,7 @@ For advanced AI-powered development assistance:
     "servers": {
       "ai-agents": {
         "command": "uvx",
-        "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+        "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
         "env": {
           "OPENAI_API_KEY": "sk-your-openai-key",
           "AGENT_MODEL": "gpt-4-turbo-preview"

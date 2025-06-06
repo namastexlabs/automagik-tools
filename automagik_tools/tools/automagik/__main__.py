@@ -8,7 +8,7 @@ def main():
     metadata = get_metadata()
     parser = argparse.ArgumentParser(
         description=metadata["description"],
-        prog=f"python -m automagik_tools.tools.automagik_agents"
+        prog=f"python -m automagik_tools.tools.automagik"
     )
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=8000, help='Port to bind to')

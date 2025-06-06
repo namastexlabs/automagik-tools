@@ -220,7 +220,7 @@ wheels = [
 
 [[package]]
 name = "automagik-tools"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -250,9 +250,16 @@ all = [
     { name = "pygithub" },
     { name = "python-dotenv" },
 ]
-automagik-agents = [
+automagik = [
     { name = "agno" },
     { name = "httpx" },
+    { name = "openai" },
+    { name = "python-dotenv" },
+]
+automagik-enhanced = [
+    { name = "agno" },
+    { name = "httpx" },
+    { name = "markdown" },
     { name = "openai" },
     { name = "python-dotenv" },
 ]
@@ -292,20 +299,24 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "agno", specifier = ">=1.5.8" },
-    { name = "agno", marker = "extra == 'automagik-agents'", specifier = ">=0.1.0" },
-    { name = "automagik-tools", extras = ["evolution-api", "automagik-agents", "discord", "notion", "github"], marker = "extra == 'all'" },
+    { name = "agno", marker = "extra == 'automagik'", specifier = ">=0.1.0" },
+    { name = "agno", marker = "extra == 'automagik-enhanced'", specifier = ">=0.1.0" },
+    { name = "automagik-tools", extras = ["evolution-api", "automagik", "discord", "notion", "github"], marker = "extra == 'all'" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "build", specifier = ">=1.2.2.post1" },
     { name = "discord-py", marker = "extra == 'discord'", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "fastmcp", specifier = ">=2.5.0" },
-    { name = "httpx", marker = "extra == 'automagik-agents'", specifier = ">=0.28.1" },
+    { name = "httpx", marker = "extra == 'automagik'", specifier = ">=0.28.1" },
+    { name = "httpx", marker = "extra == 'automagik-enhanced'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'evolution-api'", specifier = ">=0.28.1" },
     { name = "importlib-metadata", specifier = ">=6.0.0" },
+    { name = "markdown", marker = "extra == 'automagik-enhanced'", specifier = ">=3.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "notion-client", marker = "extra == 'notion'", specifier = ">=2.0.0" },
     { name = "openai", specifier = ">=1.84.0" },
-    { name = "openai", marker = "extra == 'automagik-agents'", specifier = ">=1.0.0" },
+    { name = "openai", marker = "extra == 'automagik'", specifier = ">=1.0.0" },
+    { name = "openai", marker = "extra == 'automagik-enhanced'", specifier = ">=1.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
@@ -314,7 +325,8 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "python-dotenv", marker = "extra == 'automagik-agents'", specifier = ">=1.1.0" },
+    { name = "python-dotenv", marker = "extra == 'automagik'", specifier = ">=1.1.0" },
+    { name = "python-dotenv", marker = "extra == 'automagik-enhanced'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'discord'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'evolution-api'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'github'", specifier = ">=1.1.0" },
@@ -327,7 +339,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.24.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
-provides-extras = ["evolution-api", "automagik-agents", "discord", "notion", "github", "dev", "all"]
+provides-extras = ["evolution-api", "automagik", "automagik-enhanced", "discord", "notion", "github", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1131,6 +1143,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/70/09/d904a6e96f76ff214be59e7aa6ef7190008f52a0ab6689760a98de0bf37d/keyring-25.6.0.tar.gz", hash = "sha256:0b39998aa941431eb3d9b0d4b2460bc773b9df6fed7621c2dfb291a7e0187a66", size = 62750, upload-time = "2024-12-25T15:26:45.782Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d3/32/da7f44bcb1105d3e88a0b74ebdca50c59121d2ddf71c9e34ba47df7f3a56/keyring-25.6.0-py3-none-any.whl", hash = "sha256:552a3f7af126ece7ed5c89753650eec89c7eaae8617d0aa4d9ad2b75111266bd", size = 39085, upload-time = "2024-12-25T15:26:44.377Z" },
+]
+
+[[package]]
+name = "markdown"
+version = "3.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/15/222b423b0b88689c266d9eac4e61396fe2cc53464459d6a37618ac863b24/markdown-3.8.tar.gz", hash = "sha256:7df81e63f0df5c4b24b7d156eb81e4690595239b7d70937d0409f1b0de319c6f", size = 360906, upload-time = "2025-04-11T14:42:50.928Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/3f/afe76f8e2246ffbc867440cbcf90525264df0e658f8a5ca1f872b3f6192a/markdown-3.8-py3-none-any.whl", hash = "sha256:794a929b79c5af141ef5ab0f2f642d0f7b1872981250230e72682346f7cc90dc", size = 106210, upload-time = "2025-04-11T14:42:49.178Z" },
 ]
 
 [[package]]

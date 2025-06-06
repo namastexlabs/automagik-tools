@@ -1,8 +1,8 @@
 """
-Automagik agents templates and API
+Automagik - AI-powered agents and workflows
 
-This tool provides MCP integration for Automagik Agents API.
-Auto-generated from OpenAPI specification.
+This tool provides MCP integration for Automagik Agents API with enhanced AI processing.
+All responses are processed by GPT-4.1-mini for optimal human readability.
 """
 
 import os
@@ -12,19 +12,24 @@ import httpx
 from pydantic import BaseModel, Field
 
 from fastmcp import FastMCP, Context
-from .config import AutomagikAgentsConfig
+from .config import AutomagikConfig
+from ...ai_processors.enhanced_response import enhance_existing_response
 
 # Global config instance
-config: Optional[AutomagikAgentsConfig] = None
+config: Optional[AutomagikConfig] = None
 
 # Create FastMCP instance
 mcp = FastMCP(
-    "Automagik Agents",
+    "Automagik",
     instructions="""
-Automagik agents templates and API
+Automagik - AI-powered agents and workflows
 
-Base URL: https://api.example.com
-Authentication: api_key
+🤖 Execute AI agents for various tasks (coding, analysis, conversations)
+📝 Manage prompts and memories for agent customization  
+🔧 Control MCP servers and Claude-Code workflows
+💬 Track sessions and manage users
+
+All responses are enhanced with AI processing for better readability.
 """
 )
 
@@ -36,9 +41,13 @@ async def make_api_request(
     endpoint: str,
     params: Optional[Dict[str, Any]] = None,
     json_data: Optional[Dict[str, Any]] = None,
-    ctx: Optional[Context] = None
-) -> Dict[str, Any]:
-    """Make HTTP request to the API"""
+    ctx: Optional[Context] = None,
+    extra_headers: Optional[Dict[str, str]] = None,
+    tool_name: str = "api_request"
+) -> str:
+    """Make HTTP request to the API and return AI-enhanced response"""
+    import time
+    
     global config
     if not config:
         raise ValueError("Tool not configured")
@@ -49,6 +58,18 @@ async def make_api_request(
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
+    
+    # Add API key authentication if configured
+    if config.api_key:
+        headers["x-api-key"] = config.api_key
+    
+    # Add any extra headers (e.g., override X-API-Key)
+    if extra_headers:
+        headers.update(extra_headers)
+    
+    # Start timing for API call
+    api_start_time = time.time()
+    raw_response = None
     
     try:
         async with httpx.AsyncClient(timeout=config.timeout) as client:
@@ -61,26 +82,59 @@ async def make_api_request(
             )
             response.raise_for_status()
             
-            # Return JSON if available, otherwise return text
+            # Get raw JSON response
             if "application/json" in response.headers.get("content-type", ""):
-                return response.json()
+                raw_response = response.json()
             else:
-                return {"result": response.text}
+                raw_response = {"result": response.text}
                 
     except httpx.HTTPStatusError as e:
         if ctx:
             ctx.error(f"HTTP error {e.response.status_code}: {e.response.text}")
-        return {"error": f"HTTP {e.response.status_code}: {str(e)}"}
+        raw_response = {"error": f"HTTP {e.response.status_code}: {str(e)}"}
     except Exception as e:
         if ctx:
             ctx.error(f"Request failed: {str(e)}")
-        return {"error": str(e)}
+        raw_response = {"error": str(e)}
+    
+    # Calculate API timing
+    api_time = time.time() - api_start_time
+    api_time_ms = int(api_time * 1000)
+    
+    # Enhance response with AI processing
+    try:
+        ai_start_time = time.time()
+        enhanced = await enhance_existing_response(raw_response, tool_name)
+        ai_time = time.time() - ai_start_time
+        ai_time_ms = int(ai_time * 1000)
+        
+        # Update the markdown to include both API and AI timing  
+        # Replace the AI timing footer with comprehensive timing
+        if enhanced.processing_result and enhanced.processing_result.processing_time is not None:
+            timing_pattern = f"*Generated in {int(enhanced.processing_result.processing_time * 1000)}ms*"
+            new_timing = f"*API: {api_time_ms}ms • AI: {ai_time_ms}ms • Total: {api_time_ms + ai_time_ms}ms*"
+            
+            if timing_pattern in enhanced.markdown:
+                enhanced_markdown = enhanced.markdown.replace(timing_pattern, new_timing)
+            else:
+                # If pattern not found, append timing at the end
+                enhanced_markdown = enhanced.markdown + f"\n\n---\n{new_timing}"
+        else:
+            # If no processing result or processing time, just append new timing
+            new_timing = f"*API: {api_time_ms}ms • AI: {ai_time_ms}ms • Total: {api_time_ms + ai_time_ms}ms*"
+            enhanced_markdown = enhanced.markdown + f"\n\n---\n{new_timing}"
+        
+        return enhanced_markdown
+    except Exception as e:
+        # Fallback to raw JSON if enhancement fails
+        import json
+        return f"```json\n{json.dumps(raw_response, indent=2)}\n```\n\n*Note: AI enhancement failed: {str(e)}*\n\n---\n*API: {api_time_ms}ms*"
 
 
 # System Operations
 
 @mcp.tool()
-async def get_service_info(ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def get_service_info(ctx: Optional[Context] = None) -> str:
     """
     Retrieve service information and status for Automagik Agents
     
@@ -98,12 +152,13 @@ async def get_service_info(ctx: Optional[Context] = None) -> Dict[str, Any]:
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        tool_name="get_service_info"
     )
 
 
 @mcp.tool()
-async def get_health_status(ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def get_health_status(ctx: Optional[Context] = None) -> str:
     """
     Check health and operational status of Automagik service
     
@@ -121,18 +176,32 @@ async def get_health_status(ctx: Optional[Context] = None) -> Dict[str, Any]:
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        tool_name="get_health_status"
     )
 
 
 # Agents Operations
 
 @mcp.tool()
-async def list_agents(ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def list_agents(ctx: Optional[Context] = None) -> str:
     """
-    List all registered agents with database metadata
+    Get a list of all available AI agents and their capabilities.
+    
+    Use this first to discover what agents are available before running them.
+    Each agent has different specializations and purposes.
     
     Endpoint: GET /api/v1/agent/list
+    
+    Returns:
+        List of agents with 'id', 'name', 'description' for each agent
+        
+    Common agents you'll find:
+        - 'simple': General purpose conversational agent
+        - 'claude_code': Advanced code analysis and development
+        - 'genie': Orchestrator for complex multi-step workflows  
+        - 'discord': Discord bot interactions
+        - 'stan': Customer management specialist
     """
     if ctx:
         ctx.info(f"Calling GET /api/v1/agent/list")
@@ -146,73 +215,108 @@ async def list_agents(ctx: Optional[Context] = None) -> Dict[str, Any]:
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        tool_name="list_agents"
     )
 
 
 @mcp.tool()
-async def run_agent(agent_name: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def run_agent(agent_name: str, message_content: str, ctx: Optional[Context] = None) -> str:
     """
-    Execute an agent with optional LangGraph orchestration
+    Execute an AI agent synchronously with a message and get immediate response.
+    
+    This runs an agent and waits for completion. Use this when you need an immediate response.
+    For long-running tasks, use run_agent_async instead.
+    
+    Common agent names: simple, claude_code, genie, discord, stan
     
     Endpoint: POST /api/v1/agent/{agent_name}/run
 
     Args:
-        agent_name: Name of the agent to execute (string, required)
-        data: Request body data
+        agent_name: Name of the agent to execute (e.g., 'simple', 'claude_code', 'genie')
+        message_content: The message/prompt to send to the agent (be specific and clear)
+        
+    Returns:
+        Dict with 'message' (agent response), 'session_id', 'success', 'tool_calls', 'tool_outputs'
+    
+    Example:
+        run_agent('simple', 'Hello, how can you help me with Python coding?')
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/agent/{agent_name}/run")
     
     endpoint = f"/api/v1/agent/{agent_name}/run"
     params = None
-    json_data = data
+    json_data = {"message_content": message_content}
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        tool_name="run_agent"
     )
 
 
 @mcp.tool()
-async def run_agent_async(agent_name: str, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def run_agent_async(agent_name: str, message_content: str, ctx: Optional[Context] = None) -> str:
     """
-    Start an agent run asynchronously and return a run ID
+    Start an AI agent asynchronously for long-running tasks and get a run_id to check status later.
+    
+    Use this for complex tasks that might take time. You can check progress with get_run_status().
     
     Endpoint: POST /api/v1/agent/{agent_name}/run/async
 
     Args:
-        agent_name: Name of the agent to execute (string, required)
-        data: Request body data
+        agent_name: Name of the agent to execute (e.g., 'claude_code', 'genie')
+        message_content: The message/prompt to send to the agent
+        
+    Returns:
+        Dict with 'run_id' (use with get_run_status), 'status', 'message', 'agent_name'
+    
+    Example:
+        result = run_agent_async('claude_code', 'Review my Python code for bugs')
+        run_id = result['run_id']
+        # Later: get_run_status(run_id)
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/agent/{agent_name}/run/async")
     
     endpoint = f"/api/v1/agent/{agent_name}/run/async"
     params = None
-    json_data = data
+    json_data = {"message_content": message_content}
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        tool_name="run_agent_async"
     )
 
 
 @mcp.tool()
 async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
-    Check the status of an asynchronous agent run by run ID
+    Check the status and results of an asynchronous agent run.
+    
+    Use this to monitor progress of agents started with run_agent_async().
     
     Endpoint: GET /api/v1/run/{run_id}/status
 
     Args:
-        run_id: Run ID of the asynchronous execution (string, required, returned by run_agent_async)
+        run_id: The run ID returned by run_agent_async()
+        
+    Returns:
+        Dict with 'status' (pending/running/completed), 'result', 'error', 'progress'
+        
+    Status values:
+        - 'pending': Not started yet
+        - 'running': Currently executing  
+        - 'completed': Finished (check 'result' field)
+        - 'failed': Error occurred (check 'error' field)
     """
     if ctx:
         ctx.info(f"Calling GET /api/v1/run/{run_id}/status")
@@ -264,22 +368,35 @@ async def list_prompts(agent_id: int, status_key: Optional[str] = None, ctx: Opt
 
 
 @mcp.tool()
-async def create_prompt(agent_id: int, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def create_prompt(agent_id: int, prompt_text: str, name: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
-    Create a new prompt for a specific agent
+    Create a new system prompt for an AI agent to customize its behavior.
+    
+    System prompts define how an agent behaves, its personality, and capabilities.
+    Use this to create specialized agent behaviors.
     
     Endpoint: POST /api/v1/agent/{agent_id}/prompt
 
     Args:
-        agent_id: ID of the agent to create prompt for (integer, required)
-        data: Request body data
+        agent_id: ID of the agent (get from list_agents())
+        prompt_text: The system prompt content - be detailed about desired behavior
+        name: Descriptive name for this prompt (e.g., 'code-reviewer', 'creative-writer')
+        
+    Returns:
+        Dict with 'id' (use for activate_prompt), 'agent_id', 'prompt_text', 'name'
+        
+    Example:
+        create_prompt(8, 'You are a helpful Python code reviewer. Focus on bugs and best practices.', 'python-reviewer')
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/agent/{agent_id}/prompt")
     
     endpoint = f"/api/v1/agent/{agent_id}/prompt"
     params = None
-    json_data = data
+    json_data = {
+        "prompt_text": prompt_text,
+        "name": name
+    }
     
     return await make_api_request(
         method="POST",
@@ -318,7 +435,7 @@ async def get_prompt(agent_id: int, prompt_id: int, ctx: Optional[Context] = Non
 
 
 @mcp.tool()
-async def update_prompt(agent_id: int, prompt_id: int, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def update_prompt(agent_id: int, prompt_id: int, prompt_text: Optional[str] = None, name: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
     Update the content or status of an existing prompt
     
@@ -327,14 +444,20 @@ async def update_prompt(agent_id: int, prompt_id: int, data: Optional[Dict[str, 
     Args:
         agent_id: Agent's unique ID (integer, required)
         prompt_id: Prompt's unique ID to update (integer, required)
-        data: Request body data
+        prompt_text: Updated prompt text (string, optional)
+        name: Updated name (string, optional)
     """
     if ctx:
         ctx.info(f"Calling PUT /api/v1/agent/{agent_id}/prompt/{prompt_id}")
     
     endpoint = f"/api/v1/agent/{agent_id}/prompt/{prompt_id}"
     params = None
-    json_data = data
+    json_data = {}
+    
+    if prompt_text is not None:
+        json_data["prompt_text"] = prompt_text
+    if name is not None:
+        json_data["name"] = name
     
     return await make_api_request(
         method="PUT",
@@ -747,21 +870,27 @@ async def create_memory(data: Optional[Dict[str, Any]] = None, ctx: Optional[Con
 
 
 @mcp.tool()
-async def create_memories_batch(data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def create_memories_batch(memories: List[Dict[str, Any]], ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
     Create multiple memory records in a single batch operation
     
     Endpoint: POST /api/v1/memories/batch
 
     Args:
-        data: Request body data
+        memories: List of memory objects to create. Each memory should contain fields like:
+                 - name: Name of the memory (required)
+                 - content: Content of the memory (required)
+                 - agent_id: Agent ID to associate with (required if user_id not provided)
+                 - user_id: User ID to associate with (required if agent_id not provided)
+                 - session_id: Optional session ID
+                 - metadata: Optional metadata object
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/memories/batch")
     
     endpoint = "/api/v1/memories/batch"
     params = None
-    json_data = data
+    json_data = memories  # Send the list directly, not wrapped in a data object
     
     return await make_api_request(
         method="POST",
@@ -899,12 +1028,16 @@ async def configure_mcp_servers(x_api_key: Optional[str] = None, data: Optional[
     params = None
     json_data = data
     
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -948,39 +1081,53 @@ async def list_mcp_servers(x_api_key: Optional[str] = None, ctx: Optional[Contex
     params = None
     json_data = None
     
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
 @mcp.tool()
-async def create_mcp_server(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def create_mcp_server(name: str, command: List[str], server_type: str = "stdio", x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
     Create a new MCP server configuration
     
     Endpoint: POST /api/v1/mcp/servers
 
     Args:
-        x_api_key: 
-        data: Request body data
+        name: Name of the MCP server (string, required)
+        command: Command to run the server as a list (e.g., ["python", "server.py"])
+        server_type: Type of server - 'stdio' or 'http' (string, default: 'stdio')
+        x_api_key: Optional API key override
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/mcp/servers")
     
     endpoint = "/api/v1/mcp/servers"
     params = None
-    json_data = data
+    json_data = {
+        "name": name,
+        "command": command,
+        "server_type": server_type
+    }
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1001,13 +1148,17 @@ async def get_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx:
     endpoint = f"/api/v1/mcp/servers/{server_name}"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1029,13 +1180,17 @@ async def update_mcp_server(server_name: str, x_api_key: Optional[str] = None, d
     endpoint = f"/api/v1/mcp/servers/{server_name}"
     params = None
     json_data = data
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="PUT",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1056,13 +1211,17 @@ async def delete_mcp_server(server_name: str, x_api_key: Optional[str] = None, c
     endpoint = f"/api/v1/mcp/servers/{server_name}"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="DELETE",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1083,13 +1242,17 @@ async def start_mcp_server(server_name: str, x_api_key: Optional[str] = None, ct
     endpoint = f"/api/v1/mcp/servers/{server_name}/start"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1110,13 +1273,17 @@ async def stop_mcp_server(server_name: str, x_api_key: Optional[str] = None, ctx
     endpoint = f"/api/v1/mcp/servers/{server_name}/stop"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1137,67 +1304,89 @@ async def restart_mcp_server(server_name: str, x_api_key: Optional[str] = None, 
     endpoint = f"/api/v1/mcp/servers/{server_name}/restart"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
 @mcp.tool()
-async def call_mcp_tool(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def call_mcp_tool(server_name: str, tool_name: str, arguments: Optional[Dict[str, Any]] = None, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
     Call a specific tool on an MCP server
     
     Endpoint: POST /api/v1/mcp/tools/call
 
     Args:
-        x_api_key: 
-        data: Request body data
+        server_name: Name of the MCP server (string, required)
+        tool_name: Name of the tool to call (string, required)
+        arguments: Arguments to pass to the tool (dict, optional)
+        x_api_key: Optional API key override
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/mcp/tools/call")
     
     endpoint = "/api/v1/mcp/tools/call"
     params = None
-    json_data = data
+    json_data = {
+        "server_name": server_name,
+        "tool_name": tool_name,
+        "arguments": arguments or {}
+    }
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
 @mcp.tool()
-async def access_mcp_resource(x_api_key: Optional[str] = None, data: Optional[Dict[str, Any]] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def access_mcp_resource(server_name: str, uri: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None) -> Dict[str, Any]:
     """
     Access a managed resource on an MCP server
     
     Endpoint: POST /api/v1/mcp/resources/access
 
     Args:
-        x_api_key: 
-        data: Request body data
+        server_name: Name of the MCP server (string, required)
+        uri: URI of the resource to access (string, required)
+        x_api_key: Optional API key override
     """
     if ctx:
         ctx.info(f"Calling POST /api/v1/mcp/resources/access")
     
     endpoint = "/api/v1/mcp/resources/access"
     params = None
-    json_data = data
+    json_data = {
+        "server_name": server_name,
+        "uri": uri
+    }
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1218,13 +1407,17 @@ async def list_mcp_server_tools(server_name: str, x_api_key: Optional[str] = Non
     endpoint = f"/api/v1/mcp/servers/{server_name}/tools"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1245,13 +1438,17 @@ async def list_mcp_server_resources(server_name: str, x_api_key: Optional[str] =
     endpoint = f"/api/v1/mcp/servers/{server_name}/resources"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1272,13 +1469,17 @@ async def list_agent_mcp_tools(agent_name: str, x_api_key: Optional[str] = None,
     endpoint = f"/api/v1/mcp/agents/{agent_name}/tools"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1302,13 +1503,17 @@ async def run_claude_code_workflow(workflow_name: str, x_api_key: Optional[str] 
     endpoint = f"/api/v1/agent/claude-code/{workflow_name}/run"
     params = None
     json_data = data
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="POST",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1329,13 +1534,17 @@ async def get_claude_code_run_status(run_id: str, x_api_key: Optional[str] = Non
     endpoint = f"/api/v1/agent/claude-code/run/{run_id}/status"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1355,13 +1564,17 @@ async def list_claude_code_workflows(x_api_key: Optional[str] = None, ctx: Optio
     endpoint = "/api/v1/agent/claude-code/workflows"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1381,13 +1594,17 @@ async def get_claude_code_health(x_api_key: Optional[str] = None, ctx: Optional[
     endpoint = "/api/v1/agent/claude-code/health"
     params = None
     json_data = None
+    # Use x_api_key if provided
+    extra_headers = {"x-api-key": x_api_key} if x_api_key else None
+    
     
     return await make_api_request(
         method="GET",
         endpoint=endpoint,
         params=params,
         json_data=json_data,
-        ctx=ctx
+        ctx=ctx,
+        extra_headers=extra_headers
     )
 
 
@@ -1407,28 +1624,28 @@ async def get_claude_code_health(x_api_key: Optional[str] = None, ctx: Optional[
 # Prompts
 @mcp.prompt()
 def api_explorer(endpoint: str = "") -> str:
-    """Generate a prompt for exploring Automagik Agents API endpoints"""
+    """Generate a prompt for exploring Automagik API endpoints"""
     if endpoint:
         return f"""
-Help me explore the {endpoint} endpoint of Automagik Agents API.
+Help me explore the {endpoint} endpoint of Automagik API.
 What parameters does it accept and what does it return?
 """
     else:
         return f"""
-What endpoints are available in the Automagik Agents API?
-List the main operations I can perform.
+What endpoints are available in the Automagik API?
+List the main operations I can perform with AI agents and workflows.
 """
 
 
 # Tool creation functions (required by automagik-tools)
-def create_tool(tool_config: Optional[AutomagikAgentsConfig] = None) -> FastMCP:
+def create_tool(tool_config: Optional[AutomagikConfig] = None) -> FastMCP:
     """Create the MCP tool instance"""
     global config
-    config = tool_config or AutomagikAgentsConfig()
+    config = tool_config or AutomagikConfig()
     return mcp
 
 
-def create_server(tool_config: Optional[AutomagikAgentsConfig] = None):
+def create_server(tool_config: Optional[AutomagikConfig] = None):
     """Create FastMCP server instance"""
     tool = create_tool(tool_config)
     return tool
@@ -1436,17 +1653,17 @@ def create_server(tool_config: Optional[AutomagikAgentsConfig] = None):
 
 def get_tool_name() -> str:
     """Get the tool name"""
-    return "automagik-agents"
+    return "automagik"
 
 
 def get_config_class():
     """Get the config class for this tool"""
-    return AutomagikAgentsConfig
+    return AutomagikConfig
 
 
 def get_config_schema() -> Dict[str, Any]:
     """Get the JSON schema for the config"""
-    return AutomagikAgentsConfig.model_json_schema()
+    return AutomagikConfig.model_json_schema()
 
 
 def get_required_env_vars() -> Dict[str, str]:
@@ -1460,12 +1677,12 @@ def get_required_env_vars() -> Dict[str, str]:
 def get_metadata() -> Dict[str, Any]:
     """Get tool metadata"""
     return {
-        "name": "automagik-agents",
-        "version": "1.0.0",
-        "description": "Automagik agents templates and API",
+        "name": "automagik",
+        "version": "2.0.0",
+        "description": "Automagik - AI-powered agents and workflows with enhanced responses",
         "author": "Automagik Team",
-        "category": "api",
-        "tags": ["api", "integration", "openapi"],
+        "category": "ai-agents",
+        "tags": ["ai", "agents", "workflows", "ai-enhanced"],
         "config_env_prefix": "AUTOMAGIK_AGENTS_"
     }
 

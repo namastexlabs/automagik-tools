@@ -62,7 +62,7 @@ Want to use multiple tools? Add each as a separate server:
     },
     "ai-agents": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
       "env": {
         "OPENAI_API_KEY": "sk-your-openai-key"
       }
@@ -128,7 +128,7 @@ For access to all AutoMagik tools through a single server:
   "mcpServers": {
     "agents": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "--tool", "automagik-agents", "--transport", "stdio"],
+      "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
       "env": {
         "OPENAI_API_KEY": "sk-your-openai-api-key",
         "AGENT_MODEL": "gpt-4-turbo-preview"

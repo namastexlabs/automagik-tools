@@ -96,7 +96,7 @@ AUTOMAGIK_AGENTS_TIMEOUT=30
 automagik-tools list
 
 # Serve this specific tool
-automagik-tools serve automagik-agents
+automagik-tools serve automagik
 
 # Serve all tools
 automagik-tools serve-all
@@ -127,10 +127,10 @@ pytest tests/tools/test_automagik_agents.py -v
 npm install -g @anthropic/mcp-inspector
 
 # Run the tool in one terminal
-automagik-tools serve automagik-agents
+automagik-tools serve automagik
 
 # In another terminal, connect with inspector
-mcp-inspector stdio automagik-tools serve automagik-agents
+mcp-inspector stdio automagik-tools serve automagik
 ```
 
 ## API Reference

@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastmcp import Context
 
-from automagik_tools.tools.automagik_agents import (
+from automagik_tools.tools.automagik import (
     create_tool,
     AutomagikAgentsConfig,
     get_metadata,
@@ -55,7 +55,7 @@ class TestToolCreation:
     def test_metadata(self):
         """Test tool metadata"""
         metadata = get_metadata()
-        assert metadata["name"] == "automagik-agents"
+        assert metadata["name"] == "automagik"
         assert "description" in metadata
         assert "version" in metadata
         assert metadata["config_env_prefix"] == "AUTOMAGIK_AGENTS_"

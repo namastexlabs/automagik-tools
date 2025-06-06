@@ -790,7 +790,7 @@ def mcp_config(
             pass
     
     # Special configurations for known tools
-    if tool_name == "automagik-agents":
+    if tool_name == "automagik":
         config[tool_name]["env"] = {
             "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY_HERE",
             "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
