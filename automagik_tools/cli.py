@@ -466,6 +466,7 @@ def serve(
     transport: str = typer.Option("sse", help="Transport type (sse or stdio)"),
     api_key: Optional[str] = typer.Option(None, help="API key for OpenAPI authentication"),
     base_url: Optional[str] = typer.Option(None, help="Base URL for the API (if different from OpenAPI spec)"),
+    ask: bool = typer.Option(False, help="Enable smart tools mode (Ask tool only, disables regular tools)"),
 ):
     """Serve a specific tool or create one dynamically from OpenAPI spec"""
     # Check if we're creating a dynamic OpenAPI tool
@@ -502,6 +503,20 @@ def serve(
             import traceback
             console.print(f"[red]{traceback.format_exc()}[/red]")
             sys.exit(1)
+    
+    # Handle smart tools mode
+    if ask:
+        # When --ask is used, force the Ask tool and enable smart processing
+        if tool and tool != "ask":
+            if transport != "stdio":
+                console.print(f"[yellow]⚠️  Smart tools mode enabled: switching from '{tool}' to 'ask'[/yellow]")
+        tool = "ask"
+        
+        # Set environment variable to enable smart tools mode
+        os.environ["ASK_SMART_MODE"] = "true"
+        
+        if transport != "stdio":
+            console.print("[blue]🧠 Smart Tools Mode: Ask tool will handle all requests with intelligent orchestration[/blue]")
     
     # Otherwise, use existing tool discovery
     if not tool:
@@ -543,9 +558,12 @@ def serve(
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
+            # Set environment variable so tools can detect SSE mode
+            os.environ["MCP_TRANSPORT"] = "sse"
             mcp_server.run(transport="sse", host=serve_host, port=serve_port)
         else:
             # No console output for stdio to avoid protocol interference
+            os.environ["MCP_TRANSPORT"] = "stdio"
             mcp_server.run(transport="stdio")
 
     except Exception as e:

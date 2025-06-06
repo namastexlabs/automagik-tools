@@ -156,3 +156,4 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 ## Memories
 
 - Always use uv to run python or pytest, and uvx for testing the application
+- USE UVUSE UV ALWAYS

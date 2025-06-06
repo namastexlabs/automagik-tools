@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "genie": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@0.3.0",
+        "serve",
+        "--tool",
+        "genie",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "GENIE_MODEL": "gpt-4-mini",
+        "GENIE_MEMORY_DB": "genie_memory.db",
+        "GENIE_STORAGE_DB": "genie_storage.db"
+      }
+    }
+  },
+  "usage_example": {
+    "description": "When using Genie, you can pass MCP server configurations dynamically",
+    "request": {
+      "tool": "ask_genie",
+      "arguments": {
+        "query": "List all available agents in the automagik system",
+        "mcp_servers": {
+          "automagik": {
+            "command": "uvx",
+            "args": ["automagik-tools@0.3.0", "serve", "--tool", "automagik", "--transport", "stdio"],
+            "env": {
+              "AUTOMAGIK_AGENTS_API_KEY": "namastex888",
+              "AUTOMAGIK_AGENTS_BASE_URL": "http://192.168.112.148:8881",
+              "AUTOMAGIK_AGENTS_TIMEOUT": "600"
+            }
+          }
+        }
+      }
+    }
+  }
+}

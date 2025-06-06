@@ -193,3 +193,14 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .mcp.json
+
+# Genie database files
+genie_memory.db
+genie_storage.db
+tool_genie_memory.db
+tool_genie_storage.db
+ask_master_memory.db
+
+# Temporary files
+*.pid
+nohup.out

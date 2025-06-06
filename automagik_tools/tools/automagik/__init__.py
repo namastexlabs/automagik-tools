@@ -101,6 +101,12 @@ async def make_api_request(
     api_time = time.time() - api_start_time
     api_time_ms = int(api_time * 1000)
     
+    # Check if markdown enhancement is enabled
+    if not config.enable_markdown:
+        # Return raw JSON response without AI enhancement
+        import json
+        return f"```json\n{json.dumps(raw_response, indent=2)}\n```\n\n---\n*API response time: {api_time_ms}ms*"
+    
     # Enhance response with AI processing
     try:
         ai_start_time = time.time()

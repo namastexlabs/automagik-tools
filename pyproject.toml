@@ -40,8 +40,9 @@ dependencies = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
     "psutil>=7.0.0",
-    "agno>=1.5.8",
+    "agno>=1.5.9",
     "openai>=1.84.0",
+    "sqlalchemy>=2.0.41",
 ]
 
 [project.optional-dependencies]
@@ -63,6 +64,19 @@ automagik-enhanced = [
     "agno>=0.1.0",
     "openai>=1.0.0",
     "markdown>=3.0.0",
+]
+
+ask = [
+    "httpx>=0.28.1",
+    "python-dotenv>=1.1.0",
+    "openai>=1.84.0",
+]
+
+genie = [
+    "agno>=1.5.9",
+    "openai>=1.84.0",
+    "sqlalchemy>=2.0.41",
+    "python-dotenv>=1.1.0",
 ]
 
 discord = [
@@ -91,7 +105,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,automagik,discord,notion,github]",
+    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,discord,notion,github]",
 ]
 
 [project.urls]

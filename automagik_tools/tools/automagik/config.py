@@ -27,6 +27,12 @@ class AutomagikConfig(BaseSettings):
         alias="AUTOMAGIK_AGENTS_TIMEOUT"
     )
     
+    enable_markdown: bool = Field(
+        default=True,
+        description="Enable AI-powered markdown enhancement of responses",
+        alias="AUTOMAGIK_AGENTS_ENABLE_MARKDOWN"
+    )
+    
     model_config = {
         "env_prefix": "AUTOMAGIK_AGENTS_",
         "env_file": ".env",
