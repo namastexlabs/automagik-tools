@@ -97,11 +97,21 @@ async def ask_genie(
         from agno.memory.v2.db.sqlite import SqliteMemoryDb
         from agno.memory.v2.memory import Memory
         from agno.storage.sqlite import SqliteStorage
-        from agno.tools.mcp import MCPTools
+        from agno.tools.mcp import MCPTools as _MCPTools
         
         # Protect stdout during MCP operations to prevent stdio corruption
         import contextlib
         from io import StringIO
+        import subprocess
+        import asyncio
+        
+        # For SSE transport, we need to ensure subprocess termination happens before response
+        # This prevents subprocess output from corrupting the SSE stream
+        transport_type = os.environ.get('AUTOMAGIK_TRANSPORT', 'stdio')
+        logger.info(f"🚀 Running in {transport_type} transport mode")
+        
+        # Use MCPTools directly - we'll handle cleanup more aggressively
+        MCPTools = _MCPTools
 
         # Use provided MCP servers or fall back to config
         if mcp_servers:
@@ -169,7 +179,8 @@ async def ask_genie(
                 try:
                     logger.info(f"🔌 Initializing MCPTools for {server_name}")
                     # Capture any stdout pollution during MCP tool initialization
-                    with contextlib.redirect_stdout(StringIO()) as init_stdout:
+                    init_stdout = StringIO()
+                    with contextlib.redirect_stdout(init_stdout):
                         await mcp_tool.__aenter__()
                     
                     # Log any captured stdout for debugging (to stderr)
@@ -268,7 +279,8 @@ I can also manage my own memories - creating, updating, or deleting them as need
                 logger.info(f"🎯 Starting agent execution for session: {session_id}")
 
                 # Capture any stdout pollution during agent execution
-                with contextlib.redirect_stdout(StringIO()) as captured_stdout:
+                captured_stdout = StringIO()
+                with contextlib.redirect_stdout(captured_stdout):
                     response = await agent.arun(
                         full_query,
                         user_id=session_id,
@@ -281,18 +293,59 @@ I can also manage my own memories - creating, updating, or deleting them as need
                     logger.warning(f"⚠️ Captured stdout pollution: {stdout_content[:200]}...")
 
                 logger.info("🧞 Genie response completed")
-                return (
-                    response.content if hasattr(response, "content") else str(response)
-                )
+                
+                # Debug logging to understand response structure
+                logger.debug(f"Response type: {type(response)}")
+                logger.debug(f"Response attributes: {dir(response) if response else 'None'}")
+                
+                # Store the response before cleanup
+                final_response = None
+                if response is None:
+                    final_response = "❌ No response from agent"
+                elif hasattr(response, "content"):
+                    # Check if content is empty
+                    if not response.content:
+                        logger.warning("⚠️ Agent returned empty content")
+                        final_response = "❌ Agent returned empty response"
+                    else:
+                        final_response = response.content
+                else:
+                    # Fallback to string representation
+                    result_str = str(response)
+                    if not result_str or result_str == "None":
+                        final_response = "❌ Agent returned empty response"
+                    else:
+                        final_response = result_str
+                
+                # Store context for cleanup but don't clean up yet
+                # We'll return the response first, then handle cleanup
+                
+                # Create cleanup task that will run after we return
+                async def cleanup_task():
+                    """Cleanup task that runs independently"""
+                    try:
+                        # Wait a bit to ensure response is fully sent
+                        await asyncio.sleep(1.0)
+                        
+                        for mcp_tool in mcp_contexts:
+                            try:
+                                await mcp_tool.__aexit__(None, None, None)
+                                logger.info("🔓 Closed MCPTools context (delayed)")
+                            except Exception as e:
+                                logger.error(f"Error in delayed cleanup: {e}")
+                    except Exception as e:
+                        logger.error(f"Cleanup task error: {e}")
+                
+                # Schedule cleanup as a background task
+                # This allows the response to be sent immediately
+                asyncio.create_task(cleanup_task())
+                
+                # Return response immediately without waiting for cleanup
+                return final_response
 
             finally:
-                # Exit all MCP tool contexts
-                for mcp_tool in mcp_contexts:
-                    try:
-                        await mcp_tool.__aexit__(None, None, None)
-                        logger.info("🔓 Closed MCPTools context")
-                    except Exception as e:
-                        logger.error(f"Error closing MCPTools: {e}")
+                # Empty finally block - cleanup is handled above based on transport type
+                pass
 
         # Run with all MCP tools
         return await run_with_mcp_tools()

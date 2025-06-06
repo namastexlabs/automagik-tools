@@ -4,82 +4,155 @@
 
 # 🪄 AutoMagik Tools
 
-## Turn Any API into an AI-Ready Tool in Seconds™
+## MCP Agents That Learn Your APIs Automagikally
 
-Drop any OpenAPI URL → Get a live, auto-updating MCP server. When the API updates, your tool updates automagikally. No code, no maintenance.
+Drop any OpenAPI spec → Get an intelligent MCP agent that learns how you work and gets better with every interaction. Export to code when you're ready to customize.
 
-Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools makes **every API on the internet instantly accessible to AI agents**.
+Born from our daily work at [Namastex Labs](https://www.linkedin.com/company/namastexlabs), AutoMagik Tools creates **self-evolving agents** that turn any API into a natural language interface.
 
-## 🚀 Dynamic OpenAPI → MCP
+## 🧠 Self-Learning MCP Agents
 
-Turn any API into an MCP tool instantly:
-
-```bash
-# Just point to any OpenAPI URL - here's Discord as an example
-uvx automagik-tools serve \
-  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
-  --transport sse --port 8001
-```
-
-**Works with ANY OpenAPI spec:**
-- 🔄 Auto-updates when the API changes
-- 🚀 Zero code, just paste the URL
-- 🌐 Discord, Stripe, GitHub, Slack, or your internal APIs
-
-## 🌟 Featured Tool: AutoMagik
-
-> **AI orchestration that speaks human** - Production-ready platform for complex AI workflows
+Unlike static tools, AutoMagik agents **remember and adapt**:
 
 ```bash
+# First time: "How much did I sell last month?"
+# Agent learns your sales endpoints, date formats, and preferences
+
+# By the 10th interaction:
+# Agent already knows exactly which data you want and how you like it formatted
 uvx automagik-tools serve --tool automagik --transport sse --port 8000
 ```
 
-💬 Natural Language • ✨ Spark (spawn agent hives) • 🔄 Task Scheduling • 🏗️ Framework Agnostic (PydanticAI, LangGraph, CrewAI) • 🤝 Dev Friendly
+**Three Intelligence Modes:**
+- 🔧 **Standard**: Full schema access for precise control
+- 📋 **Markdown**: Agent processes noisy JSON into clean, readable output (powered by GPT-4.1-nano)
+- 💬 **Genie**: Natural language interface - just describe what you need
 
-## 🚀 Quick Start
+*Powered by GPT-4.1 family models for cost-effective agentic behavior and reliable API reasoning.*
 
-### Copy this into Claude/Cursor to get Discord AI powers:
+## 🚀 From Any API to Smart Agent
+
+Turn any OpenAPI spec into an intelligent agent:
+
+```bash
+# Discord API becomes a smart agent
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
+  --transport sse --port 8001
+
+# Share this agent with your entire team via SSE
+# Team members can access the same learning agent at http://localhost:8001
+```
+
+**Now you can say:**
+- "Show me unread messages from the design team"
+- "Schedule a voice call for 3pm in the dev channel"
+- "Find all threads where someone mentioned the new feature"
+
+Agent learns your patterns, server preferences, and communication style.
+
+## 🧞 Genie: Universal MCP Orchestrator
+
+**Genie connects any MCP servers and orchestrates them with persistent memory**:
+
+```bash
+# Run Genie with memory-based agents
+uvx automagik-tools serve --tool genie --transport sse --port 8000
+```
+
+### Configure Genie with Multiple MCP Servers
+
+Genie can orchestrate any combination of MCP servers. Configure via environment variables:
+
+```bash
+# Method 1: JSON configuration for multiple servers
+export GENIE_MCP_CONFIGS='{
+  "agent-memory": {
+    "url": "http://192.168.112.149:8000/sse",
+    "transport": "sse"
+  },
+  "filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"],
+    "env": {}
+  },
+  "github": {
+    "command": "uvx",
+    "args": ["mcp-server-git"],
+    "env": {"GITHUB_TOKEN": "your-token"}
+  }
+}'
+
+# Method 2: AutoMagik-specific shorthand
+export GENIE_AUTOMAGIK_API_KEY="your-api-key"
+export GENIE_AUTOMAGIK_BASE_URL="http://localhost:8881"
+export GENIE_AUTOMAGIK_TIMEOUT="600"
+```
+
+### Add Genie to Claude/Cursor (Universal Orchestrator)
 
 ```json
 {
   "mcpServers": {
-    "discord": {
+    "genie": {
       "command": "uvx",
       "args": [
         "automagik-tools@latest",
         "serve",
-        "--openapi-url",
-        "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json",
+        "--tool",
+        "genie",
         "--transport",
         "stdio"
       ],
       "env": {
-        "DISCORD_TOKEN": "YOUR_BOT_TOKEN"
+        "OPENAI_API_KEY": "your-openai-key",
+        "GENIE_MCP_CONFIGS": "{\"agent-memory\":{\"url\":\"http://192.168.112.149:8000/sse\",\"transport\":\"sse\"},\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\",\"/allowed/path\"],\"env\":{}}}"
       }
     }
   }
 }
 ```
 
-**Where to paste:**
-- **Claude Desktop**: Settings → Developer → Edit Config
-- **Cursor**: `~/.cursor/mcp.json`
+**Now in Claude/Cursor, Genie can:**
+- "Use the memory agent to remember this conversation"
+- "Check the filesystem for project files and analyze them with the memory agent"
+- "Coordinate between multiple tools to complete complex tasks"
 
-### Or test instantly via command line:
+## 🌟 Featured: AutoMagik Orchestration
+
+Enterprise-grade agent orchestration that speaks human:
 
 ```bash
-# Discord API
-uvx automagik-tools serve \
-  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
-  --transport sse --port 8001
-
-# AutoMagik AI orchestration
 uvx automagik-tools serve --tool automagik --transport sse --port 8000
 ```
 
-## 📋 Real-World Examples
+**Real examples from our users:**
+- "Monitor inventory across all warehouses and alert me when Corona drops below 10k units"
+- "Generate weekly performance reports and send to regional managers"  
+- "Set up automated quality checks for next month's production runs"
+- "Track competitor pricing and notify me of changes above 5%"
 
-### AutoMagik Configuration (for Claude/Cursor)
+💬 Natural Language • 🧠 Memory & Learning • 🔄 Task Orchestration • 🏗️ Framework Agnostic • 👩‍💻 Export to Code
+
+## 🚀 Quick Start
+
+### Environment Setup
+
+Create a `.env` file with your API keys:
+
+```bash
+# .env
+OPENAI_API_KEY=sk-your-openai-key-here
+AUTOMAGIK_AGENTS_API_KEY=your-automagik-api-key
+AUTOMAGIK_AGENTS_BASE_URL=http://localhost:8881
+
+# Enable JSON to Markdown processing (optional)
+ENABLE_JSON_PROCESSING=true
+JSON_PROCESSOR_MODEL=gpt-4.1-nano
+```
+
+### Copy this into Claude/Cursor for instant API orchestration:
+
 ```json
 {
   "mcpServers": {
@@ -96,36 +169,128 @@ uvx automagik-tools serve --tool automagik --transport sse --port 8000
       "env": {
         "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY",
         "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
-        "AUTOMAGIK_AGENTS_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json"
+        "OPENAI_API_KEY": "YOUR_OPENAI_API_KEY"
       }
     }
   }
 }
 ```
 
-Now in Claude/Cursor you can say:
-- "Use AutoMagik to analyze these 10 CSV files and find patterns"
-- "Set up a workflow that monitors my GitHub repos and creates weekly summaries"
-- "Process these customer feedback emails and categorize them by sentiment"
+**Where to add:**
+- **Claude Desktop**: Settings → Developer → Edit Config
+- **Cursor**: `~/.cursor/mcp.json`
 
+### Test any API instantly:
 
-### More OpenAPI Examples
 ```bash
-# Stripe Payments
-uvx automagik-tools serve \
-  --openapi-url https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json \
-  --api-key $STRIPE_API_KEY
+# Jira becomes conversational project management
+OPENAI_API_KEY=your_key JIRA_API_TOKEN=your_token uvx automagik-tools serve \
+  --openapi-url https://dac-static.atlassian.com/cloud/jira/platform/swagger-v3.v3.json \
+  --transport sse --port 8002
 
-# GitHub API  
-uvx automagik-tools serve \
-  --openapi-url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json \
-  --api-key $GITHUB_TOKEN
+# Shopify for e-commerce automation  
+OPENAI_API_KEY=your_key SHOPIFY_ACCESS_TOKEN=your_token uvx automagik-tools serve \
+  --openapi-url https://shopify.dev/docs/api/admin-rest/2023-04/openapi.json \
+  --transport sse --port 8003
 
-# Your Internal API
-uvx automagik-tools serve \
-  --openapi-url https://api.yourcompany.com/openapi.json \
-  --api-key $YOUR_API_KEY
+# SSE mode allows your team to share the same learning agent
 ```
+
+## 📋 Real-World Agent Examples
+
+### Genie Orchestrating Multiple Tools
+
+**Personal Automation:**
+- "Use memory agent to remember my GitHub preferences, then check my repos and create a weekly summary"
+- "Process these expense receipts with the filesystem tool and store insights in memory"
+- "Monitor my crypto portfolio with the trading API and remember my risk preferences"
+
+**Team Coordination:**
+- "Coordinate between Slack and Linear to set up daily standups for the design team"
+- "Use the file system to track project deadlines and notify stakeholders via Discord"  
+- "Analyze customer feedback from multiple sources and create sentiment reports"
+
+**Business Intelligence:**
+- "Compare Q4 sales across all regions using the database and memory tools"
+- "Generate inventory reports by coordinating warehouse APIs and document storage"
+- "Monitor competitor pricing across platforms and update my preference memory"
+
+The agent **learns your patterns** - after a few interactions, it knows exactly how you like your data formatted, which metrics matter most, and when to proactively alert you.
+
+## 🛠️ Advanced Usage
+
+### Multiple Server Configurations
+
+Configure Genie with different MCP server combinations:
+
+```bash
+# Development setup with local tools
+export GENIE_MCP_CONFIGS='{
+  "filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"],
+    "env": {}
+  },
+  "git": {
+    "command": "uvx", 
+    "args": ["mcp-server-git"],
+    "env": {"GIT_AUTHOR_NAME": "Your Name"}
+  }
+}'
+
+# Production setup with external services
+export GENIE_MCP_CONFIGS='{
+  "automagik": {
+    "command": "uvx",
+    "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
+    "env": {
+      "AUTOMAGIK_AGENTS_API_KEY": "prod-key",
+      "AUTOMAGIK_AGENTS_BASE_URL": "https://api.yourcompany.com"
+    }
+  },
+  "slack": {
+    "command": "docker",
+    "args": ["run", "-i", "--rm", "-e", "SLACK_BOT_TOKEN", "mcp/slack"],
+    "env": {"SLACK_BOT_TOKEN": "xoxb-your-token"}
+  }
+}'
+```
+
+### Dynamic MCP Server Connection
+
+You can also pass MCP server configurations directly to Genie via the `ask_genie` tool:
+
+```json
+{
+  "tool": "ask_genie",
+  "arguments": {
+    "query": "List all my GitHub repositories and remember my coding preferences",
+    "mcp_servers": {
+      "github": {
+        "command": "uvx",
+        "args": ["mcp-server-git"],
+        "env": {"GITHUB_TOKEN": "your-token"}
+      },
+      "memory": {
+        "url": "http://localhost:8000/sse",
+        "transport": "sse"
+      }
+    }
+  }
+}
+```
+
+## 🎯 Why Intelligent Agents Matter
+
+**The old way:** Hours writing API integrations, maintaining complex schemas, fighting with documentation. When APIs change, everything breaks.
+
+**The AutoMagik way:**
+1. **Point** to any OpenAPI spec
+2. **Ask** in natural language what you need  
+3. **Learn** as the agent adapts to your workflow
+4. **Export** to code when you need customization
+
+When your needs evolve, your agent **learns and remembers**.
 
 ## 🛠️ Built-in Tools
 
@@ -143,6 +308,20 @@ uvx automagik-tools serve --tool automagik --transport sse --port 8000
 - 💬 Natural language task descriptions
 - 🏗️ Works with any AI framework
 
+### Genie 🧞
+Universal MCP orchestrator with persistent memory:
+
+```bash
+# Run as SSE server for team sharing
+uvx automagik-tools serve --tool genie --transport sse --port 8000
+```
+
+**Capabilities:**
+- 🧠 Persistent memory across all sessions
+- 🔗 Connect to unlimited MCP servers
+- 💬 Natural language task coordination
+- 👥 Shared learning across team members
+
 ### Evolution API (WhatsApp) 📱
 Complete WhatsApp automation:
 - Send/receive messages
@@ -150,23 +329,65 @@ Complete WhatsApp automation:
 - Group management
 - Status updates
 
-## 🎯 Why We Built This
+## 🚀 The Future: Self-Maintaining Tools
 
-We got tired of the same painful process every time we needed to connect our AI agents to a new API:
+Our roadmap includes agents that:
+- **Auto-discover** API endpoints without OpenAPI specs
+- **Auto-evolution**: Tools that update and adapt when APIs change
+- **Self-debug** and report issues back to maintainers
+- **Collaborate** with other agents for complex workflows
+- **Generate** their own tools from natural language descriptions
 
-**The Problem We Faced:**
-- Hours spent writing boilerplate MCP tool definitions
-- Constant maintenance when APIs changed
-- Friction between "let's try this API" and actually using it
-- No easy path from prototype to production-ready tool
+**Production Deployments (Coming Soon):**
+- 🐳 **Docker**: One-click deployment scripts for containerized agents
+- ☁️ **Cloud Ready**: Deploy to AWS, Google Cloud, Azure with pre-built templates
+- 🌐 **Team Sharing**: VPS and network deployments for organization-wide agent access
+- 📈 **Scalable**: Load balancing and auto-scaling for high-demand agents
 
-**Our Solution:**
-1. **Instant prototyping**: Drop an OpenAPI URL, get a working tool in seconds
-2. **Zero friction**: Test new APIs immediately without writing code
-3. **Deploy as code**: Start with the generated tool, then customize as needed
-4. **Refine over time**: Extract the generated code and tailor it to your specific needs
+*Coming 2025: A hive of AI agents maintaining this entire codebase - reporting bugs, implementing features, and keeping users happy. All open source.*
 
-**The best part**: When the API provider updates their OpenAPI spec, your tool automagikally gets the new endpoints. Perfect for the exploration phase before you lock down your production implementation.
+## 📋 Real-World Examples
+
+### Genie with Memory Agent
+```json
+{
+  "mcpServers": {
+    "genie_with_memory": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "serve",
+        "--tool",
+        "genie",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "your-openai-key",
+        "GENIE_MCP_CONFIGS": "{\"agent-memory\":{\"url\":\"http://192.168.112.149:8000/sse\",\"transport\":\"sse\"}}"
+      }
+    }
+  }
+}
+```
+
+### AutoMagik with Multiple APIs
+```bash
+# Stripe Payments
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json \
+  --api-key $STRIPE_API_KEY
+
+# GitHub API  
+uvx automagik-tools serve \
+  --openapi-url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json \
+  --api-key $GITHUB_TOKEN
+
+# Your Internal API
+uvx automagik-tools serve \
+  --openapi-url https://api.yourcompany.com/openapi.json \
+  --api-key $YOUR_API_KEY
+```
 
 <details>
 <summary><b>🛠️ Developer Documentation</b></summary>
@@ -229,17 +450,6 @@ make docker-build                       # Build Docker images
 
 </details>
 
-## 🚀 The Future: Smart Tools™ (Coming Q2 2025)
-
-Imagine describing what you want in plain English and having AI automatically:
-- Find the right API
-- Understand its documentation
-- Make the correct calls
-- Handle authentication
-- Process responses
-
-**"Hey, get me all unread messages from Slack and create tasks in Notion"** → Done. No configuration needed.
-
 ## 🤝 Contributing
 
 We love contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -260,7 +470,7 @@ Special thanks to:
 ---
 
 <p align="center">
-  <b>Transform any API into an AI-ready tool in seconds.</b><br>
+  <b>Every API becomes a smart agent that learns how you work.</b><br>
   <a href="https://github.com/namastexlabs/automagik-tools">Star us on GitHub</a> • 
   <a href="https://discord.gg/automagik">Join our Discord</a> • 
   <a href="https://twitter.com/namastexlabs">Follow on Twitter</a>
