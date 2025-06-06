@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+.cursor/mcp.json
 # Distribution / packaging
 .Python
 build/
@@ -193,6 +193,15 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .mcp.json
+
+# Cursor MCP configuration (contains sensitive API keys)
+.cursor/mcp.json
+
+# Test files that may contain secrets
+test_genie_stdio.py
+
+# Script files that may contain secrets
+scripts/start_linear_genie_sse.sh
 
 # Genie database files
 genie_memory.db
