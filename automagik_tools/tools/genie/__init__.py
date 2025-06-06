@@ -97,7 +97,8 @@ async def ask_genie(
         from agno.memory.v2.db.sqlite import SqliteMemoryDb
         from agno.memory.v2.memory import Memory
         from agno.storage.sqlite import SqliteStorage
-        from agno.tools.mcp import MCPTools as _MCPTools
+        from agno.tools.mcp import MultiMCPTools
+        from mcp import StdioServerParameters
         
         # Protect stdout during MCP operations to prevent stdio corruption
         import contextlib
@@ -109,9 +110,6 @@ async def ask_genie(
         # This prevents subprocess output from corrupting the SSE stream
         transport_type = os.environ.get('AUTOMAGIK_TRANSPORT', 'stdio')
         logger.info(f"🚀 Running in {transport_type} transport mode")
-        
-        # Use MCPTools directly - we'll handle cleanup more aggressively
-        MCPTools = _MCPTools
 
         # Use provided MCP servers or fall back to config
         if mcp_servers:
@@ -122,11 +120,11 @@ async def ask_genie(
         if not mcp_configs_to_use:
             return "❌ No MCP server configurations provided. Please provide MCP servers or configure them in environment variables."
 
-        # Prepare all MCP tools
-        mcp_tools_list = []
-        mcp_contexts = []
+        # Prepare MCP server commands for MultiMCPTools
+        mcp_commands = []
+        combined_env = dict(os.environ)
 
-        # Connect to each configured MCP server
+        # Build command list for MultiMCPTools
         for server_name, server_config in mcp_configs_to_use.items():
             try:
                 logger.info(f"📡 Setting up MCP server: {server_name}")
@@ -135,7 +133,7 @@ async def ask_genie(
                 if isinstance(server_config, str):
                     server_config = json.loads(server_config)
 
-                # Create MCP tools configuration for this server
+                # Create MCP server command for MultiMCPTools
                 if "command" in server_config and "args" in server_config:
                     # Build command string from config
                     cmd_parts = [server_config["command"]] + server_config["args"]
@@ -143,22 +141,17 @@ async def ask_genie(
 
                     # Get environment variables if provided
                     env_vars = server_config.get("env", {})
+                    if env_vars:
+                        combined_env.update(env_vars)
+                        logger.info(f"📦 Added env vars for {server_name}: {list(env_vars.keys())}")
 
                     logger.info(f"🔧 Command: {command_str}")
-                    if env_vars:
-                        logger.info(f"📦 With env vars: {list(env_vars.keys())}")
-
-                    # Create MCPTools instance
-                    mcp_tool = MCPTools(command_str, env=env_vars)
-                    mcp_tools_list.append((server_name, mcp_tool))
+                    mcp_commands.append(command_str)
 
                 elif "url" in server_config:
-                    # URL-based configuration
-                    mcp_tool = MCPTools(
-                        url=server_config["url"],
-                        transport=server_config.get("transport", "sse"),
-                    )
-                    mcp_tools_list.append((server_name, mcp_tool))
+                    # URL-based configuration - MultiMCPTools handles this differently
+                    logger.warning(f"⚠️ URL-based MCP servers ({server_name}) not yet supported with MultiMCPTools")
+                    logger.warning(f"⚠️ Consider using command-based configuration for {server_name}")
                 else:
                     logger.warning(
                         f"⚠️ Invalid config for {server_name}: missing command/args or url"
@@ -168,65 +161,36 @@ async def ask_genie(
                 logger.error(f"❌ Failed to configure {server_name}: {e}")
                 continue
 
-        if not mcp_tools_list:
+        if not mcp_commands:
             return "❌ Failed to configure any MCP servers. Please check your configuration."
 
-        # Initialize all MCP tools as context managers
-        async def run_with_mcp_tools():
-            # Enter all contexts
-            entered_tools = []
-            for server_name, mcp_tool in mcp_tools_list:
-                try:
-                    logger.info(f"🔌 Initializing MCPTools for {server_name}")
-                    # Capture any stdout pollution during MCP tool initialization
-                    init_stdout = StringIO()
-                    with contextlib.redirect_stdout(init_stdout):
-                        await mcp_tool.__aenter__()
-                    
-                    # Log any captured stdout for debugging (to stderr)
-                    init_stdout_content = init_stdout.getvalue()
-                    if init_stdout_content.strip():
-                        logger.warning(f"⚠️ MCP init stdout pollution from {server_name}: {init_stdout_content[:200]}...")
-                    
-                    entered_tools.append((server_name, mcp_tool))
-                    mcp_contexts.append(mcp_tool)
+        logger.info(f"🔗 Connecting to {len(mcp_commands)} MCP servers using MultiMCPTools")
 
-                    # Log discovered functions after initialization
-                    if hasattr(mcp_tool, "functions"):
-                        logger.info(
-                            f"🛠️ Discovered {len(mcp_tool.functions)} tools from {server_name}"
-                        )
-                except Exception as e:
-                    logger.error(f"❌ Failed to initialize {server_name}: {e}")
+        # Use MultiMCPTools to handle all servers properly
+        async with MultiMCPTools(mcp_commands, env=combined_env) as mcp_tools:
+            logger.info(f"🛠️ Connected to MCP servers, discovered {len(mcp_tools.functions)} total tools")
 
-            if not entered_tools:
-                return "❌ Failed to initialize any MCP tools. Please check server configurations."
+            # Set up memory with SQLite persistence
+            memory_db = SqliteMemoryDb(
+                table_name="genie_memories", db_file=config.memory_db_file
+            )
 
-            try:
-                # Set up memory with SQLite persistence
-                memory_db = SqliteMemoryDb(
-                    table_name="genie_memories", db_file=config.memory_db_file
-                )
+            memory = Memory(
+                model=OpenAIChat(id=config.model, api_key=config.openai_api_key),
+                db=memory_db,
+            )
 
-                memory = Memory(
-                    model=OpenAIChat(id=config.model, api_key=config.openai_api_key),
-                    db=memory_db,
-                )
+            # Set up storage for chat history
+            storage = SqliteStorage(
+                table_name="genie_sessions", db_file=config.storage_db_file
+            )
 
-                # Set up storage for chat history
-                storage = SqliteStorage(
-                    table_name="genie_sessions", db_file=config.storage_db_file
-                )
-
-                # Extract just the MCPTools objects for the agent
-                tools_for_agent = [tool for _, tool in entered_tools]
-
-                # Initialize the agent inside the MCP context
-                agent = Agent(
-                    name="Genie",
-                    model=OpenAIChat(id=config.model, api_key=config.openai_api_key),
-                    description="""I am Genie, an intelligent agent with persistent memory and access to any MCP tools you provide.
-                    
+            # Initialize the agent with MultiMCPTools
+            agent = Agent(
+                name="Genie",
+                model=OpenAIChat(id=config.model, api_key=config.openai_api_key),
+                description="""I am Genie, an intelligent agent with persistent memory and access to any MCP tools you provide.
+                
 I have persistent memory and learn from every interaction to provide increasingly personalized assistance.
 I can help with various tasks including:
 - Natural language processing and analysis
@@ -239,116 +203,96 @@ I can help with various tasks including:
 
 I remember our conversations and your preferences, building a detailed understanding of your needs over time.
 I can also manage my own memories - creating, updating, or deleting them as needed.""",
-                    # Memory configuration
-                    memory=memory,
-                    enable_agentic_memory=True,
-                    enable_user_memories=True,
-                    # Storage configuration
-                    storage=storage,
-                    add_history_to_messages=True,
-                    num_history_runs=config.num_history_runs,
-                    # Tool access
-                    tools=tools_for_agent,
-                    # Output configuration
-                    markdown=True,
-                    show_tool_calls=config.show_tool_calls,
-                    debug_mode=False,  # MUST be False for stdio transport to avoid JSON errors
-                    # Verbose logging configuration  
-                    monitoring=False,  # MUST be False for stdio transport to avoid DEBUG output
-                    # Instructions for memory management
-                    instructions=[
-                        "Always use your memory to provide personalized responses based on past interactions",
-                        "Proactively create memories about user preferences, project details, and recurring patterns",
-                        "Update existing memories when you learn new information about users or their projects",
-                        "Use agentic memory search to find relevant context before responding",
-                        "When users ask about past conversations or preferences, search your memories first",
-                        "Be transparent about what you remember and what you're learning about users",
-                    ],
+                # Memory configuration
+                memory=memory,
+                enable_agentic_memory=True,
+                enable_user_memories=True,
+                # Storage configuration
+                storage=storage,
+                add_history_to_messages=True,
+                num_history_runs=config.num_history_runs,
+                # Tool access - MultiMCPTools handles all servers
+                tools=[mcp_tools],
+                # Output configuration
+                markdown=True,
+                show_tool_calls=config.show_tool_calls,
+                debug_mode=False,  # MUST be False for stdio transport to avoid JSON errors
+                # Verbose logging configuration  
+                monitoring=False,  # MUST be False for stdio transport to avoid DEBUG output
+                # Instructions for memory management
+                instructions=[
+                    "Always use your memory to provide personalized responses based on past interactions",
+                    "Proactively create memories about user preferences, project details, and recurring patterns",
+                    "Update existing memories when you learn new information about users or their projects",
+                    "Use agentic memory search to find relevant context before responding",
+                    "When users ask about past conversations or preferences, search your memories first",
+                    "Be transparent about what you remember and what you're learning about users",
+                ],
+            )
+
+            logger.info(f"🧞 Genie initialized with MultiMCPTools managing {len(mcp_commands)} servers")
+
+            # Prepare the full query with context
+            full_query = query
+            if context:
+                full_query = f"Context: {context}\n\nQuery: {query}"
+
+            # Get response from agent
+            logger.info(f"🎯 Starting agent execution for session: {session_id}")
+
+            # Capture any stdout pollution during agent execution
+            captured_stdout = StringIO()
+            with contextlib.redirect_stdout(captured_stdout):
+                response = await agent.arun(
+                    full_query,
+                    user_id=session_id,
+                    stream=False,  # Use non-streaming for simplicity
                 )
+            
+            # Log any captured stdout for debugging (to stderr)
+            stdout_content = captured_stdout.getvalue()
+            if stdout_content.strip():
+                logger.warning(f"⚠️ Captured stdout pollution: {stdout_content[:200]}...")
 
-                logger.info(
-                    f"🧞 Genie initialized with {len(tools_for_agent)} MCP servers"
-                )
-
-                # Prepare the full query with context
-                full_query = query
-                if context:
-                    full_query = f"Context: {context}\n\nQuery: {query}"
-
-                # Get response from agent
-                logger.info(f"🎯 Starting agent execution for session: {session_id}")
-
-                # Capture any stdout pollution during agent execution
-                captured_stdout = StringIO()
-                with contextlib.redirect_stdout(captured_stdout):
-                    response = await agent.arun(
-                        full_query,
-                        user_id=session_id,
-                        stream=False,  # Use non-streaming for simplicity
-                    )
-                
-                # Log any captured stdout for debugging (to stderr)
-                stdout_content = captured_stdout.getvalue()
-                if stdout_content.strip():
-                    logger.warning(f"⚠️ Captured stdout pollution: {stdout_content[:200]}...")
-
-                logger.info("🧞 Genie response completed")
-                
-                # Debug logging to understand response structure
-                logger.debug(f"Response type: {type(response)}")
-                logger.debug(f"Response attributes: {dir(response) if response else 'None'}")
-                
-                # Store the response before cleanup
-                final_response = None
-                if response is None:
-                    final_response = "❌ No response from agent"
-                elif hasattr(response, "content"):
-                    # Check if content is empty
-                    if not response.content:
-                        logger.warning("⚠️ Agent returned empty content")
-                        final_response = "❌ Agent returned empty response"
-                    else:
-                        final_response = response.content
+            logger.info("🧞 Genie response completed")
+            
+            # Debug logging to understand response structure
+            logger.debug(f"Response type: {type(response)}")
+            logger.debug(f"Response attributes: {dir(response) if response else 'None'}")
+            
+            # Process response
+            final_response = None
+            if response is None:
+                final_response = "❌ No response from agent"
+            elif hasattr(response, "content"):
+                # Check if content is empty
+                if not response.content:
+                    logger.warning("⚠️ Agent returned empty content")
+                    final_response = "❌ Agent returned empty response"
                 else:
-                    # Fallback to string representation
-                    result_str = str(response)
-                    if not result_str or result_str == "None":
-                        final_response = "❌ Agent returned empty response"
-                    else:
-                        final_response = result_str
-                
-                # Store context for cleanup but don't clean up yet
-                # We'll return the response first, then handle cleanup
-                
-                # Create cleanup task that will run after we return
-                async def cleanup_task():
-                    """Cleanup task that runs independently"""
-                    try:
-                        # Wait a bit to ensure response is fully sent
-                        await asyncio.sleep(1.0)
-                        
-                        for mcp_tool in mcp_contexts:
-                            try:
-                                await mcp_tool.__aexit__(None, None, None)
-                                logger.info("🔓 Closed MCPTools context (delayed)")
-                            except Exception as e:
-                                logger.error(f"Error in delayed cleanup: {e}")
-                    except Exception as e:
-                        logger.error(f"Cleanup task error: {e}")
-                
-                # Schedule cleanup as a background task
-                # This allows the response to be sent immediately
-                asyncio.create_task(cleanup_task())
-                
-                # Return response immediately without waiting for cleanup
-                return final_response
-
-            finally:
-                # Empty finally block - cleanup is handled above based on transport type
-                pass
-
-        # Run with all MCP tools
-        return await run_with_mcp_tools()
+                    final_response = response.content
+            else:
+                # Fallback to string representation
+                result_str = str(response)
+                if not result_str or result_str == "None":
+                    final_response = "❌ Agent returned empty response"
+                else:
+                    final_response = result_str
+            
+            # Log what we're returning
+            logger.info(f"📤 Returning response (length: {len(final_response) if final_response else 0})")
+            logger.info(f"📄 Response preview: {final_response[:200] if final_response else 'None'}...")
+            
+            # MultiMCPTools handles cleanup automatically when exiting the context
+            logger.info("🧹 MultiMCPTools will handle cleanup automatically")
+            
+            # For SSE transport, add small delay to ensure cleanup completes
+            if transport_type == "sse":
+                sse_delay = config.sse_cleanup_delay
+                await asyncio.sleep(sse_delay)
+                logger.info(f"🔄 SSE cleanup delay ({sse_delay}s) completed")
+            
+            return final_response
 
     except Exception as e:
         error_msg = f"Genie error: {str(e)}"

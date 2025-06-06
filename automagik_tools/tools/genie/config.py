@@ -9,6 +9,7 @@ import json
 from typing import Optional, Dict, Any
 from pydantic import Field
 from pydantic_settings import BaseSettings
+from dataclasses import dataclass, field
 
 def _load_mcp_configs() -> Dict[str, Any]:
     """Load MCP server configurations from environment variables"""
@@ -37,121 +38,122 @@ def _load_mcp_configs() -> Dict[str, Any]:
     
     return configs
 
-class GenieConfig(BaseSettings):
-    """Configuration settings for Genie"""
+@dataclass
+class GenieConfig:
+    """Configuration for Genie MCP tool orchestrator"""
     
-    # AI Model Configuration
-    openai_api_key: str = Field(
-        default_factory=lambda: os.getenv("OPENAI_API_KEY", ""),
-        description="OpenAI API key for the agent model"
-    )
-    model: str = Field(
-        default=os.getenv("GENIE_MODEL", "gpt-4.1-mini"),
-        description="OpenAI model to use for the agent"
-    )
+    # OpenAI API configuration
+    openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    model: str = field(default_factory=lambda: os.getenv("GENIE_MODEL", "gpt-4o"))
     
-    # Memory and Storage Configuration  
-    memory_db_file: str = Field(
-        default=os.getenv("GENIE_MEMORY_DB", "genie_memory.db"),
-        description="SQLite database file for persistent memory"
-    )
-    storage_db_file: str = Field(
-        default=os.getenv("GENIE_STORAGE_DB", "genie_storage.db"), 
-        description="SQLite database file for chat history storage"
-    )
-    shared_session_id: str = Field(
-        default=os.getenv("GENIE_SESSION_ID", "global_genie_session"),
-        description="Shared session ID for all users (single evolving agent)"
-    )
+    # Memory and storage configuration
+    memory_db_file: str = field(default_factory=lambda: os.getenv("GENIE_MEMORY_DB", "genie_memory.db"))
+    storage_db_file: str = field(default_factory=lambda: os.getenv("GENIE_STORAGE_DB", "genie_storage.db"))
+    shared_session_id: str = field(default_factory=lambda: os.getenv("GENIE_SESSION_ID", "global_genie_session"))
     
-    # Agent Behavior Configuration
-    enable_streaming: bool = Field(
-        default=os.getenv("GENIE_STREAMING", "true").lower() == "true",
-        description="Enable streaming responses"
-    )
-    enable_debug: bool = Field(
-        default=os.getenv("GENIE_DEBUG", "true").lower() == "true", 
-        description="Enable debug mode with verbose logging"
-    )
-    show_tool_calls: bool = Field(
-        default=os.getenv("GENIE_SHOW_TOOLS", "true").lower() == "true",
-        description="Show tool calls in responses"
-    )
+    # Agent behavior configuration
+    num_history_runs: int = field(default_factory=lambda: int(os.getenv("GENIE_HISTORY_RUNS", "3")))
+    show_tool_calls: bool = field(default_factory=lambda: os.getenv("GENIE_SHOW_TOOL_CALLS", "true").lower() == "true")
     
-    # Memory Management Configuration
-    num_history_runs: int = Field(
-        default=int(os.getenv("GENIE_HISTORY_RUNS", "5")),
-        description="Number of previous conversation runs to include in context"
-    )
-    max_memory_search_results: int = Field(
-        default=int(os.getenv("GENIE_MAX_MEMORIES", "10")),
-        description="Maximum number of memories to retrieve in searches"
-    )
-    enable_agentic_memory: bool = Field(
-        default=os.getenv("GENIE_AGENTIC_MEMORY", "true").lower() == "true",
-        description="Enable agent-managed memory creation/deletion"
-    )
-    enable_user_memories: bool = Field(
-        default=os.getenv("GENIE_USER_MEMORIES", "true").lower() == "true",
-        description="Enable automatic memory creation after each interaction"
-    )
+    # MCP server timeout and management settings
+    mcp_cleanup_timeout: float = field(default_factory=lambda: float(os.getenv("GENIE_MCP_CLEANUP_TIMEOUT", "2.0")))
+    sse_cleanup_delay: float = field(default_factory=lambda: float(os.getenv("GENIE_SSE_CLEANUP_DELAY", "0.2")))
+    aggressive_cleanup: bool = field(default_factory=lambda: os.getenv("GENIE_AGGRESSIVE_CLEANUP", "true").lower() == "true")
     
-    # MCP Server Configurations
-    # Each MCP server will have its own session/instance
-    mcp_server_configs: Dict[str, Any] = Field(
-        default_factory=lambda: _load_mcp_configs(),
-        description="MCP server configurations. Each key is a server name, value is the server config dict"
-    )
+    def __post_init__(self):
+        # Validate required fields
+        if not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is required")
     
-    # Automagik MCP Server Configuration (specific support)
-    automagik_command: str = Field(
-        default=os.getenv("GENIE_AUTOMAGIK_COMMAND", "uvx"),
-        description="Command to run automagik MCP server"
-    )
-    automagik_args: str = Field(
-        default=os.getenv("GENIE_AUTOMAGIK_ARGS", "automagik-tools@0.3.0,serve,--tool,automagik,--transport,stdio"),
-        description="Arguments for automagik MCP server (comma-separated)"
-    )
-    automagik_api_key: str = Field(
-        default=os.getenv("GENIE_AUTOMAGIK_API_KEY", ""),
-        description="API key for automagik agents"
-    )
-    automagik_base_url: str = Field(
-        default=os.getenv("GENIE_AUTOMAGIK_BASE_URL", ""),
-        description="Base URL for automagik API"
-    )
-    automagik_timeout: str = Field(
-        default=os.getenv("GENIE_AUTOMAGIK_TIMEOUT", "600"),
-        description="Timeout for automagik operations"
-    )
+    @property
+    def mcp_server_configs(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Parse MCP server configurations from environment variables.
+        Supports both individual server configs and a combined JSON config.
+        """
+        configs = {}
+        
+        # Check for combined JSON config first
+        combined_config = os.getenv("GENIE_MCP_CONFIGS")
+        if combined_config:
+            try:
+                configs.update(json.loads(combined_config))
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in GENIE_MCP_CONFIGS: {e}")
+        
+        # Check for individual server configurations
+        # Pattern: GENIE_{SERVER_NAME}_CONFIG
+        for key, value in os.environ.items():
+            if key.startswith("GENIE_") and key.endswith("_CONFIG"):
+                server_name = key[6:-7].lower()  # Remove GENIE_ prefix and _CONFIG suffix
+                try:
+                    configs[server_name] = json.loads(value)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Invalid JSON in {key}: {e}")
+        
+        # Legacy support for specific server environment patterns
+        
+        # Automagik configuration
+        automagik_key = os.getenv("GENIE_AUTOMAGIK_API_KEY")
+        automagik_url = os.getenv("GENIE_AUTOMAGIK_BASE_URL")
+        if automagik_key and automagik_url:
+            configs["automagik"] = {
+                "url": f"{automagik_url}/sse" if not automagik_url.endswith("/sse") else automagik_url,
+                "transport": "sse"
+            }
+        
+        # Linear configuration
+        linear_token = os.getenv("LINEAR_API_TOKEN")
+        if linear_token:
+            configs["linear"] = {
+                "command": "npx",
+                "args": ["-y", "@tacticlaunch/mcp-linear"],
+                "env": {"LINEAR_API_TOKEN": linear_token}
+            }
+        
+        # Evolution API configuration
+        evolution_key = os.getenv("EVOLUTION_API_KEY")
+        evolution_url = os.getenv("EVOLUTION_API_BASE_URL")
+        if evolution_key and evolution_url:
+            configs["evolution"] = {
+                "url": f"{evolution_url}/sse" if not evolution_url.endswith("/sse") else evolution_url,
+                "transport": "sse"
+            }
+        
+        return configs
     
-    # Logging Configuration
-    log_level: str = Field(
-        default=os.getenv("GENIE_LOG_LEVEL", "INFO"),
-        description="Logging level (DEBUG, INFO, WARNING, ERROR)"
-    )
-    log_file: Optional[str] = Field(
-        default=os.getenv("GENIE_LOG_FILE"),
-        description="Optional log file path"
-    )
-    
-    # Performance Configuration
-    max_concurrent_tools: int = Field(
-        default=int(os.getenv("GENIE_MAX_CONCURRENT", "5")),
-        description="Maximum number of concurrent tool executions"
-    )
-    tool_timeout_seconds: int = Field(
-        default=int(os.getenv("GENIE_TIMEOUT", "300")),
-        description="Timeout for individual tool executions"
-    )
-    
-    model_config = {
-        "env_prefix": "GENIE_",
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "extra": "ignore"
-    }
+    def get_server_specific_cleanup_settings(self, server_name: str) -> Dict[str, Any]:
+        """Get cleanup settings specific to a server type"""
+        transport_mode = os.environ.get('AUTOMAGIK_TRANSPORT', 'stdio')
+        
+        # Server-specific settings
+        settings = {
+            "cleanup_timeout": self.mcp_cleanup_timeout,
+            "aggressive_cleanup": self.aggressive_cleanup
+        }
+        
+        # Linear MCP server needs special handling due to stdout pollution
+        if server_name == "linear" and transport_mode == "sse":
+            settings.update({
+                "cleanup_timeout": 1.0,  # Faster timeout for Linear
+                "aggressive_cleanup": True,
+                "force_kill_on_timeout": True,
+                "filter_patterns": [
+                    "MCP Linear is running",
+                    "Starting MCP Linear...",
+                    "MCP Linear version:",
+                    "Linear MCP server started"
+                ]
+            })
+        
+        # Other servers that might have similar issues
+        elif server_name in ["filesystem", "puppeteer"] and transport_mode == "sse":
+            settings.update({
+                "cleanup_timeout": 1.5,
+                "aggressive_cleanup": True
+            })
+        
+        return settings
 
 def get_config() -> GenieConfig:
     """Get Genie configuration from environment variables"""
