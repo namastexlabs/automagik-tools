@@ -179,8 +179,35 @@ async def main():
     server = FilteredMCPServer(command)
     process = await server.start()
     
+    # Create task to forward stdin to the subprocess
+    stdin_task = asyncio.create_task(forward_stdin_to_process(process))
+    
     # Wait for process to complete
     await process.wait()
+    
+    # Cancel stdin forwarding
+    stdin_task.cancel()
+    
+
+async def forward_stdin_to_process(process):
+    """Forward stdin from parent to subprocess"""
+    loop = asyncio.get_event_loop()
+    reader = asyncio.StreamReader()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+    
+    try:
+        while True:
+            data = await reader.read(4096)
+            if not data:
+                break
+            process.stdin.write(data)
+            await process.stdin.drain()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        if process.stdin:
+            process.stdin.close()
     
 
 if __name__ == "__main__":

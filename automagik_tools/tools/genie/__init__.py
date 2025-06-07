@@ -146,6 +146,15 @@ async def ask_genie(
                         logger.info(f"📦 Added env vars for {server_name}: {list(env_vars.keys())}")
 
                     logger.info(f"🔧 Command: {command_str}")
+                    
+                    # For stdio transport, wrap ALL commands to prevent stdout pollution
+                    if transport_type == "stdio":
+                        # Use our wrapper that redirects subprocess stdout
+                        # The wrapper expects: python -m mcp_wrapper <cmd> <arg1> <arg2> ...
+                        wrapped_parts = ["uv", "run", "python", "-m", "automagik_tools.tools.genie.mcp_wrapper"] + cmd_parts
+                        command_str = " ".join(wrapped_parts)
+                        logger.info(f"🔇 Wrapped for stdio: {command_str}")
+                    
                     mcp_commands.append(command_str)
 
                 elif "url" in server_config:
