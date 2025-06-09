@@ -145,8 +145,8 @@ Create a `.env` file with your API keys:
 ```bash
 # .env
 OPENAI_API_KEY=sk-your-openai-key-here
-AUTOMAGIK_AGENTS_API_KEY=your-automagik-api-key
-AUTOMAGIK_AGENTS_BASE_URL=http://localhost:8881
+AUTOMAGIK_API_KEY=your-automagik-api-key
+AUTOMAGIK_BASE_URL=http://localhost:8881
 
 # Enable JSON to Markdown processing (optional)
 ENABLE_JSON_PROCESSING=true
@@ -171,8 +171,8 @@ JSON_PROCESSOR_MODEL=gpt-4.1-nano
         "stdio"
       ],
       "env": {
-        "AUTOMAGIK_AGENTS_API_KEY": "YOUR_API_KEY",
-        "AUTOMAGIK_AGENTS_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_API_KEY": "YOUR_API_KEY",
+        "AUTOMAGIK_BASE_URL": "http://localhost:8881",
         "OPENAI_API_KEY": "YOUR_OPENAI_API_KEY"
       }
     }
@@ -248,8 +248,8 @@ export GENIE_MCP_CONFIGS='{
     "command": "uvx",
     "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
     "env": {
-      "AUTOMAGIK_AGENTS_API_KEY": "prod-key",
-      "AUTOMAGIK_AGENTS_BASE_URL": "https://api.yourcompany.com"
+      "AUTOMAGIK_API_KEY": "prod-key",
+      "AUTOMAGIK_BASE_URL": "https://api.yourcompany.com"
     }
   },
   "slack": {

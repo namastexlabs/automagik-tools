@@ -1675,8 +1675,8 @@ def get_config_schema() -> Dict[str, Any]:
 def get_required_env_vars() -> Dict[str, str]:
     """Get required environment variables"""
     return {
-        "AUTOMAGIK_AGENTS_API_KEY": "API key for authentication",
-        "AUTOMAGIK_AGENTS_BASE_URL": "Base URL for the API (optional)",
+        "AUTOMAGIK_API_KEY": "API key for authentication",
+        "AUTOMAGIK_BASE_URL": "Base URL for the API (optional)",
     }
 
 
@@ -1689,7 +1689,7 @@ def get_metadata() -> Dict[str, Any]:
         "author": "Automagik Team",
         "category": "ai-agents",
         "tags": ["ai", "agents", "workflows", "ai-enhanced"],
-        "config_env_prefix": "AUTOMAGIK_AGENTS_"
+        "config_env_prefix": "AUTOMAGIK_"
     }
 
 

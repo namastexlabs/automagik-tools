@@ -283,8 +283,8 @@ def load_tool(tool_name: str, tools: Dict[str, Any]) -> FastMCP:
     raise ValueError(f"Tool '{tool_name}' doesn't export create_server or create_tool")
 
 
-@app.command()
-def list():
+@app.command("list")
+def list_tools():
     """List all available tools"""
     tools = discover_tools()
 
@@ -320,6 +320,9 @@ def serve_all(
     tools: Optional[str] = typer.Option(
         None, help="Comma-separated list of tools to serve (default: all)"
     ),
+    transport: str = typer.Option(
+        "streamable-http", help="Transport type (streamable-http, sse, or stdio)"
+    ),
 ):
     """Serve all tools (or specified tools) on a single server with path-based routing"""
     available_tools = discover_tools()
@@ -337,120 +340,197 @@ def serve_all(
             console.print(f"Available tools: {', '.join(available_tools.keys())}")
             sys.exit(1)
     else:
-        tool_names = list(available_tools.keys())
+        tool_names = [name for name in available_tools.keys()]
 
     # Get host and port from environment variables or defaults
     serve_host = host or os.getenv("HOST", "127.0.0.1")
     serve_port = port or int(os.getenv("PORT", "8000"))
 
-    console.print(f"Starting multi-tool server with: {', '.join(tool_names)}")
-    console.print(f"[blue]Server config: HOST={serve_host}, PORT={serve_port}[/blue]")
+    if transport != "stdio":
+        console.print(f"Starting multi-tool server with: {', '.join(tool_names)}")
+        console.print(f"[blue]Server config: HOST={serve_host}, PORT={serve_port}, Transport={transport}[/blue]")
 
-    # Load all tools and create their HTTP apps
-    loaded_tools = {}
-    mcp_apps = {}
+    # For stdio transport, we can only serve one tool at a time
+    if transport == "stdio":
+        if len(tool_names) > 1:
+            console.print("[red]❌ stdio transport can only serve one tool at a time[/red]")
+            console.print(f"[yellow]💡 Use 'serve --tool {tool_names[0]} --transport stdio' instead[/yellow]")
+            sys.exit(1)
+        
+        # Serve single tool via stdio
+        tool_name = tool_names[0]
+        config = create_config_for_tool(tool_name, available_tools)
+        mcp_server = load_tool(tool_name, available_tools)
+        os.environ["MCP_TRANSPORT"] = "stdio"
+        mcp_server.run(transport="stdio")
+        return
 
-    for tool_name in tool_names:
+    # For streamable-http, use FastMCP's native multi-tool mounting
+    if transport == "streamable-http":
         try:
-            console.print(f"[blue]Loading tool: {tool_name}[/blue]")
-            config = create_config_for_tool(tool_name, available_tools)
-            if tool_name == "evolution-api":
-                console.print(
-                    f"[blue]Config: URL={config.base_url}, API Key={'***' if config.api_key else 'Not set'}[/blue]"
-                )
-
-            mcp_server = load_tool(tool_name, available_tools)
-            loaded_tools[tool_name] = mcp_server
-
-            # Create the HTTP app for this tool
-            # Use path="/mcp" to set the MCP endpoint path within each mounted app
-            mcp_app = mcp_server.http_app(path="/mcp")
-            mcp_apps[tool_name] = mcp_app
-
-            console.print(f"[green]✅ Tool '{tool_name}' loaded successfully[/green]")
+            # Create a hub FastMCP server that mounts all tools
+            from fastmcp import FastMCP
+            
+            # Create hub with recommended path format for resource prefixes
+            hub_server = FastMCP(
+                name="Automagik Tools Hub",
+                resource_prefix_format="path"  # Use recommended path format
+            )
+            
+            # Load and mount each tool
+            for tool_name in tool_names:
+                try:
+                    if transport != "stdio":
+                        console.print(f"[blue]Loading tool: {tool_name}[/blue]")
+                    
+                    config = create_config_for_tool(tool_name, available_tools)
+                    tool_server = load_tool(tool_name, available_tools)
+                    
+                    # Mount the tool on the hub server (no leading slash in prefix)
+                    # Use underscore instead of hyphen for valid prefix names
+                    mount_prefix = tool_name.replace("-", "_")
+                    
+                    # Check if server has custom lifespan to determine proxy mounting
+                    has_custom_lifespan = hasattr(tool_server, '_lifespan') and tool_server._lifespan is not None
+                    
+                    # Mount with proper syntax and consider proxy mounting
+                    if has_custom_lifespan:
+                        hub_server.mount(mount_prefix, tool_server, as_proxy=True)
+                    else:
+                        hub_server.mount(mount_prefix, tool_server)
+                    
+                    if transport != "stdio":
+                        console.print(f"[green]✅ Tool '{tool_name}' mounted at prefix '{mount_prefix}'[/green]")
+                        
+                except Exception as e:
+                    console.print(f"[red]❌ Failed to load tool {tool_name}: {e}[/red]")
+                    import traceback
+                    console.print(f"[red]{traceback.format_exc()}[/red]")
+            
+            # Set environment variable
+            os.environ["MCP_TRANSPORT"] = "streamable-http"
+            
+            console.print(f"[green]🚀 Starting Streamable HTTP server on {serve_host}:{serve_port}[/green]")
+            hub_server.run(transport="streamable-http", host=serve_host, port=serve_port)
+            return
+            
         except Exception as e:
-            console.print(f"[red]❌ Failed to load tool {tool_name}: {e}[/red]")
+            console.print(f"[red]❌ Failed to start streamable-http server: {e}[/red]")
             import traceback
-
             console.print(f"[red]{traceback.format_exc()}[/red]")
+            sys.exit(1)
 
-    if not loaded_tools:
-        console.print("[red]No tools loaded successfully. Exiting.[/red]")
-        sys.exit(1)
+    # For SSE transport, use the existing FastAPI mounting approach (legacy)
+    if transport == "sse":
+        console.print("[blue]Using SSE transport (legacy mode)[/blue]")
+        
+        # Load all tools and create their HTTP apps
+        loaded_tools = {}
+        mcp_apps = {}
 
-    # Create the main FastAPI app
-    # According to FastMCP docs, we need to use the lifespan from one of the MCP apps
-    # For multiple apps, we'll combine their lifespans manually
-
-    @asynccontextmanager
-    async def combined_lifespan(app: FastAPI):
-        # Start all MCP app lifespans
-        lifespan_contexts = {}
-
-        for tool_name, mcp_app in mcp_apps.items():
+        for tool_name in tool_names:
             try:
-                if hasattr(mcp_app, "lifespan") and mcp_app.lifespan:
+                console.print(f"[blue]Loading tool: {tool_name}[/blue]")
+                config = create_config_for_tool(tool_name, available_tools)
+                if tool_name == "evolution-api":
                     console.print(
-                        f"[blue]🔄 Starting {tool_name} MCP lifespan...[/blue]"
+                        f"[blue]Config: URL={config.base_url}, API Key={'***' if config.api_key else 'Not set'}[/blue]"
                     )
-                    lifespan_context = mcp_app.lifespan(mcp_app)
-                    await lifespan_context.__aenter__()
-                    lifespan_contexts[tool_name] = lifespan_context
-                    console.print(f"[green]✅ {tool_name} lifespan started[/green]")
+
+                mcp_server = load_tool(tool_name, available_tools)
+                loaded_tools[tool_name] = mcp_server
+
+                # Create the HTTP app for this tool
+                # Use path="/sse" to set the SSE endpoint path within each mounted app
+                mcp_app = mcp_server.http_app(path="/sse")
+                mcp_apps[tool_name] = mcp_app
+
+                console.print(f"[green]✅ Tool '{tool_name}' loaded successfully[/green]")
             except Exception as e:
-                console.print(
-                    f"[red]❌ Failed to start {tool_name} lifespan: {e}[/red]"
-                )
+                console.print(f"[red]❌ Failed to load tool {tool_name}: {e}[/red]")
                 import traceback
 
                 console.print(f"[red]{traceback.format_exc()}[/red]")
 
-        console.print(
-            f"[green]🚀 Multi-tool server ready with {len(loaded_tools)} tools[/green]"
-        )
+        if not loaded_tools:
+            console.print("[red]No tools loaded successfully. Exiting.[/red]")
+            sys.exit(1)
 
-        try:
-            yield
-        finally:
-            # Stop all MCP app lifespans
-            console.print("[blue]🔄 Shutting down MCP lifespans...[/blue]")
-            for tool_name, lifespan_context in lifespan_contexts.items():
+        # Create the main FastAPI app (SSE legacy mode)
+        # According to FastMCP docs, we need to use the lifespan from one of the MCP apps
+        # For multiple apps, we'll combine their lifespans manually
+
+        @asynccontextmanager
+        async def combined_lifespan(app: FastAPI):
+            # Start all MCP app lifespans
+            lifespan_contexts = {}
+
+            for tool_name, mcp_app in mcp_apps.items():
                 try:
-                    await lifespan_context.__aexit__(None, None, None)
-                    console.print(f"[green]✅ {tool_name} lifespan stopped[/green]")
+                    if hasattr(mcp_app, "lifespan") and mcp_app.lifespan:
+                        console.print(
+                            f"[blue]🔄 Starting {tool_name} MCP lifespan...[/blue]"
+                        )
+                        lifespan_context = mcp_app.lifespan(mcp_app)
+                        await lifespan_context.__aenter__()
+                        lifespan_contexts[tool_name] = lifespan_context
+                        console.print(f"[green]✅ {tool_name} lifespan started[/green]")
                 except Exception as e:
                     console.print(
-                        f"[red]❌ Error stopping {tool_name} lifespan: {e}[/red]"
+                        f"[red]❌ Failed to start {tool_name} lifespan: {e}[/red]"
                     )
+                    import traceback
 
-    # Create FastAPI app with the combined lifespan
-    fastapi_app = FastAPI(
-        title="Automagik Tools Server", version="0.1.0", lifespan=combined_lifespan
-    )
+                    console.print(f"[red]{traceback.format_exc()}[/red]")
 
-    # Add root endpoint that lists available tools
-    @fastapi_app.get("/")
-    async def root():
-        return {
-            "message": "Automagik Tools Server",
-            "available_tools": list(loaded_tools.keys()),
-            "endpoints": {tool: f"/{tool}/mcp" for tool in loaded_tools.keys()},
-        }
-
-    # Mount each tool's MCP app on its own path
-    for tool_name in tool_names:
-        if tool_name in mcp_apps:
-            # Mount the MCP app under /{tool_name}
-            fastapi_app.mount(f"/{tool_name}", mcp_apps[tool_name])
             console.print(
-                f"[green]🔗 Tool '{tool_name}' available at: http://{serve_host}:{serve_port}/{tool_name}/mcp[/green]"
+                f"[green]🚀 Multi-tool server ready with {len(loaded_tools)} tools[/green]"
             )
 
-    # Start the combined server
-    console.print(
-        f"[green]🚀 Starting multi-tool server on {serve_host}:{serve_port}[/green]"
-    )
-    uvicorn.run(fastapi_app, host=serve_host, port=serve_port)
+            try:
+                yield
+            finally:
+                # Stop all MCP app lifespans
+                console.print("[blue]🔄 Shutting down MCP lifespans...[/blue]")
+                for tool_name, lifespan_context in lifespan_contexts.items():
+                    try:
+                        await lifespan_context.__aexit__(None, None, None)
+                        console.print(f"[green]✅ {tool_name} lifespan stopped[/green]")
+                    except Exception as e:
+                        console.print(
+                            f"[red]❌ Error stopping {tool_name} lifespan: {e}[/red]"
+                        )
+
+        # Create FastAPI app with the combined lifespan
+        fastapi_app = FastAPI(
+            title="Automagik Tools Server", version="0.1.0", lifespan=combined_lifespan
+        )
+
+        # Add root endpoint that lists available tools
+        @fastapi_app.get("/")
+        async def root():
+            return {
+                "message": "Automagik Tools Server",
+                "available_tools": list(loaded_tools.keys()),
+                "endpoints": {tool: f"/{tool}/sse" for tool in loaded_tools.keys()},
+            }
+
+        # Mount each tool's MCP app on its own path
+        for tool_name in tool_names:
+            if tool_name in mcp_apps:
+                # Mount the MCP app under /{tool_name}
+                fastapi_app.mount(f"/{tool_name}", mcp_apps[tool_name])
+                console.print(
+                    f"[green]🔗 Tool '{tool_name}' available at: http://{serve_host}:{serve_port}/{tool_name}/sse[/green]"
+                )
+
+        # Start the combined server
+        console.print(
+            f"[green]🚀 Starting multi-tool server on {serve_host}:{serve_port}[/green]"
+        )
+        # Set environment variable
+        os.environ["MCP_TRANSPORT"] = "sse"
+        uvicorn.run(fastapi_app, host=serve_host, port=serve_port)
 
 
 @app.command()
@@ -463,7 +543,7 @@ def serve(
     port: Optional[int] = typer.Option(
         None, help="Port to bind to (overrides PORT env var)"
     ),
-    transport: str = typer.Option("sse", help="Transport type (sse or stdio)"),
+    transport: str = typer.Option("streamable-http", help="Transport type (streamable-http, sse, or stdio)"),
     api_key: Optional[str] = typer.Option(None, help="API key for OpenAPI authentication"),
     base_url: Optional[str] = typer.Option(None, help="Base URL for the API (if different from OpenAPI spec)"),
     ask: bool = typer.Option(False, help="Enable smart tools mode (Ask tool only, disables regular tools)"),
@@ -488,14 +568,22 @@ def serve(
             serve_port = port or int(os.getenv("PORT", "8000"))
             
             # Start the server
-            if transport == "sse":
-                console.print(
-                    f"[green]🚀 Starting dynamic OpenAPI server on {serve_host}:{serve_port}[/green]"
-                )
-                mcp_server.run(transport="sse", host=serve_host, port=serve_port)
-            else:
+            if transport == "stdio":
                 # No console output for stdio to avoid protocol interference
                 mcp_server.run(transport="stdio")
+            elif transport == "sse":
+                console.print(
+                    f"[green]🚀 Starting dynamic OpenAPI server (SSE) on {serve_host}:{serve_port}[/green]"
+                )
+                mcp_server.run(transport="sse", host=serve_host, port=serve_port)
+            elif transport == "streamable-http":
+                console.print(
+                    f"[green]🚀 Starting dynamic OpenAPI server (Streamable HTTP) on {serve_host}:{serve_port}[/green]"
+                )
+                mcp_server.run(transport="streamable-http", host=serve_host, port=serve_port)
+            else:
+                console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
+                sys.exit(1)
             return
             
         except Exception as e:
@@ -554,17 +642,27 @@ def serve(
             console.print(f"[green]✅ Tool '{tool}' loaded successfully[/green]")
 
         # Start the server
-        if transport == "sse":
+        if transport == "stdio":
+            # No console output for stdio to avoid protocol interference
+            os.environ["MCP_TRANSPORT"] = "stdio"
+            mcp_server.run(transport="stdio")
+        elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
             # Set environment variable so tools can detect SSE mode
             os.environ["MCP_TRANSPORT"] = "sse"
             mcp_server.run(transport="sse", host=serve_host, port=serve_port)
+        elif transport == "streamable-http":
+            console.print(
+                f"[green]🚀 Starting Streamable HTTP server on {serve_host}:{serve_port}[/green]"
+            )
+            # Set environment variable so tools can detect HTTP mode
+            os.environ["MCP_TRANSPORT"] = "streamable-http"
+            mcp_server.run(transport="streamable-http", host=serve_host, port=serve_port)
         else:
-            # No console output for stdio to avoid protocol interference
-            os.environ["MCP_TRANSPORT"] = "stdio"
-            mcp_server.run(transport="stdio")
+            console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
+            sys.exit(1)
 
     except Exception as e:
         console.print(f"[red]❌ Failed to load tool {tool}: {e}[/red]")

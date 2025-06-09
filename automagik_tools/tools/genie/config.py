@@ -23,16 +23,16 @@ def _load_mcp_configs() -> Dict[str, Any]:
             pass
     
     # Check for automagik-specific config
-    if os.getenv("GENIE_AUTOMAGIK_API_KEY") and os.getenv("GENIE_AUTOMAGIK_BASE_URL"):
+    if os.getenv("AUTOMAGIK_API_KEY") and os.getenv("AUTOMAGIK_BASE_URL"):
         # Use direct Python execution for better Agno compatibility
         configs["automagik"] = {
             "command": "python",
             "args": ["-m", "automagik_tools.tools.automagik", "--transport", "stdio"],
             "env": {
-                "AUTOMAGIK_AGENTS_API_KEY": os.getenv("GENIE_AUTOMAGIK_API_KEY"),
-                "AUTOMAGIK_AGENTS_BASE_URL": os.getenv("GENIE_AUTOMAGIK_BASE_URL"),
-                "AUTOMAGIK_AGENTS_TIMEOUT": os.getenv("GENIE_AUTOMAGIK_TIMEOUT", "600"),
-                "AUTOMAGIK_AGENTS_ENABLE_MARKDOWN": "false"  # Disable markdown to avoid double agent execution
+                "AUTOMAGIK_API_KEY": os.getenv("AUTOMAGIK_API_KEY"),
+                "AUTOMAGIK_BASE_URL": os.getenv("AUTOMAGIK_BASE_URL"),
+                "AUTOMAGIK_TIMEOUT": os.getenv("AUTOMAGIK_TIMEOUT", "600"),
+                "AUTOMAGIK_ENABLE_MARKDOWN": "false"  # Disable markdown to avoid double agent execution
             }
         }
     
@@ -94,8 +94,8 @@ class GenieConfig:
         # Legacy support for specific server environment patterns
         
         # Automagik configuration
-        automagik_key = os.getenv("GENIE_AUTOMAGIK_API_KEY")
-        automagik_url = os.getenv("GENIE_AUTOMAGIK_BASE_URL")
+        automagik_key = os.getenv("AUTOMAGIK_API_KEY")
+        automagik_url = os.getenv("AUTOMAGIK_BASE_URL")
         if automagik_key and automagik_url:
             configs["automagik"] = {
                 "url": f"{automagik_url}/sse" if not automagik_url.endswith("/sse") else automagik_url,

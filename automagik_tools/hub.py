@@ -100,7 +100,9 @@ def create_hub_server() -> FastMCP:
     tool_list = []
     for name, info in discovered_tools.items():
         desc = info["metadata"].get("description", "No description")
-        tool_list.append(f"- /{name}/* - {desc}")
+        # Use correct prefix format without leading slash
+        mount_name = info["metadata"]["name"].replace("-", "_")
+        tool_list.append(f"- {mount_name}_* - {desc}")
 
     instructions = f"""
     This is the main hub for all Automagik tools. Each tool is mounted
@@ -108,8 +110,12 @@ def create_hub_server() -> FastMCP:
     {chr(10).join(tool_list)}
     """
 
-    # Create the main hub
-    hub = FastMCP(name="Automagik Tools Hub", instructions=instructions)
+    # Create the main hub with recommended path format for resource prefixes
+    hub = FastMCP(
+        name="Automagik Tools Hub", 
+        instructions=instructions,
+        resource_prefix_format="path"  # Use recommended path format
+    )
 
     # Mount each discovered tool
     mounted_tools = []
@@ -131,13 +137,21 @@ def create_hub_server() -> FastMCP:
             # Create and mount the server
             server = module.create_server(config)
 
-            # Use the tool name from metadata as mount point
+            # Use the tool name from metadata as mount point (no leading slash)
             mount_name = metadata["name"].replace("-", "_")
-            hub.mount(mount_name, server)
+            
+            # Check if server has custom lifespan to determine proxy mounting
+            has_custom_lifespan = hasattr(server, '_lifespan') and server._lifespan is not None
+            
+            # Mount with proper syntax and consider proxy mounting
+            if has_custom_lifespan:
+                hub.mount(mount_name, server, as_proxy=True)
+            else:
+                hub.mount(mount_name, server)
 
             status = "✅" if is_configured else "⚠️"
             mounted_tools.append(mount_name)
-            print(f"{status} Mounted {metadata['name']} at /{mount_name}")
+            print(f"{status} Mounted {metadata['name']} at prefix '{mount_name}'")
 
         except Exception as e:
             print(f"❌ Failed to mount {tool_name}: {e}")

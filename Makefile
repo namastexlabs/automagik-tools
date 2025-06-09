@@ -23,7 +23,7 @@ CHECKMARK := ✅
 WARNING := ⚠️
 ERROR := ❌
 ROCKET := 🚀
-TOOLS := 🛠️
+TOOLS_SYMBOL := 🛠️
 INFO := ℹ️
 SPARKLES := ✨
 
@@ -46,7 +46,7 @@ PORT ?= 8000
 # 🛠️ Utility Functions
 # ===========================================
 define print_status
-	@echo -e "$(FONT_PURPLE)$(TOOLS) $(1)$(FONT_RESET)"
+	@echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) $(1)$(FONT_RESET)"
 endef
 
 define print_success
@@ -65,21 +65,18 @@ define print_info
 	@echo -e "$(FONT_CYAN)$(INFO) $(1)$(FONT_RESET)"
 endef
 
-define check_uv
-	@if ! command -v uv >/dev/null 2>&1; then \
-		$(call print_error,uv not found); \
-		echo -e "$(FONT_YELLOW)💡 Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh$(FONT_RESET)"; \
+define check_prerequisites
+	@if ! command -v uv >/dev/null 2>&1 || ! command -v make >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then \
+		$(call print_error,Missing dependencies detected); \
+		echo -e "$(FONT_YELLOW)💡 Run the full installer: ./scripts/install.sh$(FONT_RESET)"; \
 		exit 1; \
 	fi
 endef
 
-define check_env_file
+define ensure_env_file
 	@if [ ! -f ".env" ]; then \
-		$(call print_warning,.env file not found); \
-		echo -e "$(FONT_CYAN)Creating .env from example...$(FONT_RESET)"; \
 		cp .env.example .env; \
-		$(call print_success,.env created from example); \
-		echo -e "$(FONT_YELLOW)💡 Edit .env and add your API keys$(FONT_RESET)"; \
+		$(call print_info,.env created from example); \
 	fi
 endef
 
@@ -132,11 +129,12 @@ help: ## 🛠️ Show this help message
 	@echo -e "$(FONT_PURPLE)✨ \"The largest collection of MCP tools, with trivially easy development\"$(FONT_RESET)"
 	@echo ""
 	@echo -e "$(FONT_CYAN)$(ROCKET) Quick Start:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Install development environment"
+	@echo -e "  $(FONT_PURPLE)install-full$(FONT_RESET)    Full system install (recommended for new setups)"
+	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Quick install (if dependencies already exist)"
 	@echo -e "  $(FONT_PURPLE)list$(FONT_RESET)            List available tools"
 	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on multi-tool server"
 	@echo ""
-	@echo -e "$(FONT_CYAN)$(TOOLS) Development:$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)$(TOOLS_SYMBOL) Development:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)test$(FONT_RESET)            Run all tests"
 	@echo -e "  $(FONT_PURPLE)test-unit$(FONT_RESET)       Run unit tests"
 	@echo -e "  $(FONT_PURPLE)test-mcp$(FONT_RESET)        Run MCP protocol tests"
@@ -179,9 +177,18 @@ help: ## 🛠️ Show this help message
 	@echo -e "  $(FONT_PURPLE)validate-tool$(FONT_RESET)   Validate tool compliance (TOOL=name)"
 	@echo -e "  $(FONT_PURPLE)mcp-config$(FONT_RESET)      Generate MCP config for Cursor/Claude (TOOL=name)"
 	@echo ""
+	@echo -e "$(FONT_CYAN)🌐 HTTP Development Deployment:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)http-start$(FONT_RESET)      Start HTTP development server (HOST= PORT= TOOLS=)"
+	@echo -e "  $(FONT_PURPLE)http-stop$(FONT_RESET)       Stop HTTP development server (PORT=)"
+	@echo -e "  $(FONT_PURPLE)http-restart$(FONT_RESET)    Restart HTTP development server"
+	@echo -e "  $(FONT_PURPLE)http-status$(FONT_RESET)     Check HTTP server status"
+	@echo -e "  $(FONT_PURPLE)http-logs$(FONT_RESET)       Show HTTP server logs"
+	@echo -e "  $(FONT_PURPLE)http-dev$(FONT_RESET)        Quick development setup (localhost:8000)"
+	@echo -e "  $(FONT_PURPLE)http-network$(FONT_RESET)    Network accessible setup (0.0.0.0:8000)"
+	@echo ""
 	@echo -e "$(FONT_GRAY)Examples:$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make serve TOOL=evolution-api$(FONT_RESET)"
-	@echo -e "  $(FONT_GRAY)make serve TOOL=automagik-agents TRANSPORT=sse$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make serve TOOL=automagik-agents TRANSPORT=streamable-http$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make dev-server$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make new-tool$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make test-tool TOOL=evolution-api$(FONT_RESET)"
@@ -196,14 +203,26 @@ help: ## 🛠️ Show this help message
 # ===========================================
 # 🚀 Installation & Setup
 # ===========================================
-.PHONY: install
-install: ## $(ROCKET) Install development environment with uv
-	$(call print_status,Installing automagik-tools development environment...)
-	@$(call check_uv)
-	@$(call check_env_file)
+.PHONY: install install-full install-deps
+install: ## $(ROCKET) Quick install (assumes dependencies exist)
+	$(call print_status,Installing automagik-tools (quick mode)...)
+	@$(call check_prerequisites)
+	@$(call ensure_env_file)
 	@$(UV) sync --all-extras
 	$(call print_success_with_logo,Development environment ready!)
 	@echo -e "$(FONT_CYAN)💡 Try: make list$(FONT_RESET)"
+
+install-full: ## $(ROCKET) Full system install (dependencies + environment)
+	$(call print_status,Running full system installation...)
+	@if [ -x "./scripts/install.sh" ]; then \
+		./scripts/install.sh; \
+	else \
+		$(call print_error,scripts/install.sh not found or not executable); \
+		echo -e "$(FONT_YELLOW)Please ensure scripts/install.sh exists and is executable$(FONT_RESET)"; \
+		exit 1; \
+	fi
+
+install-deps: install-full ## $(ROCKET) Alias for install-full
 
 # ===========================================
 # 🧪 Testing
@@ -355,7 +374,7 @@ docker-build-stdio: ## 💻 Build STDIO transport Docker image
 
 docker-run-sse: ## 🚀 Run SSE server in Docker (PORT=8000)
 	$(call print_status,Starting SSE server in Docker...)
-	@$(call check_env_file)
+	@$(call ensure_env_file)
 	@docker run --rm -it \
 		--env-file .env \
 		-p ${PORT:-8000}:8000 \
@@ -364,7 +383,7 @@ docker-run-sse: ## 🚀 Run SSE server in Docker (PORT=8000)
 		
 docker-run-http: ## 🚀 Run HTTP server in Docker (PORT=8080)
 	$(call print_status,Starting HTTP server in Docker...)
-	@$(call check_env_file)
+	@$(call ensure_env_file)
 	@docker run --rm -it \
 		--env-file .env \
 		-p ${PORT:-8080}:8080 \
@@ -373,7 +392,7 @@ docker-run-http: ## 🚀 Run HTTP server in Docker (PORT=8080)
 
 docker-compose: ## 🎼 Run multi-transport setup with docker-compose
 	$(call print_status,Starting multi-transport Docker setup...)
-	@$(call check_env_file)
+	@$(call ensure_env_file)
 	@docker-compose -f deploy/docker/docker-compose.yml up -d
 	$(call print_success,Services started!)
 	@echo -e "$(FONT_CYAN)📡 SSE server: http://localhost:8000$(FONT_RESET)"
@@ -509,12 +528,42 @@ serve: ## 🚀 Serve single tool (use TOOL=name TRANSPORT=stdio|sse|http)
 		exit 1; \
 	fi
 	$(call print_status,Starting $(TOOL) with $(or $(TRANSPORT),stdio) transport...)
-	@$(call check_env_file)
+	@$(call ensure_env_file)
 	@$(UV) run automagik-tools serve --tool $(TOOL) --transport $(or $(TRANSPORT),stdio) --host $(HOST) --port $(PORT)
 
 serve-all: ## 🌐 Serve all tools on single server
 	$(call print_status,Starting multi-tool server on $(HOST):$(PORT)...)
 	@$(UV) run automagik-tools serve-all --host $(HOST) --port $(PORT)
+
+# ===========================================
+# 🌐 HTTP Development Deployment
+# ===========================================
+.PHONY: http-start http-stop http-restart http-status http-logs http-dev http-network
+http-start: ## 🌐 Start HTTP development server (HOST=0.0.0.0 PORT=8000 TOOLS=all)
+	$(call print_status,Starting HTTP development server...)
+	@./scripts/start_http_server.sh $(or $(HOST),0.0.0.0) $(or $(PORT),8000) $(or $(TOOLS),all)
+
+http-stop: ## 🛑 Stop HTTP development server (PORT=8000)
+	$(call print_status,Stopping HTTP development server...)
+	@./scripts/stop_http_server.sh $(or $(PORT),8000)
+
+http-restart: ## 🔄 Restart HTTP development server
+	$(call print_status,Restarting HTTP development server...)
+	@./scripts/deploy_http_dev.sh restart $(or $(HOST),0.0.0.0) $(or $(PORT),8000) $(or $(TOOLS),all)
+
+http-status: ## 📊 Check HTTP server status (PORT=8000)
+	@./scripts/deploy_http_dev.sh status $(or $(PORT),8000)
+
+http-logs: ## 📋 Show HTTP server logs (PORT=8000)
+	@./scripts/deploy_http_dev.sh logs $(or $(PORT),8000)
+
+http-dev: ## 🚀 Quick development setup (localhost:8000)
+	$(call print_status,Starting HTTP development setup...)
+	@./scripts/deploy_http_dev.sh dev
+
+http-network: ## 🌐 Network accessible setup (0.0.0.0:8000)
+	$(call print_status,Starting HTTP network setup...)
+	@./scripts/deploy_http_dev.sh network
 
 # ===========================================
 # 🔧 Tool Creation
