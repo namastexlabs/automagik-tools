@@ -888,7 +888,7 @@ def create(
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing tool without prompting"),
     update: bool = typer.Option(False, "--update", "-U", help="Update existing tool, overwriting all files"),
     use_ai: bool = typer.Option(False, "--use-ai", help="Use AI to generate human-friendly function names and descriptions"),
-    ai_model: str = typer.Option("gpt-4.1", "--ai-model", help="AI model to use for processing (gpt-4.1, gpt-4o, gpt-3.5-turbo)"),
+    ai_model: str = typer.Option("gpt-4.1", "--ai-model", help="AI model to use for processing (gpt-4.1, gpt-4.1-nano)"),
     openai_key: Optional[str] = typer.Option(None, "--openai-key", help="OpenAI API key (uses OPENAI_API_KEY env var if not provided)"),
     use_streaming: bool = typer.Option(False, "--use-streaming", help="Use streaming processor for real-time progress (experimental)"),
 ):

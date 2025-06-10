@@ -6,6 +6,7 @@ import os
 
 try:
     import importlib.metadata
+
     __version__ = importlib.metadata.version("automagik-tools")
 except ImportError:
     # Fallback for development

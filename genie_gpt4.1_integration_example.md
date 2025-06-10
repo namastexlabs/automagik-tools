@@ -138,7 +138,7 @@ Add these to your `.env` file for optimal GPT-4.1 performance:
 
 ```bash
 # Genie GPT-4.1 Optimizations
-GENIE_MODEL=gpt-4o  # or gpt-4.1-mini when available
+GENIE_MODEL=gpt-4.1  # or gpt-4.1 for faster responses
 GENIE_HISTORY_RUNS=15  # More context for better planning
 GENIE_MAX_MEMORIES=50  # More memories for learning
 GENIE_TIMEOUT=600  # Longer timeout for complex workflows

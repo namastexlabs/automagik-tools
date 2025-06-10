@@ -110,7 +110,7 @@ class TestEvolutionAPIErrorHandling:
     async def test_missing_api_key_error(self):
         """Test that missing API key raises appropriate error"""
         from fastmcp import Client
-        
+
         config = MockConfig(api_key="")  # Empty API key
         server = create_server(config)
 
@@ -123,8 +123,8 @@ class TestEvolutionAPIErrorHandling:
                     {
                         "instance": "test_instance",
                         "number": "1234567890",
-                        "text": "Hello, World!"
-                    }
+                        "text": "Hello, World!",
+                    },
                 )
 
 

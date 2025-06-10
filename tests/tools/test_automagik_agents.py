@@ -3,7 +3,7 @@ Tests for Automagik Agents MCP tool
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from fastmcp import Context
 
 from automagik_tools.tools.automagik import (
@@ -20,9 +20,7 @@ from automagik_tools.tools.automagik import (
 def mock_config():
     """Create a mock configuration"""
     return AutomagikAgentsConfig(
-        api_key="test-api-key",
-        base_url="https://api.example.com",
-        timeout=10
+        api_key="test-api-key", base_url="https://api.example.com", timeout=10
     )
 
 
@@ -43,14 +41,14 @@ def mock_context():
 
 class TestToolCreation:
     """Test tool creation and metadata"""
-    
+
     @pytest.mark.unit
     def test_create_tool(self, mock_config):
         """Test that tool can be created"""
         tool = create_tool(mock_config)
         assert tool is not None
         assert tool.name == "Automagik Agents"
-    
+
     @pytest.mark.unit
     def test_metadata(self):
         """Test tool metadata"""
@@ -59,13 +57,13 @@ class TestToolCreation:
         assert "description" in metadata
         assert "version" in metadata
         assert metadata["config_env_prefix"] == "AUTOMAGIK_AGENTS_"
-    
+
     @pytest.mark.unit
     def test_config_class(self):
         """Test config class retrieval"""
         config_class = get_config_class()
         assert config_class == AutomagikAgentsConfig
-    
+
     @pytest.mark.unit
     def test_config_schema(self):
         """Test config schema generation"""
@@ -73,7 +71,7 @@ class TestToolCreation:
         assert "properties" in schema
         assert "api_key" in schema["properties"]
         assert "base_url" in schema["properties"]
-    
+
     @pytest.mark.unit
     def test_required_env_vars(self):
         """Test required environment variables"""
@@ -84,7 +82,7 @@ class TestToolCreation:
 
 class TestToolFunctions:
     """Test individual tool functions"""
-    
+
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_tool_has_functions(self, tool_instance):
@@ -92,7 +90,7 @@ class TestToolFunctions:
         # Get tool handlers
         handlers = tool_instance._tool_handlers
         assert len(handlers) > 0, "Tool should have at least one function"
-    
+
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_tool_has_resources(self, tool_instance):
@@ -103,13 +101,13 @@ class TestToolFunctions:
 
 class TestErrorHandling:
     """Test error handling"""
-    
+
     @pytest.mark.unit
     def test_tool_without_config(self):
         """Test tool creation without config uses defaults"""
         tool = create_tool()
         assert tool is not None
-    
+
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_api_error_handling(self, tool_instance, mock_context):
@@ -121,27 +119,27 @@ class TestErrorHandling:
 
 class TestMCPProtocol:
     """Test MCP protocol compliance"""
-    
+
     @pytest.mark.mcp
     @pytest.mark.asyncio
     async def test_tool_list(self, tool_instance):
         """Test MCP tools/list"""
         tools = await tool_instance.list_tools()
         assert len(tools) > 0
-        
+
         # Check first tool structure
         first_tool = tools[0]
         assert "name" in first_tool
         assert "description" in first_tool
         assert "inputSchema" in first_tool
-    
+
     @pytest.mark.mcp
     @pytest.mark.asyncio
     async def test_resource_list(self, tool_instance):
         """Test MCP resources/list"""
         resources = await tool_instance.list_resources()
         assert len(resources) > 0
-        
+
         # Check resource structure
         first_resource = resources[0]
         assert "uri" in first_resource

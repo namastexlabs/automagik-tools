@@ -280,7 +280,7 @@ class {tool_name_class}Config(BaseSettings):
     )
     
     ai_model_id: str = Field(
-        default="gpt-4o",
+        default="gpt-4.1",
         description="OpenAI model ID to use for AI processing",
         alias="{tool_name_lower.upper()}_AI_MODEL"
     )

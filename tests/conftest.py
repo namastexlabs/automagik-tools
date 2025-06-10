@@ -94,14 +94,16 @@ class MCPTestClient:
         """Start the MCP server process"""
         # Convert test config to proper environment variables
         env = os.environ.copy()
-        env.update({
-            "EVOLUTION_API_BASE_URL": TEST_EVOLUTION_CONFIG["base_url"],
-            "EVOLUTION_API_KEY": TEST_EVOLUTION_CONFIG["api_key"],
-            "EVOLUTION_API_TIMEOUT": str(TEST_EVOLUTION_CONFIG["timeout"]),
-            # Suppress FastMCP logging to stderr
-            "FASTMCP_LOG_LEVEL": "ERROR",
-        })
-        
+        env.update(
+            {
+                "EVOLUTION_API_BASE_URL": TEST_EVOLUTION_CONFIG["base_url"],
+                "EVOLUTION_API_KEY": TEST_EVOLUTION_CONFIG["api_key"],
+                "EVOLUTION_API_TIMEOUT": str(TEST_EVOLUTION_CONFIG["timeout"]),
+                # Suppress FastMCP logging to stderr
+                "FASTMCP_LOG_LEVEL": "ERROR",
+            }
+        )
+
         self.process = await asyncio.create_subprocess_exec(
             *self.command,
             stdin=asyncio.subprocess.PIPE,
@@ -115,14 +117,16 @@ class MCPTestClient:
         """Send a JSON-RPC message and get response"""
         if not self.process:
             raise RuntimeError("Process not started")
-            
+
         # Check if process is still alive
         if self.process.returncode is not None:
             raise RuntimeError(f"Process exited with code {self.process.returncode}")
 
         # Check for any stderr output (non-blocking)
         try:
-            stderr_data = await asyncio.wait_for(self.process.stderr.read(1024), timeout=0.1)
+            stderr_data = await asyncio.wait_for(
+                self.process.stderr.read(1024), timeout=0.1
+            )
             if stderr_data:
                 print(f"STDERR: {stderr_data.decode()}")
         except asyncio.TimeoutError:
@@ -134,7 +138,9 @@ class MCPTestClient:
 
         # Read response with timeout
         try:
-            response_line = await asyncio.wait_for(self.process.stdout.readline(), timeout=2.0)
+            response_line = await asyncio.wait_for(
+                self.process.stdout.readline(), timeout=2.0
+            )
             if response_line:
                 try:
                     return json.loads(response_line.decode().strip())
@@ -145,7 +151,9 @@ class MCPTestClient:
             print("Timeout waiting for response")
             # Check stderr for errors
             try:
-                stderr_data = await asyncio.wait_for(self.process.stderr.read(1024), timeout=0.1)
+                stderr_data = await asyncio.wait_for(
+                    self.process.stderr.read(1024), timeout=0.1
+                )
                 if stderr_data:
                     print(f"STDERR after timeout: {stderr_data.decode()}")
             except asyncio.TimeoutError:

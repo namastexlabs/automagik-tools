@@ -43,7 +43,7 @@ print(f"API Key: {'Set' if api_key else 'Not set'}")
 print(f"Operations to process: 3")
 
 # Create processor
-processor = StreamingOpenAPIProcessor(model_id="gpt-4o", api_key=api_key)
+processor = StreamingOpenAPIProcessor(model_id="gpt-4.1", api_key=api_key)
 
 # Process with debug mode
 try:

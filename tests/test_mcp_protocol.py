@@ -43,10 +43,10 @@ class TestMCPProtocolCompliance:
             "--transport",
             "stdio",
         ]
-        
+
         client = MCPTestClient(command)
         await client.start()
-        
+
         try:
             # First initialize
             init_response = await client.send_message(SAMPLE_MCP_INITIALIZE)
@@ -82,7 +82,7 @@ class TestMCPProtocolCompliance:
 
         # Initialize first
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -173,7 +173,7 @@ class TestStdioTransport:
 
         # Initialize first
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -195,7 +195,7 @@ class TestMCPResources:
         """Test listing resources"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -220,7 +220,7 @@ class TestMCPResources:
         """Test reading a resource"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -253,7 +253,7 @@ class TestMCPPrompts:
         """Test listing prompts"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -278,7 +278,7 @@ class TestMCPPrompts:
         """Test getting a specific prompt"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -313,7 +313,7 @@ class TestMCPErrorHandling:
         """Test tool call with missing required arguments"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 
@@ -345,7 +345,7 @@ class TestMCPErrorHandling:
         """Test calling a non-existent tool"""
         # Initialize
         await mcp_test_client.send_message(SAMPLE_MCP_INITIALIZE)
-        
+
         # Wait for initialization to complete
         await asyncio.sleep(0.1)
 

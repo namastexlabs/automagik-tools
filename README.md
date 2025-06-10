@@ -20,7 +20,7 @@ Unlike static tools, AutoMagik agents **remember and adapt**:
 
 # By the 10th interaction:
 # Agent already knows exactly which data you want and how you like it formatted
-uvx automagik-tools serve --tool automagik --transport sse --port 8000
+uvx automagik-tools tool automagik -t sse --port 8000
 ```
 
 **Three Intelligence Modes:**
@@ -36,9 +36,9 @@ Turn any OpenAPI spec into an intelligent agent:
 
 ```bash
 # Discord API becomes a smart agent
-uvx automagik-tools serve \
-  --openapi-url https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
-  --transport sse --port 8001
+uvx automagik-tools openapi \
+  https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json \
+  -t sse --port 8001
 
 # Share this agent with your entire team via SSE
 # Team members can access the same learning agent at http://localhost:8001
@@ -57,7 +57,7 @@ Agent learns your patterns, server preferences, and communication style.
 
 ```bash
 # Run Genie with memory-based agents
-uvx automagik-tools serve --tool genie --transport sse --port 8000
+uvx automagik-tools tool genie -t sse --port 8000
 ```
 
 ### Configure Genie with Multiple MCP Servers
@@ -417,11 +417,11 @@ make new-tool
 
 ```bash
 # Method 1: Dynamic (no files created)
-uvx automagik-tools serve --openapi-url https://api.example.com/openapi.json
+uvx automagik-tools openapi https://api.example.com/openapi.json
 
 # Method 2: Generate persistent tool
-uvx automagik-tools tool --url https://api.example.com/openapi.json --name my-api
-uvx automagik-tools serve --tool my-api
+uvx automagik-tools create-tool --url https://api.example.com/openapi.json --name my-api
+uvx automagik-tools tool my-api
 ```
 
 ## Adding Your Own Tools
@@ -436,12 +436,13 @@ See our [Tool Creation Guide](docs/TOOL_CREATION_GUIDE.md) for details.
 
 ```bash
 # Core commands
-automagik-tools list                    # List all available tools
-automagik-tools serve                   # Serve a tool or OpenAPI spec
-automagik-tools serve-all               # Serve all tools on one server
-automagik-tools mcp-config <tool>       # Generate MCP config
-automagik-tools info <tool>             # Show tool details
-automagik-tools version                 # Show version
+automagik-tools list              # List all available tools
+automagik-tools hub               # Serve all tools together
+automagik-tools tool <name>       # Serve a specific tool
+automagik-tools openapi <url>     # Serve from OpenAPI spec
+automagik-tools mcp-config <tool> # Generate MCP config
+automagik-tools info <tool>       # Show tool details
+automagik-tools version           # Show version
 
 # Development commands  
 make install                            # Install dev environment

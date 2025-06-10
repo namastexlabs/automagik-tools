@@ -157,3 +157,4 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 
 - Always use uv to run python or pytest, and uvx for testing the application
 - USE UVUSE UV ALWAYS
+- gpt 4.1 and gpt-4.1-nano are the default models of this project

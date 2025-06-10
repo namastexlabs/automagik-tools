@@ -8,6 +8,10 @@ import importlib
 import importlib.metadata
 from pathlib import Path
 from typing import Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def discover_and_load_tools() -> Dict[str, Any]:
@@ -21,7 +25,7 @@ def discover_and_load_tools() -> Dict[str, Any]:
     tools = {}
 
     # Find the tools directory
-    tools_dir = Path(__file__).parent.parent / "tools"
+    tools_dir = Path(__file__).parent / "tools"
 
     # Discover tools via entry points first (installed tools)
     try:
@@ -112,9 +116,9 @@ def create_hub_server() -> FastMCP:
 
     # Create the main hub with recommended path format for resource prefixes
     hub = FastMCP(
-        name="Automagik Tools Hub", 
+        name="Automagik Tools Hub",
         instructions=instructions,
-        resource_prefix_format="path"  # Use recommended path format
+        resource_prefix_format="path",  # Use recommended path format
     )
 
     # Mount each discovered tool
@@ -139,10 +143,12 @@ def create_hub_server() -> FastMCP:
 
             # Use the tool name from metadata as mount point (no leading slash)
             mount_name = metadata["name"].replace("-", "_")
-            
+
             # Check if server has custom lifespan to determine proxy mounting
-            has_custom_lifespan = hasattr(server, '_lifespan') and server._lifespan is not None
-            
+            has_custom_lifespan = (
+                hasattr(server, "_lifespan") and server._lifespan is not None
+            )
+
             # Mount with proper syntax and consider proxy mounting
             if has_custom_lifespan:
                 hub.mount(mount_name, server, as_proxy=True)
@@ -244,9 +250,7 @@ def create_hub_server() -> FastMCP:
     return hub
 
 
-# Export the hub server for FastMCP CLI
-hub = create_hub_server()
-
 # Allow running directly with FastMCP
 if __name__ == "__main__":
+    hub = create_hub_server()
     hub.run()

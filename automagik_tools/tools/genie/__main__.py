@@ -11,9 +11,8 @@ mcp = create_server()
 
 if __name__ == "__main__":
     # This allows running the tool directly
-    import uvicorn
     import sys
-    
+
     # Run the server
     # Use stderr for startup message to avoid stdout pollution
     print("🧞 Starting Genie MCP server...", file=sys.stderr)

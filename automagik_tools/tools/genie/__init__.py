@@ -36,7 +36,7 @@ os.environ.pop("PYTHONPATH_DEBUG", None)
 logging.basicConfig(
     level=logging.INFO,
     stream=sys.stderr,  # Log to stderr to avoid stdio conflicts
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -99,16 +99,16 @@ async def ask_genie(
         from agno.storage.sqlite import SqliteStorage
         from agno.tools.mcp import MultiMCPTools
         from mcp import StdioServerParameters
-        
+
         # Protect stdout during MCP operations to prevent stdio corruption
         import contextlib
         from io import StringIO
         import subprocess
         import asyncio
-        
+
         # For SSE transport, we need to ensure subprocess termination happens before response
         # This prevents subprocess output from corrupting the SSE stream
-        transport_type = os.environ.get('AUTOMAGIK_TRANSPORT', 'stdio')
+        transport_type = os.environ.get("AUTOMAGIK_TRANSPORT", "stdio")
         logger.info(f"🚀 Running in {transport_type} transport mode")
 
         # Use provided MCP servers or fall back to config
@@ -143,24 +143,36 @@ async def ask_genie(
                     env_vars = server_config.get("env", {})
                     if env_vars:
                         combined_env.update(env_vars)
-                        logger.info(f"📦 Added env vars for {server_name}: {list(env_vars.keys())}")
+                        logger.info(
+                            f"📦 Added env vars for {server_name}: {list(env_vars.keys())}"
+                        )
 
                     logger.info(f"🔧 Command: {command_str}")
-                    
+
                     # For stdio transport, wrap ALL commands to prevent stdout pollution
                     if transport_type == "stdio":
                         # Use our wrapper that redirects subprocess stdout
                         # The wrapper expects: python -m mcp_wrapper <cmd> <arg1> <arg2> ...
-                        wrapped_parts = ["uv", "run", "python", "-m", "automagik_tools.tools.genie.mcp_wrapper"] + cmd_parts
+                        wrapped_parts = [
+                            "uv",
+                            "run",
+                            "python",
+                            "-m",
+                            "automagik_tools.tools.genie.mcp_wrapper",
+                        ] + cmd_parts
                         command_str = " ".join(wrapped_parts)
                         logger.info(f"🔇 Wrapped for stdio: {command_str}")
-                    
+
                     mcp_commands.append(command_str)
 
                 elif "url" in server_config:
                     # URL-based configuration - MultiMCPTools handles this differently
-                    logger.warning(f"⚠️ URL-based MCP servers ({server_name}) not yet supported with MultiMCPTools")
-                    logger.warning(f"⚠️ Consider using command-based configuration for {server_name}")
+                    logger.warning(
+                        f"⚠️ URL-based MCP servers ({server_name}) not yet supported with MultiMCPTools"
+                    )
+                    logger.warning(
+                        f"⚠️ Consider using command-based configuration for {server_name}"
+                    )
                 else:
                     logger.warning(
                         f"⚠️ Invalid config for {server_name}: missing command/args or url"
@@ -173,11 +185,15 @@ async def ask_genie(
         if not mcp_commands:
             return "❌ Failed to configure any MCP servers. Please check your configuration."
 
-        logger.info(f"🔗 Connecting to {len(mcp_commands)} MCP servers using MultiMCPTools")
+        logger.info(
+            f"🔗 Connecting to {len(mcp_commands)} MCP servers using MultiMCPTools"
+        )
 
         # Use MultiMCPTools to handle all servers properly
         async with MultiMCPTools(mcp_commands, env=combined_env) as mcp_tools:
-            logger.info(f"🛠️ Connected to MCP servers, discovered {len(mcp_tools.functions)} total tools")
+            logger.info(
+                f"🛠️ Connected to MCP servers, discovered {len(mcp_tools.functions)} total tools"
+            )
 
             # Set up memory with SQLite persistence
             memory_db = SqliteMemoryDb(
@@ -226,7 +242,7 @@ I can also manage my own memories - creating, updating, or deleting them as need
                 markdown=True,
                 show_tool_calls=config.show_tool_calls,
                 debug_mode=False,  # MUST be False for stdio transport to avoid JSON errors
-                # Verbose logging configuration  
+                # Verbose logging configuration
                 monitoring=False,  # MUST be False for stdio transport to avoid DEBUG output
                 # Instructions for memory management
                 instructions=[
@@ -239,7 +255,9 @@ I can also manage my own memories - creating, updating, or deleting them as need
                 ],
             )
 
-            logger.info(f"🧞 Genie initialized with MultiMCPTools managing {len(mcp_commands)} servers")
+            logger.info(
+                f"🧞 Genie initialized with MultiMCPTools managing {len(mcp_commands)} servers"
+            )
 
             # Prepare the full query with context
             full_query = query
@@ -257,18 +275,22 @@ I can also manage my own memories - creating, updating, or deleting them as need
                     user_id=session_id,
                     stream=False,  # Use non-streaming for simplicity
                 )
-            
+
             # Log any captured stdout for debugging (to stderr)
             stdout_content = captured_stdout.getvalue()
             if stdout_content.strip():
-                logger.warning(f"⚠️ Captured stdout pollution: {stdout_content[:200]}...")
+                logger.warning(
+                    f"⚠️ Captured stdout pollution: {stdout_content[:200]}..."
+                )
 
             logger.info("🧞 Genie response completed")
-            
+
             # Debug logging to understand response structure
             logger.debug(f"Response type: {type(response)}")
-            logger.debug(f"Response attributes: {dir(response) if response else 'None'}")
-            
+            logger.debug(
+                f"Response attributes: {dir(response) if response else 'None'}"
+            )
+
             # Process response
             final_response = None
             if response is None:
@@ -287,20 +309,24 @@ I can also manage my own memories - creating, updating, or deleting them as need
                     final_response = "❌ Agent returned empty response"
                 else:
                     final_response = result_str
-            
+
             # Log what we're returning
-            logger.info(f"📤 Returning response (length: {len(final_response) if final_response else 0})")
-            logger.info(f"📄 Response preview: {final_response[:200] if final_response else 'None'}...")
-            
+            logger.info(
+                f"📤 Returning response (length: {len(final_response) if final_response else 0})"
+            )
+            logger.info(
+                f"📄 Response preview: {final_response[:200] if final_response else 'None'}..."
+            )
+
             # MultiMCPTools handles cleanup automatically when exiting the context
             logger.info("🧹 MultiMCPTools will handle cleanup automatically")
-            
+
             # For SSE transport, add small delay to ensure cleanup completes
             if transport_type == "sse":
                 sse_delay = config.sse_cleanup_delay
                 await asyncio.sleep(sse_delay)
                 logger.info(f"🔄 SSE cleanup delay ({sse_delay}s) completed")
-            
+
             return final_response
 
     except Exception as e:

@@ -3,7 +3,11 @@ Simple CLI tests that don't hang - focused on basic functionality
 """
 
 import pytest
-from automagik_tools.cli import discover_tools, create_config_for_tool, create_dynamic_openapi_tool
+from automagik_tools.cli import (
+    discover_tools,
+    create_config_for_tool,
+    create_dynamic_openapi_tool,
+)
 from automagik_tools.cli import app
 import subprocess
 from unittest.mock import patch, MagicMock
@@ -90,8 +94,8 @@ class TestCLIValidation:
 class TestDynamicOpenAPITool:
     """Test dynamic OpenAPI tool creation"""
 
-    @patch('httpx.get')
-    @patch('automagik_tools.cli.FastMCP.from_openapi')
+    @patch("httpx.get")
+    @patch("automagik_tools.cli.FastMCP.from_openapi")
     def test_create_dynamic_openapi_tool(self, mock_from_openapi, mock_get):
         """Test creating a dynamic tool from OpenAPI spec"""
         # Mock the OpenAPI spec response
@@ -101,12 +105,10 @@ class TestDynamicOpenAPITool:
             "info": {
                 "title": "Test API",
                 "description": "Test API Description",
-                "version": "1.0.0"
+                "version": "1.0.0",
             },
-            "servers": [
-                {"url": "https://api.test.com"}
-            ],
-            "paths": {}
+            "servers": [{"url": "https://api.test.com"}],
+            "paths": {},
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
@@ -119,53 +121,53 @@ class TestDynamicOpenAPITool:
         result = create_dynamic_openapi_tool(
             openapi_url="https://api.test.com/openapi.json",
             api_key="test-key",
-            transport="sse"
+            transport="sse",
         )
 
         # Verify the calls
-        mock_get.assert_called_once_with("https://api.test.com/openapi.json", timeout=30)
+        mock_get.assert_called_once_with(
+            "https://api.test.com/openapi.json", timeout=30
+        )
         mock_from_openapi.assert_called_once()
-        
+
         # Verify FastMCP.from_openapi was called with correct parameters
         call_args = mock_from_openapi.call_args
-        assert call_args[1]['name'] == "Test API"
-        assert call_args[1]['instructions'] == "Test API Description"
+        assert call_args[1]["name"] == "Test API"
+        assert call_args[1]["instructions"] == "Test API Description"
         assert result == mock_mcp_server
 
-    @patch('httpx.get')
+    @patch("httpx.get")
     def test_create_dynamic_openapi_tool_fetch_error(self, mock_get):
         """Test error handling when fetching OpenAPI spec fails"""
         mock_get.side_effect = Exception("Network error")
 
         with pytest.raises(ValueError, match="Failed to fetch OpenAPI spec"):
             create_dynamic_openapi_tool(
-                openapi_url="https://api.test.com/openapi.json",
-                transport="sse"
+                openapi_url="https://api.test.com/openapi.json", transport="sse"
             )
 
-    @patch('httpx.get')
+    @patch("httpx.get")
     def test_create_dynamic_openapi_tool_no_servers(self, mock_get):
         """Test handling OpenAPI spec without servers"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "openapi": "3.0.0",
             "info": {"title": "Test API"},
-            "paths": {}
+            "paths": {},
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        with patch('automagik_tools.cli.FastMCP.from_openapi') as mock_from_openapi:
+        with patch("automagik_tools.cli.FastMCP.from_openapi") as mock_from_openapi:
             mock_from_openapi.return_value = MagicMock()
-            
+
             result = create_dynamic_openapi_tool(
-                openapi_url="https://api.test.com/openapi.json",
-                transport="sse"
+                openapi_url="https://api.test.com/openapi.json", transport="sse"
             )
-            
+
             # Should extract base URL from OpenAPI URL
             call_args = mock_from_openapi.call_args
-            client = call_args[1]['client']
+            client = call_args[1]["client"]
             assert client.base_url == "https://api.test.com"
 
 

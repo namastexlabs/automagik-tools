@@ -1,0 +1,65 @@
+{
+  "mcpServers": {
+    "automagik-hub": {
+      "command": "uvx",
+      "args": ["automagik-tools@latest", "hub"],
+      "env": {
+        "AUTOMAGIK_API_KEY": "namastex888",
+        "AUTOMAGIK_BASE_URL": "http://localhost:28881",
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "GENIE_MODEL": "gpt-4.1"
+      }
+    },
+    "automagik": {
+      "command": "uvx",
+      "args": ["automagik-tools@latest", "tool", "automagik"],
+      "env": {
+        "AUTOMAGIK_API_KEY": "namastex888",
+        "AUTOMAGIK_BASE_URL": "http://localhost:28881",
+        "AUTOMAGIK_TIMEOUT": "1000"
+      }
+    },
+    "genie": {
+      "command": "uvx",
+      "args": ["automagik-tools@latest", "tool", "genie"],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "GENIE_MODEL": "gpt-4.1",
+        "GENIE_MCP_CONFIGS": "{\"automagik\": {\"url\": \"http://localhost:8885/sse\", \"transport\": \"sse\"}}"
+      }
+    },
+    "genie-with-automagik": {
+      "command": "uvx",
+      "args": ["automagik-tools@latest", "tool", "genie"],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "GENIE_MODEL": "gpt-4.1",
+        "AUTOMAGIK_API_KEY": "namastex888",
+        "AUTOMAGIK_BASE_URL": "http://localhost:28881",
+        "AUTOMAGIK_TIMEOUT": "600"
+      }
+    },
+    "discord-api": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "openapi",
+        "https://raw.githubusercontent.com/discord/discord-api-spec/refs/heads/main/specs/openapi.json"
+      ],
+      "env": {
+        "DISCORD_TOKEN": "Bot YOUR_DISCORD_BOT_TOKEN"
+      }
+    },
+    "custom-api": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "openapi",
+        "https://api.yourcompany.com/openapi.json"
+      ],
+      "env": {
+        "API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
