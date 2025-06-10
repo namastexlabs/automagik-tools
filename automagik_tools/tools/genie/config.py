@@ -93,66 +93,8 @@ class GenieConfig:
         Parse MCP server configurations from environment variables.
         Supports both individual server configs and a combined JSON config.
         """
-        configs = {}
-
-        # Check for combined JSON config first
-        combined_config = os.getenv("GENIE_MCP_CONFIGS")
-        if combined_config:
-            try:
-                configs.update(json.loads(combined_config))
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in GENIE_MCP_CONFIGS: {e}")
-
-        # Check for individual server configurations
-        # Pattern: GENIE_{SERVER_NAME}_CONFIG
-        for key, value in os.environ.items():
-            if key.startswith("GENIE_") and key.endswith("_CONFIG"):
-                server_name = key[
-                    6:-7
-                ].lower()  # Remove GENIE_ prefix and _CONFIG suffix
-                try:
-                    configs[server_name] = json.loads(value)
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Invalid JSON in {key}: {e}")
-
-        # Legacy support for specific server environment patterns
-
-        # Automagik configuration
-        automagik_key = os.getenv("AUTOMAGIK_API_KEY")
-        automagik_url = os.getenv("AUTOMAGIK_BASE_URL")
-        if automagik_key and automagik_url:
-            configs["automagik"] = {
-                "url": (
-                    f"{automagik_url}/sse"
-                    if not automagik_url.endswith("/sse")
-                    else automagik_url
-                ),
-                "transport": "sse",
-            }
-
-        # Linear configuration
-        linear_token = os.getenv("LINEAR_API_TOKEN")
-        if linear_token:
-            configs["linear"] = {
-                "command": "npx",
-                "args": ["-y", "@tacticlaunch/mcp-linear"],
-                "env": {"LINEAR_API_TOKEN": linear_token},
-            }
-
-        # Evolution API configuration
-        evolution_key = os.getenv("EVOLUTION_API_KEY")
-        evolution_url = os.getenv("EVOLUTION_API_BASE_URL")
-        if evolution_key and evolution_url:
-            configs["evolution"] = {
-                "url": (
-                    f"{evolution_url}/sse"
-                    if not evolution_url.endswith("/sse")
-                    else evolution_url
-                ),
-                "transport": "sse",
-            }
-
-        return configs
+        # Use the _load_mcp_configs function which has the correct command-based configs
+        return _load_mcp_configs()
 
     def get_server_specific_cleanup_settings(self, server_name: str) -> Dict[str, Any]:
         """Get cleanup settings specific to a server type"""
@@ -200,7 +142,5 @@ def validate_config(config: GenieConfig) -> bool:
     if config.num_history_runs < 0:
         raise ValueError("num_history_runs must be non-negative")
 
-    if config.max_memory_search_results < 1:
-        raise ValueError("max_memory_search_results must be positive")
 
     return True
