@@ -16,6 +16,8 @@ import httpx
 from .hub import create_hub_server
 
 console = Console()
+# For stdio transport, we need to use stderr to avoid polluting JSON-RPC
+stderr_console = Console(stderr=True)
 app = typer.Typer(name="automagik-tools", help="MCP Tools Framework")
 
 
@@ -141,9 +143,15 @@ def discover_tools() -> Dict[str, Any]:
                         "description": metadata.get("description", f"{tool_name} tool"),
                     }
                 except Exception as e:
-                    console.print(
-                        f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
-                    )
+                    # Use stderr for stdio transport to avoid polluting JSON-RPC
+                    if os.environ.get("MCP_TRANSPORT") == "stdio":
+                        stderr_console.print(
+                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
+                        )
+                    else:
+                        console.print(
+                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
+                        )
     else:
         console.print(f"[red]Tools directory not found: {tools_dir}[/red]")
 
@@ -174,14 +182,25 @@ def create_config_for_tool(tool_name: str, tools: Dict[str, Any]) -> Any:
                 config_class = tool_module.get_config_class()
                 return config_class()
         except Exception as e:
-            console.print(
-                f"[yellow]Warning: Failed to load config for '{tool_name}': {e}[/yellow]"
-            )
+            # Use stderr for stdio transport to avoid polluting JSON-RPC
+            if os.environ.get("MCP_TRANSPORT") == "stdio":
+                stderr_console.print(
+                    f"[yellow]Warning: Failed to load config for '{tool_name}': {e}[/yellow]"
+                )
+            else:
+                console.print(
+                    f"[yellow]Warning: Failed to load config for '{tool_name}': {e}[/yellow]"
+                )
 
     # Legacy support - return empty dict
-    console.print(
-        f"[yellow]Warning: Tool '{tool_name}' doesn't export get_config_class[/yellow]"
-    )
+    if os.environ.get("MCP_TRANSPORT") == "stdio":
+        stderr_console.print(
+            f"[yellow]Warning: Tool '{tool_name}' doesn't export get_config_class[/yellow]"
+        )
+    else:
+        console.print(
+            f"[yellow]Warning: Tool '{tool_name}' doesn't export get_config_class[/yellow]"
+        )
     return {}
 
 
@@ -323,11 +342,18 @@ def tool(
     ),
 ):
     """Serve a specific tool"""
+    # Set transport early so discover_tools can use it
+    os.environ["MCP_TRANSPORT"] = transport
+    
     tools = discover_tools()
 
     if tool_name not in tools:
-        console.print(f"[red]Tool '{tool_name}' not found[/red]")
-        console.print(f"Available tools: {', '.join(tools.keys())}")
+        if transport == "stdio":
+            stderr_console.print(f"[red]Tool '{tool_name}' not found[/red]")
+            stderr_console.print(f"Available tools: {', '.join(tools.keys())}")
+        else:
+            console.print(f"[red]Tool '{tool_name}' not found[/red]")
+            console.print(f"Available tools: {', '.join(tools.keys())}")
         sys.exit(1)
 
     # Get host and port from environment variables or defaults
