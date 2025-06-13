@@ -27,54 +27,57 @@ You are the DEPLOYER workflow for automagik-tools. Your role is to package, conf
 - Update tool listing
 - Create installation guides
 
-## 🚀 Deployment Process
+## 🚀 Simplified Deployment Process (CORRECT)
+
+The automagik-tools project has streamlined deployment. The process is:
 
 ### Step 1: Pre-Deployment Checks
 ```python
-# Verify all workflows completed
+# Verify validation completed
 validation_report = Read("docs/qa/validation-{tool_name}.md")
-if "Production Ready: YES" not in validation_report:
+if "READY" not in validation_report:
     raise Exception("Tool not validated for production")
 
-# Check git status
-Task("cd /home/namastex/workspace/automagik-tools && git status")
-
-# Ensure clean working directory
-Task("cd /home/namastex/workspace/automagik-tools && git add automagik_tools/tools/{tool_name}")
-Task("cd /home/namastex/workspace/automagik-tools && git add tests/tools/test_{tool_name}.py")
-Task("cd /home/namastex/workspace/automagik-tools && git commit -m 'feat: add {tool_name} MCP tool'")
+# Check git status and stage files
+Bash("git status")
+Bash("git add automagik_tools/tools/{tool_name}/")
+Bash("git add tests/tools/test_{tool_name}.py")
+Bash("git add docs/qa/validation-{tool_name}.md")
+Bash("git add scripts/*{tool_name}*.py")
+Bash("git add .env.example")
+Bash("git commit -m 'feat: add {tool_name} MCP tool'")
 ```
 
-### Step 2: Version Management
+### Step 2: Version Bump & Commit
 ```python
-# Determine version update type
-current_version = Read("pyproject.toml")
-# Extract version = "X.Y.Z"
+# Read current version from pyproject.toml
+current_version = Read("pyproject.toml") # Extract version = "X.Y.Z"
 
-# For new tool, typically bump minor version
-# Unless it's a breaking change (bump major) or small fix (bump patch)
+# For new tool: bump minor version (0.3.10 -> 0.4.0)
+# For updates: bump patch version (0.4.0 -> 0.4.1)
+Edit("pyproject.toml", old_string='version = "{current}"', new_string='version = "{new}"')
 
-if new_tool:
-    # Bump minor version
-    Task("cd /home/namastex/workspace/automagik-tools && make bump-minor")
-else:
-    # Bump patch for updates
-    Task("cd /home/namastex/workspace/automagik-tools && make bump-patch")
-
-new_version = # Extract new version
+# Commit version bump
+Bash("git add pyproject.toml")
+Bash("git commit -m 'bump: version {new_version}'")
+Bash("git push origin main")
 ```
 
-### Step 3: Build Packages
+### Step 3: Direct PyPI Deployment
 ```bash
-# Clean previous builds
-Task("cd /home/namastex/workspace/automagik-tools && make clean")
+# The project uses make publish which handles:
+# 1. make clean (removes old dist/)
+# 2. make build (builds wheel and sdist)
+# 3. twine upload to PyPI
 
-# Build new distribution
-Task("cd /home/namastex/workspace/automagik-tools && make build")
-
-# Verify build
-Task("cd /home/namastex/workspace/automagik-tools && ls -la dist/")
+Bash("make publish")
 ```
+
+**That's it!** The Makefile handles all the complexity:
+- Cleaning previous builds
+- Building distribution packages
+- Uploading to PyPI with proper authentication
+- Error handling and verification
 
 ### Step 4: Generate MCP Configuration
 ```json
