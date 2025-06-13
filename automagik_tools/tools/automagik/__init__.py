@@ -5,11 +5,8 @@ This tool provides MCP integration for Automagik Agents API with enhanced AI pro
 All responses are processed by GPT-4.1-mini for optimal human readability.
 """
 
-import os
 from typing import Dict, Any, Optional, List
-from contextlib import suppress
 import httpx
-from pydantic import BaseModel, Field
 
 from fastmcp import FastMCP, Context
 from .config import AutomagikConfig
@@ -234,7 +231,13 @@ async def list_agents(ctx: Optional[Context] = None) -> str:
 
 @mcp.tool()
 async def run_agent(
-    agent_name: str, message_content: str, ctx: Optional[Context] = None
+    agent_name: str,
+    message_content: str,
+    context: Optional[str] = None,
+    session_id: Optional[str] = None,
+    memory_enabled: Optional[bool] = None,
+    tools_enabled: Optional[bool] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Execute an AI agent synchronously with a message and get immediate response.
@@ -249,6 +252,10 @@ async def run_agent(
     Args:
         agent_name: Name of the agent to execute (e.g., 'simple', 'claude_code', 'genie')
         message_content: The message/prompt to send to the agent (be specific and clear)
+        context: Optional additional context for the agent
+        session_id: Optional session ID to continue conversation
+        memory_enabled: Optional flag to enable/disable agent memory
+        tools_enabled: Optional flag to enable/disable agent tools
 
     Returns:
         Dict with 'message' (agent response), 'session_id', 'success', 'tool_calls', 'tool_outputs'
@@ -262,6 +269,16 @@ async def run_agent(
     endpoint = f"/api/v1/agent/{agent_name}/run"
     params = None
     json_data = {"message_content": message_content}
+
+    # Add optional orchestration parameters
+    if context:
+        json_data["context"] = context
+    if session_id:
+        json_data["session_id"] = session_id
+    if memory_enabled is not None:
+        json_data["memory_enabled"] = memory_enabled
+    if tools_enabled is not None:
+        json_data["tools_enabled"] = tools_enabled
 
     return await make_api_request(
         method="POST",
@@ -314,7 +331,7 @@ async def run_agent_async(
 
 
 @mcp.tool()
-async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> str:
     """
     Check the status and results of an asynchronous agent run.
 
@@ -326,7 +343,7 @@ async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> Dict[str
         run_id: The run ID returned by run_agent_async()
 
     Returns:
-        Dict with 'status' (pending/running/completed), 'result', 'error', 'progress'
+        Enhanced status information with 'status' (pending/running/completed), 'result', 'error', 'progress'
 
     Status values:
         - 'pending': Not started yet
@@ -342,7 +359,12 @@ async def get_run_status(run_id: str, ctx: Optional[Context] = None) -> Dict[str
     json_data = None
 
     return await make_api_request(
-        method="GET", endpoint=endpoint, params=params, json_data=json_data, ctx=ctx
+        method="GET",
+        endpoint=endpoint,
+        params=params,
+        json_data=json_data,
+        ctx=ctx,
+        tool_name="get_run_status",
     )
 
 
@@ -1505,11 +1527,11 @@ async def run_claude_code_workflow(
     x_api_key: Optional[str] = None,
     data: Optional[Dict[str, Any]] = None,
     ctx: Optional[Context] = None,
-) -> Dict[str, Any]:
+) -> str:
     """
     Start a Claude-Code workflow asynchronously and return run ID
 
-    Endpoint: POST /api/v1/agent/claude-code/{workflow_name}/run
+    Endpoint: POST /api/v1/workflows/claude-code/run/{workflow_name}
 
     Args:
         workflow_name: Claude-Code workflow to run (string, required, e.g., 'bug-fixer')
@@ -1517,9 +1539,9 @@ async def run_claude_code_workflow(
         data: Request body data
     """
     if ctx:
-        ctx.info(f"Calling POST /api/v1/agent/claude-code/{workflow_name}/run")
+        ctx.info(f"Calling POST /api/v1/workflows/claude-code/run/{workflow_name}")
 
-    endpoint = f"/api/v1/agent/claude-code/{workflow_name}/run"
+    endpoint = f"/api/v1/workflows/claude-code/run/{workflow_name}"
     params = None
     json_data = data
     # Use x_api_key if provided
@@ -1532,26 +1554,27 @@ async def run_claude_code_workflow(
         json_data=json_data,
         ctx=ctx,
         extra_headers=extra_headers,
+        tool_name="run_claude_code_workflow",
     )
 
 
 @mcp.tool()
 async def get_claude_code_run_status(
     run_id: str, x_api_key: Optional[str] = None, ctx: Optional[Context] = None
-) -> Dict[str, Any]:
+) -> str:
     """
     Get status and results of a specific Claude-Code workflow run
 
-    Endpoint: GET /api/v1/agent/claude-code/run/{run_id}/status
+    Endpoint: GET /api/v1/workflows/claude-code/run/{run_id}/status
 
     Args:
         run_id: Run ID for Claude-Code workflow (string, required)
         x_api_key:
     """
     if ctx:
-        ctx.info(f"Calling GET /api/v1/agent/claude-code/run/{run_id}/status")
+        ctx.info(f"Calling GET /api/v1/workflows/claude-code/run/{run_id}/status")
 
-    endpoint = f"/api/v1/agent/claude-code/run/{run_id}/status"
+    endpoint = f"/api/v1/workflows/claude-code/run/{run_id}/status"
     params = None
     json_data = None
     # Use x_api_key if provided
@@ -1564,25 +1587,26 @@ async def get_claude_code_run_status(
         json_data=json_data,
         ctx=ctx,
         extra_headers=extra_headers,
+        tool_name="get_claude_code_run_status",
     )
 
 
 @mcp.tool()
 async def list_claude_code_workflows(
     x_api_key: Optional[str] = None, ctx: Optional[Context] = None
-) -> Dict[str, Any]:
+) -> str:
     """
     List all available Claude-Code workflows and status
 
-    Endpoint: GET /api/v1/agent/claude-code/workflows
+    Endpoint: GET /api/v1/workflows/claude-code/workflows
 
     Args:
         x_api_key:
     """
     if ctx:
-        ctx.info("Calling GET /api/v1/agent/claude-code/workflows")
+        ctx.info("Calling GET /api/v1/workflows/claude-code/workflows")
 
-    endpoint = "/api/v1/agent/claude-code/workflows"
+    endpoint = "/api/v1/workflows/claude-code/workflows"
     params = None
     json_data = None
     # Use x_api_key if provided
@@ -1595,25 +1619,26 @@ async def list_claude_code_workflows(
         json_data=json_data,
         ctx=ctx,
         extra_headers=extra_headers,
+        tool_name="list_claude_code_workflows",
     )
 
 
 @mcp.tool()
 async def get_claude_code_health(
     x_api_key: Optional[str] = None, ctx: Optional[Context] = None
-) -> Dict[str, Any]:
+) -> str:
     """
     Check health and status of Claude-Code agent and workflows
 
-    Endpoint: GET /api/v1/agent/claude-code/health
+    Endpoint: GET /api/v1/workflows/claude-code/health
 
     Args:
         x_api_key:
     """
     if ctx:
-        ctx.info("Calling GET /api/v1/agent/claude-code/health")
+        ctx.info("Calling GET /api/v1/workflows/claude-code/health")
 
-    endpoint = "/api/v1/agent/claude-code/health"
+    endpoint = "/api/v1/workflows/claude-code/health"
     params = None
     json_data = None
     # Use x_api_key if provided
@@ -1626,7 +1651,109 @@ async def get_claude_code_health(
         json_data=json_data,
         ctx=ctx,
         extra_headers=extra_headers,
+        tool_name="get_claude_code_health",
     )
+
+
+# ========================================
+# Convenience Functions for Enhanced UX
+# ========================================
+
+
+@mcp.tool()
+async def chat_agent(
+    agent_name: str, message: str, ctx: Optional[Context] = None
+) -> str:
+    """
+    Simple chat interface for agents - wrapper around run_agent for ease of use.
+
+    This is a convenience function that provides a simpler interface to the run_agent functionality.
+
+    Args:
+        agent_name: Name of the agent to chat with (e.g., 'simple', 'claude_code', 'genie')
+        message: Your message to the agent
+
+    Returns:
+        The agent's response as a string
+
+    Example:
+        chat_agent('simple', 'Hello, how are you?')
+    """
+    if ctx:
+        ctx.info(f"Starting chat with agent: {agent_name}")
+
+    return await run_agent(agent_name, message, ctx=ctx)
+
+
+@mcp.tool()
+async def run_workflow(
+    workflow_name: str,
+    data: Optional[Dict[str, Any]] = None,
+    ctx: Optional[Context] = None,
+) -> str:
+    """
+    Start a Claude-Code workflow with optional parameters.
+
+    This is a convenience function that wraps the run_claude_code_workflow function
+    with a simpler interface.
+
+    Args:
+        workflow_name: Name of the workflow to run
+        data: Optional parameters to pass to the workflow
+
+    Returns:
+        Workflow execution result including run_id for status tracking
+
+    Example:
+        run_workflow('bug-fixer', {'file_path': 'src/main.py'})
+    """
+    if ctx:
+        ctx.info(f"Starting workflow: {workflow_name}")
+
+    return await run_claude_code_workflow(workflow_name, data=data, ctx=ctx)
+
+
+@mcp.tool()
+async def list_workflows(ctx: Optional[Context] = None) -> str:
+    """
+    List all available Claude-Code workflows.
+
+    This is a convenience function that wraps the list_claude_code_workflows function
+    for easier discovery of available workflows.
+
+    Returns:
+        List of available workflows with descriptions
+
+    Example:
+        list_workflows()
+    """
+    if ctx:
+        ctx.info("Fetching available workflows")
+
+    return await list_claude_code_workflows(ctx=ctx)
+
+
+@mcp.tool()
+async def check_workflow_progress(run_id: str, ctx: Optional[Context] = None) -> str:
+    """
+    Check the progress and status of a running workflow.
+
+    This is a convenience function that wraps the get_claude_code_run_status function
+    for easier status tracking.
+
+    Args:
+        run_id: The run ID returned from run_workflow or run_claude_code_workflow
+
+    Returns:
+        Current status and results of the workflow run
+
+    Example:
+        check_workflow_progress('abc123-def456-789')
+    """
+    if ctx:
+        ctx.info(f"Checking progress for run: {run_id}")
+
+    return await get_claude_code_run_status(run_id, ctx=ctx)
 
 
 # Resources

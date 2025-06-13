@@ -16,6 +16,62 @@ This repository aims to become the largest and most comprehensive collection of 
 3. Compose tools for complex workflows
 4. Deploy tools at scale
 
+## 🤖 Automated Development Workflows
+
+**IMPORTANT: All development tasks must use the specialized workflows in `.claude/commands/` for consistency and quality.**
+
+### Available Workflows
+
+The repository contains specialized workflows for automated tool development:
+
+- **ORCHESTRATOR** (`orchestrator.md`) - Project management and workflow coordination
+- **ANALYZER** (`analyzer.md`) - Requirements analysis and implementation planning  
+- **BUILDER** (`builder.md`) - Tool implementation and coding
+- **TESTER** (`tester.md`) - Comprehensive testing and validation
+- **VALIDATOR** (`validator.md`) - Quality assurance and compliance checks
+- **DEPLOYER** (`deployer.md`) - Package and deployment management
+
+### Workflow Usage
+
+**For New Tool Development:**
+```bash
+# Use ORCHESTRATOR to coordinate the full development process
+@ORCHESTRATOR Create MCP tool for [API Name] with [functionality]. 
+API docs: [URL]. Authentication: [method]. Priority: [high/medium/low]
+```
+
+**For Tool Enhancement:**
+```bash
+# Use ORCHESTRATOR to coordinate enhancement work
+@ORCHESTRATOR Enhance [tool_name] with [new_features]. 
+Current issues: [description]. OpenAPI: [URL if applicable]
+```
+
+**For Individual Tasks:**
+```bash
+# Use specific workflows for focused tasks
+@ANALYZER Analyze requirements for [tool_name] enhancement
+@BUILDER Implement [specific_feature] for [tool_name]
+@TESTER Create test suite for [tool_name]
+```
+
+### Workflow Integration
+
+- **Linear Integration**: All workflows create and update Linear issues for tracking
+- **Memory System**: Patterns and learnings are stored in agent-memory for reuse
+- **Quality Gates**: Each workflow has specific success criteria and validation
+- **Pattern Reuse**: >80% code reuse from existing successful implementations
+
+### Development Rules
+
+1. **Always use workflows** - Never implement tools manually without workflow coordination
+2. **Follow handoffs** - Each workflow prepares specific outputs for the next
+3. **Update Linear** - All progress must be tracked in Linear issues
+4. **Store patterns** - Successful implementations must be stored in memory
+5. **Validate quality** - All tools must pass validation before deployment
+
+See `.claude/commands/README.md` for detailed workflow documentation.
+
 ## Essential Commands
 
 ### Development Setup
@@ -153,8 +209,20 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 5. **Security**: Safe by default, no credential leaks
 6. **Performance**: Efficient resource usage, async throughout
 
+## Recent Planning Sessions
+
+### Automagik Workflows Tool Development (Latest)
+**Planning Complete**: Comprehensive analysis and design for automagik_workflows tool variant
+- **Analyzed**: Claude workflow endpoints from Automagik agents API
+- **Designed**: Humanized function interface to replace raw API calls  
+- **Architecture**: Self-contained tool following automagik-tools patterns
+- **Next Workflow**: BUILDER - Ready for implementation phase
+- **Priority**: High - Tool provides intuitive workflow orchestration
+- **Linear Project**: 769dbd16-e8b8-44d0-a7d8-dc80e1a1a334
+
 ## Memories
 
 - Always use uv to run python or pytest, and uvx for testing the application
 - USE UVUSE UV ALWAYS
 - gpt 4.1 and gpt-4.1-nano are the default models of this project
+- **Workflow Continuity**: Use BUILDER workflow next for automagik_workflows implementation

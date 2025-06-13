@@ -142,5 +142,4 @@ def validate_config(config: GenieConfig) -> bool:
     if config.num_history_runs < 0:
         raise ValueError("num_history_runs must be non-negative")
 
-
     return True

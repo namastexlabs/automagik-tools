@@ -344,7 +344,7 @@ def tool(
     """Serve a specific tool"""
     # Set transport early so discover_tools can use it
     os.environ["MCP_TRANSPORT"] = transport
-    
+
     tools = discover_tools()
 
     if tool_name not in tools:
