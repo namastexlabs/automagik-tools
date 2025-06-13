@@ -40,11 +40,10 @@ async def run_workflow(
     session_name: Optional[str] = None,
     git_branch: Optional[str] = None,
     repository_url: Optional[str] = None,
-    timeout: int = 7200,
     ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
-    🚀 Execute a Claude Code workflow with intelligent progress tracking
+    🚀 Start a Claude Code workflow execution (returns immediately)
 
     Args:
         workflow_name: Workflow type (test, pr, fix, refactor, implement, review, document, architect)
@@ -53,11 +52,10 @@ async def run_workflow(
         session_name: Optional session identifier
         git_branch: Git branch for the workflow
         repository_url: Repository URL if applicable
-        timeout: Workflow timeout in seconds (default: 2 hours)
-        ctx: MCP context for progress reporting
+        ctx: MCP context for logging
 
     Returns:
-        Dict containing workflow results, metrics, and execution details
+        Dict containing initial workflow status and run_id for tracking
     """
     global client
     if not client:
@@ -78,7 +76,7 @@ async def run_workflow(
         request_data["repository_url"] = repository_url
 
     try:
-        # Start the workflow
+        # Start the workflow and return immediately
         start_response = await client.start_workflow(workflow_name, request_data)
 
         if "run_id" not in start_response:
@@ -88,83 +86,23 @@ async def run_workflow(
 
         if ctx:
             ctx.info(f"📋 Workflow started with run_id: {run_id}")
+            ctx.info("💡 Use get_workflow_status() to track progress")
 
-        # Monitor progress with polling
-        start_time = time.time()
-        current_turns = 0
-
-        while time.time() - start_time < timeout:
-            status_response = await client.get_workflow_status(run_id)
-
-            # Extract progress information
-            status = status_response.get("status", "unknown")
-            current_turns = status_response.get("turns", current_turns)
-
-            # Report progress using turns/max_turns ratio
-            if ctx and max_turns > 0:
-                progress_ratio = min(current_turns / max_turns, 1.0)
-                await ctx.report_progress(progress=current_turns, total=max_turns)
-
-                if ctx:
-                    ctx.info(
-                        f"📊 Progress: {current_turns}/{max_turns} turns ({progress_ratio:.1%})"
-                    )
-
-            # Check for completion
-            if status == "completed":
-                if ctx:
-                    ctx.info("✅ Workflow completed successfully")
-                    await ctx.report_progress(progress=max_turns, total=max_turns)
-
-                # Return comprehensive results
-                return {
-                    "status": "completed",
-                    "run_id": run_id,
-                    "workflow_name": workflow_name,
-                    "turns_used": current_turns,
-                    "max_turns": max_turns,
-                    "execution_time": time.time() - start_time,
-                    "result": status_response.get("result", {}),
-                    "metrics": status_response.get("metrics", {}),
-                    "message": f"Workflow '{workflow_name}' completed in {current_turns} turns",
-                }
-
-            elif status == "failed":
-                error_msg = status_response.get("error", "Unknown error")
-                if ctx:
-                    ctx.error(f"❌ Workflow failed: {error_msg}")
-
-                return {
-                    "status": "failed",
-                    "run_id": run_id,
-                    "workflow_name": workflow_name,
-                    "turns_used": current_turns,
-                    "max_turns": max_turns,
-                    "execution_time": time.time() - start_time,
-                    "error": error_msg,
-                    "message": f"Workflow '{workflow_name}' failed after {current_turns} turns",
-                }
-
-            # Continue polling if still running
-            elif status in ["pending", "running"]:
-                await asyncio.sleep(config.polling_interval)
-            else:
-                if ctx:
-                    ctx.warn(f"⚠️ Unknown status: {status}")
-                await asyncio.sleep(config.polling_interval)
-
-        # Timeout reached
-        if ctx:
-            ctx.error(f"⏰ Workflow timeout after {timeout} seconds")
-
+        # Return initial response immediately
         return {
-            "status": "timeout",
+            "status": start_response.get("status", "running"),
             "run_id": run_id,
             "workflow_name": workflow_name,
-            "turns_used": current_turns,
             "max_turns": max_turns,
-            "execution_time": timeout,
-            "message": f"Workflow '{workflow_name}' timed out after {timeout} seconds",
+            "started_at": start_response.get("started_at"),
+            "session_id": start_response.get("session_id"),
+            "message": f"Workflow '{workflow_name}' started successfully. Use get_workflow_status('{run_id}') to track progress.",
+            "tracking_info": {
+                "run_id": run_id,
+                "polling_command": f"get_workflow_status('{run_id}')",
+                "expected_duration": "Variable (depends on complexity)",
+                "max_turns": max_turns
+            }
         }
 
     except Exception as e:
@@ -175,7 +113,7 @@ async def run_workflow(
             "status": "error",
             "workflow_name": workflow_name,
             "error": str(e),
-            "message": f"Failed to execute workflow '{workflow_name}': {str(e)}",
+            "message": f"Failed to start workflow '{workflow_name}': {str(e)}",
         }
 
 
@@ -249,7 +187,23 @@ async def list_recent_runs(
         if ctx:
             ctx.info(f"📊 Found {len(runs)} workflow runs")
 
-        return runs
+        # Return concise summary of runs
+        concise_runs = []
+        for run in runs:
+            concise_run = {
+                "run_id": run.get("run_id", "unknown"),
+                "workflow_name": run.get("workflow_name", "unknown"),
+                "status": run.get("status", "unknown"),
+                "started_at": run.get("started_at", "unknown"),
+                "turns": run.get("turns", 0),
+                "execution_time": round(run.get("execution_time", 0), 1) if run.get("execution_time") else 0,
+                "cost": round(run.get("total_cost", 0), 4) if run.get("total_cost") else 0
+            }
+            if run.get("completed_at"):
+                concise_run["completed_at"] = run["completed_at"]
+            concise_runs.append(concise_run)
+
+        return concise_runs
 
     except Exception as e:
         if ctx:
@@ -263,11 +217,11 @@ async def get_workflow_status(
     run_id: str, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
     """
-    📈 Get detailed status of specific workflow run
+    📈 Get detailed status of specific workflow run with progress tracking
 
     Args:
         run_id: Unique identifier for the workflow run
-        ctx: MCP context for logging
+        ctx: MCP context for progress reporting
 
     Returns:
         Detailed status information including progress, metrics, and results
@@ -279,14 +233,101 @@ async def get_workflow_status(
     try:
         status_response = await client.get_workflow_status(run_id)
 
-        # Add human-readable status information
+        # Extract key information
         status = status_response.get("status", "unknown")
-        turns = status_response.get("turns", 0)
+        turns = status_response.get("turns", 0) or 0
+        workflow_name = status_response.get("workflow_name", "unknown")
+        
+        # Calculate progress if we have turn information
+        if ctx and turns > 0:
+            # Try to estimate max_turns from existing data or use a reasonable default
+            max_turns = 30  # Default assumption
+            progress_ratio = min(turns / max_turns, 1.0)
+            
+            try:
+                await ctx.report_progress(progress=turns, total=max_turns)
+            except Exception:
+                # Context reporting might not be available, continue without it
+                pass
 
-        if ctx:
-            ctx.info(f"📈 Workflow {run_id} status: {status} ({turns} turns)")
+            ctx.info(f"📈 Workflow {workflow_name} ({run_id}): {status}")
+            ctx.info(f"📊 Progress: {turns} turns completed ({progress_ratio:.1%})")
+            
+            if status == "completed":
+                ctx.info("✅ Workflow completed successfully")
+            elif status == "running":
+                ctx.info("⏳ Workflow is still running...")
+            elif status == "failed":
+                ctx.error(f"❌ Workflow failed: {status_response.get('error', 'Unknown error')}")
 
-        return status_response
+        # Return concise, human-readable status
+        execution_time = status_response.get("execution_time", 0) or status_response.get("elapsed_seconds", 0)
+        cost = status_response.get("cost", 0) or status_response.get("total_cost", 0)
+        tokens = status_response.get("tokens", 0) or status_response.get("total_tokens", 0)
+
+        # Extract latest activity/message for orchestrator context
+        latest_activity = None
+        final_result = None
+        
+        # Get recent steps for current activity
+        recent_steps = status_response.get("recent_steps")
+        if recent_steps and isinstance(recent_steps, dict):
+            last_tool = recent_steps.get("last_tool", {})
+            if last_tool:
+                latest_activity = f"🔧 {last_tool.get('summary', 'Using ' + last_tool.get('tool_name', 'unknown tool'))}"
+        
+        # For completed workflows, extract final result from logs
+        if status == "completed":
+            logs = status_response.get("logs", "")
+            # Extract result type from final log entries
+            if "error_max_turns" in logs:
+                final_result = "⏰ Reached maximum turns - workflow stopped at turn limit"
+            elif "result.success" in logs:
+                final_result = "✅ Workflow completed successfully"
+            elif "execution_complete" in logs:
+                final_result = "✅ Workflow execution completed"
+            else:
+                final_result = "✅ Workflow completed"
+        elif status == "failed":
+            error_msg = status_response.get("error", "Unknown error")
+            final_result = f"❌ Workflow failed: {error_msg}"
+
+        # Build concise response with orchestrator context
+        concise_response = {
+            "run_id": run_id,
+            "status": status,
+            "workflow_name": workflow_name,
+            "progress": {
+                "current_turns": turns,
+                "is_running": status in ["pending", "running"],
+                "is_completed": status == "completed",
+                "is_failed": status == "failed"
+            },
+            "metrics": {
+                "execution_time_seconds": round(execution_time, 1) if execution_time else 0,
+                "total_cost_usd": round(cost, 4) if cost else 0,
+                "total_tokens": tokens if tokens else 0
+            }
+        }
+
+        # Add orchestrator context
+        if latest_activity:
+            concise_response["current_activity"] = latest_activity
+        
+        if final_result:
+            concise_response["final_result"] = final_result
+            concise_response["message"] = final_result
+        elif status in ["pending", "running"]:
+            activity_msg = f" - {latest_activity}" if latest_activity else ""
+            concise_response["message"] = f"⏳ Running... ({turns} turns completed){activity_msg}"
+        else:
+            concise_response["message"] = f"Status: {status}"
+
+        # Add completion timestamp if available
+        if status == "completed" and status_response.get("completed_at"):
+            concise_response["completed_at"] = status_response["completed_at"]
+
+        return concise_response
 
     except Exception as e:
         if ctx:

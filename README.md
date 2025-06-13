@@ -303,7 +303,7 @@ AI orchestration that speaks human:
 
 ```bash
 # Quick test with SSE
-uvx automagik-tools serve --tool automagik --transport sse --port 8000
+uvx automagik-tools tool automagik --transport sse --port 8000
 ```
 
 **What you can do:**
@@ -317,7 +317,7 @@ Universal MCP orchestrator with persistent memory:
 
 ```bash
 # Run as SSE server for team sharing
-uvx automagik-tools serve --tool genie --transport sse --port 8000
+uvx automagik-tools tool genie --transport sse --port 8000
 ```
 
 **Capabilities:**
@@ -325,6 +325,20 @@ uvx automagik-tools serve --tool genie --transport sse --port 8000
 - 🔗 Connect to unlimited MCP servers
 - 💬 Natural language task coordination
 - 👥 Shared learning across team members
+
+### AutoMagik Workflows 🚀
+Smart Claude workflow orchestration with real-time progress tracking:
+
+```bash
+# Execute Claude Code workflows with progress monitoring
+uvx automagik-tools tool automagik-workflows --transport stdio
+```
+
+**Features:**
+- 🚀 **Run Claude Code Workflows**: Execute workflows with progress reporting
+- 📊 **Real-time Status**: Track workflow completion with visual progress
+- 📋 **List Workflows**: Discover available workflows and recent runs  
+- 🔄 **Status Monitoring**: Get detailed workflow execution status
 
 ### Evolution API (WhatsApp) 📱
 Complete WhatsApp automation:

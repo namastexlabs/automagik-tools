@@ -3,7 +3,18 @@
 
 import argparse
 import sys
-from . import create_server, get_metadata
+
+# Handle both direct execution and module execution
+try:
+    from . import create_server, get_metadata
+except ImportError:
+    # When run directly (uvx fastmcp run __main__.py)
+    import os
+    # Add the project root to path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+    sys.path.insert(0, project_root)
+    from automagik_tools.tools.automagik_workflows import create_server, get_metadata
 
 
 def main():
@@ -41,6 +52,9 @@ def main():
     else:
         raise ValueError(f"Unsupported transport: {args.transport}")
 
+
+# Export the mcp server for FastMCP CLI compatibility
+mcp = create_server()
 
 if __name__ == "__main__":
     main()
