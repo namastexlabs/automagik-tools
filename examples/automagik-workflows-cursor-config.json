@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "automagik-workflows": {
+      "command": "uvx",
+      "args": ["automagik-tools@latest", "tool", "automagik-workflows"],
+      "env": {
+        "AUTOMAGIK_WORKFLOWS_API_KEY": "${env:YOUR_AUTOMAGIK_API_KEY}",
+        "AUTOMAGIK_WORKFLOWS_BASE_URL": "http://localhost:28881"
+      }
+    }
+  }
+}

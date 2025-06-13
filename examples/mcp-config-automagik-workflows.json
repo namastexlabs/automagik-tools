@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "automagik-workflows": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "automagik-workflows",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "AUTOMAGIK_WORKFLOWS_API_KEY": "your-api-key-here",
+        "AUTOMAGIK_WORKFLOWS_BASE_URL": "http://localhost:28881",
+        "AUTOMAGIK_WORKFLOWS_TIMEOUT": "7200",
+        "AUTOMAGIK_WORKFLOWS_POLLING_INTERVAL": "8",
+        "AUTOMAGIK_WORKFLOWS_MAX_RETRIES": "3"
+      }
+    }
+  }
+}
