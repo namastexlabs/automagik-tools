@@ -17,6 +17,11 @@ from automagik_tools.tools.wait import (
     wait_minutes,
     wait_until_timestamp,
     wait_with_progress,
+    start_timer,
+    get_timer_status,
+    cancel_timer,
+    list_active_timers,
+    cleanup_timers,
 )
 from automagik_tools.tools.wait.config import WaitConfig
 
@@ -74,8 +79,8 @@ class TestWaitMetadata:
         assert "version" in metadata
         assert "description" in metadata
         assert metadata["name"] == "wait"
-        assert metadata["version"] == "1.0.0"
-        assert "Smart timing functions" in metadata["description"]
+        assert metadata["version"] == "2.0.0"
+        assert "Timing functions" in metadata["description"]
         assert "author" in metadata
         assert "category" in metadata
         assert "tags" in metadata
@@ -134,10 +139,11 @@ class TestWaitServer:
         tools = await server.get_tools()
         tool_names = list(tools.keys())
 
-        assert "wait_seconds" in tool_names
-        assert "wait_minutes" in tool_names
-        assert "wait_until_timestamp" in tool_names
-        assert "wait_with_progress" in tool_names
+        expected_tools = {
+            "wait_seconds", "wait_minutes", "wait_until_timestamp", "wait_with_progress",
+            "start_timer", "get_timer_status", "cancel_timer", "list_active_timers", "cleanup_timers"
+        }
+        assert expected_tools.issubset(set(tool_names))
 
     def test_server_configuration(self, mock_config):
         """Test server is properly configured"""
@@ -166,11 +172,11 @@ class TestWaitSeconds:
 
             # Verify result structure
             assert result["status"] == "completed"
-            assert result["requested_duration"] == 2.5
-            assert "actual_duration" in result
+            assert "duration" in result
             assert "start_time" in result
+            assert "start_iso" in result
             assert "end_time" in result
-            assert "message" in result
+            assert "end_iso" in result
 
     @pytest.mark.asyncio
     async def test_wait_seconds_without_context(self):
@@ -192,8 +198,9 @@ class TestWaitSeconds:
             result = await wait_seconds(5.0, mock_context)
 
             assert result["status"] == "cancelled"
-            assert result["requested_duration"] == 5.0
-            assert "actual_duration" in result
+            assert "duration" in result
+            assert "start_time" in result
+            assert "start_iso" in result
 
     @pytest.mark.asyncio
     async def test_wait_seconds_negative_duration(self):
@@ -204,7 +211,7 @@ class TestWaitSeconds:
     @pytest.mark.asyncio
     async def test_wait_seconds_exceeds_max(self):
         """Test wait_seconds exceeding max duration"""
-        with pytest.raises(ValueError, match="exceeds maximum allowed"):
+        with pytest.raises(ValueError, match="exceeds max"):
             await wait_seconds(15.0)  # mock_config has max_duration=10
 
     @pytest.mark.asyncio
@@ -231,9 +238,11 @@ class TestWaitMinutes:
         with patch("automagik_tools.tools.wait.wait_seconds") as mock_wait_seconds:
             mock_wait_seconds.return_value = {
                 "status": "completed",
-                "requested_duration": 120.0,
-                "actual_duration": 120.0,
-                "message": "Successfully waited 120.0 seconds",
+                "duration": 120.0,
+                "start_time": 1234567890.0,
+                "start_iso": "2024-01-01T00:00:00Z",
+                "end_time": 1234568010.0,
+                "end_iso": "2024-01-01T00:02:00Z"
             }
 
             result = await wait_minutes(2.0, mock_context)
@@ -242,15 +251,21 @@ class TestWaitMinutes:
             mock_wait_seconds.assert_called_once_with(120.0, mock_context)
 
             # Verify result includes minutes information
-            assert "requested_duration_minutes" in result
-            assert result["requested_duration_minutes"] == 2.0
-            assert "2.0 minutes" in result["message"]
+            assert "duration_minutes" in result
+            assert result["duration_minutes"] == 2.0
 
     @pytest.mark.asyncio
     async def test_wait_minutes_fractional(self, mock_context):
         """Test wait_minutes with fractional minutes"""
         with patch("automagik_tools.tools.wait.wait_seconds") as mock_wait_seconds:
-            mock_wait_seconds.return_value = {"status": "completed"}
+            mock_wait_seconds.return_value = {
+                "status": "completed",
+                "duration": 90.0,
+                "start_time": 1234567890.0,
+                "start_iso": "2024-01-01T00:00:00Z",
+                "end_time": 1234567980.0,
+                "end_iso": "2024-01-01T00:01:30Z"
+            }
 
             await wait_minutes(1.5, mock_context)
 
@@ -271,8 +286,11 @@ class TestWaitUntilTimestamp:
         with patch("automagik_tools.tools.wait.wait_seconds") as mock_wait_seconds:
             mock_wait_seconds.return_value = {
                 "status": "completed",
-                "requested_duration": 2.0,
-                "actual_duration": 2.0,
+                "duration": 2.0,
+                "start_time": 1234567890.0,
+                "start_iso": "2024-01-01T00:00:00Z",
+                "end_time": 1234567892.0,
+                "end_iso": "2024-01-01T00:00:02Z"
             }
 
             result = await wait_until_timestamp(timestamp_str, mock_context)
@@ -281,8 +299,7 @@ class TestWaitUntilTimestamp:
             args, kwargs = mock_wait_seconds.call_args
             assert 1.8 <= args[0] <= 2.2  # Allow some tolerance for execution time
 
-            assert "target_timestamp" in result
-            assert "start_timestamp" in result
+            assert "target_iso" in result
 
     @pytest.mark.asyncio
     async def test_wait_until_timestamp_past(self, mock_context):
@@ -294,8 +311,8 @@ class TestWaitUntilTimestamp:
         result = await wait_until_timestamp(timestamp_str, mock_context)
 
         assert result["status"] == "already_passed"
-        assert result["target_timestamp"] == timestamp_str
-        assert result["time_difference"] < 0
+        assert result["target_iso"] == timestamp_str
+        assert result["time_diff"] < 0
 
     @pytest.mark.asyncio
     async def test_wait_until_timestamp_invalid_format(self, mock_context):
@@ -303,7 +320,7 @@ class TestWaitUntilTimestamp:
         result = await wait_until_timestamp("invalid-timestamp", mock_context)
 
         assert result["status"] == "error"
-        assert "Invalid timestamp format" in result["error"]
+        assert "Invalid ISO 8601 format" in result["error"]
 
     @pytest.mark.asyncio
     async def test_wait_until_timestamp_exceeds_max(self, mock_context):
@@ -312,7 +329,7 @@ class TestWaitUntilTimestamp:
         future_time = datetime.now(timezone.utc) + timedelta(seconds=20)
         timestamp_str = future_time.isoformat()
 
-        with pytest.raises(ValueError, match="exceeds maximum allowed"):
+        with pytest.raises(ValueError, match="exceeds max"):
             await wait_until_timestamp(timestamp_str, mock_context)
 
     @pytest.mark.asyncio
@@ -346,9 +363,9 @@ class TestWaitWithProgress:
 
             # Verify result structure
             assert result["status"] == "completed"
-            assert result["requested_duration"] == 0.3
-            assert result["progress_interval"] == 0.1
-            assert result["progress_reports"] >= 3
+            assert result["duration"] >= 0.3
+            assert result["interval"] == 0.1
+            assert result["reports"] >= 3
 
     @pytest.mark.asyncio
     async def test_wait_with_progress_context_reporting(self, mock_context):
@@ -358,8 +375,7 @@ class TestWaitWithProgress:
 
             await wait_with_progress(0.2, 0.1, mock_context)
 
-            # Verify context methods were called
-            assert mock_context.info.call_count >= 2  # Start + progress updates
+            # Verify context methods were called for progress reporting
             assert mock_context.report_progress.call_count >= 2
 
     @pytest.mark.asyncio
@@ -371,7 +387,7 @@ class TestWaitWithProgress:
             result = await wait_with_progress(2.0, 0.5, mock_context)
 
             assert result["status"] == "cancelled"
-            assert "progress_reports" in result
+            assert "reports" in result
 
     @pytest.mark.asyncio
     async def test_wait_with_progress_default_interval(self, mock_context):
@@ -383,7 +399,7 @@ class TestWaitWithProgress:
             result = await wait_with_progress(0.2, ctx=mock_context)
 
             # Should use config.default_progress_interval (0.1 in mock_config) since it's different from 1.0
-            assert result["progress_interval"] == 0.1
+            assert result["interval"] == 0.1
 
     @pytest.mark.asyncio
     async def test_wait_with_progress_negative_duration(self):
@@ -400,7 +416,7 @@ class TestWaitWithProgress:
     @pytest.mark.asyncio
     async def test_wait_with_progress_exceeds_max(self):
         """Test duration exceeding max"""
-        with pytest.raises(ValueError, match="exceeds maximum allowed"):
+        with pytest.raises(ValueError, match="exceeds max"):
             await wait_with_progress(15.0, 1.0)
 
 
@@ -428,7 +444,7 @@ class TestWaitIntegration:
         """Test MCP protocol compliance"""
         # Test server has tools
         tools = await server.get_tools()
-        assert len(tools) == 4
+        assert len(tools) == 9  # Now includes non-blocking timer functions
 
         # Test each tool has required properties
         for tool_name, tool_info in tools.items():
@@ -485,10 +501,9 @@ class TestWaitErrorHandling:
         with patch("asyncio.sleep") as mock_sleep:
             mock_sleep.return_value = None
 
-            # Should not fail even if context reporting fails (the implementation has a try/except)
-            result = await wait_with_progress(0.2, 0.1, mock_context)
-
-            assert result["status"] == "completed"
+            # Progress reporting errors should propagate for real-time streaming
+            with pytest.raises(Exception, match="Context error"):
+                await wait_with_progress(0.2, 0.1, mock_context)
 
 
 class TestWaitPerformance:
@@ -519,4 +534,4 @@ class TestWaitPerformance:
         assert result["status"] == "completed"
 
         # Result should also track timing accurately
-        assert 0.04 <= result["actual_duration"] <= 0.06
+        assert 0.04 <= result["duration"] <= 0.06
