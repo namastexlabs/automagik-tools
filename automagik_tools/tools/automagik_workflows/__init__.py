@@ -233,16 +233,16 @@ async def get_workflow_status(
     try:
         status_response = await client.get_workflow_status(run_id)
 
-        # Extract key information
+        # Extract key information for context reporting
         status = status_response.get("status", "unknown")
-        turns = status_response.get("turns", 0) or 0
+        turns = status_response.get("turns", 0) or status_response.get("current_turns", 0) or 0
         workflow_name = status_response.get("workflow_name", "unknown")
         
         # Calculate progress if we have turn information
         if ctx and turns > 0:
-            # Try to estimate max_turns from existing data or use a reasonable default
-            max_turns = 30  # Default assumption
-            progress_ratio = min(turns / max_turns, 1.0)
+            # Try to get max_turns from the response, otherwise use default
+            max_turns = status_response.get("max_turns", 30)
+            progress_ratio = min(turns / max_turns, 1.0) if max_turns > 0 else 0
             
             try:
                 await ctx.report_progress(progress=turns, total=max_turns)
@@ -253,6 +253,21 @@ async def get_workflow_status(
             ctx.info(f"📈 Workflow {workflow_name} ({run_id}): {status}")
             ctx.info(f"📊 Progress: {turns} turns completed ({progress_ratio:.1%})")
             
+            # Report current phase if available
+            current_phase = status_response.get("current_phase")
+            if current_phase:
+                ctx.info(f"🔄 Current phase: {current_phase}")
+            
+            # Report cache efficiency if available
+            cache_efficiency = status_response.get("cache_efficiency")
+            if cache_efficiency:
+                ctx.info(f"💾 Cache efficiency: {cache_efficiency}%")
+            
+            # Report tools being used if available
+            tools_used = status_response.get("tools_used", [])
+            if tools_used:
+                ctx.info(f"🔧 Tools used: {', '.join(tools_used)}")
+            
             if status == "completed":
                 ctx.info("✅ Workflow completed successfully")
             elif status == "running":
@@ -260,74 +275,24 @@ async def get_workflow_status(
             elif status == "failed":
                 ctx.error(f"❌ Workflow failed: {status_response.get('error', 'Unknown error')}")
 
-        # Return concise, human-readable status
-        execution_time = status_response.get("execution_time", 0) or status_response.get("elapsed_seconds", 0)
-        cost = status_response.get("cost", 0) or status_response.get("total_cost", 0)
-        tokens = status_response.get("tokens", 0) or status_response.get("total_tokens", 0)
-
-        # Extract latest activity/message for orchestrator context
-        latest_activity = None
-        final_result = None
+        # Return the full comprehensive response from the API
+        # Make a copy to avoid modifying the original
+        comprehensive_response = dict(status_response)
         
-        # Get recent steps for current activity
-        recent_steps = status_response.get("recent_steps")
-        if recent_steps and isinstance(recent_steps, dict):
-            last_tool = recent_steps.get("last_tool", {})
-            if last_tool:
-                latest_activity = f"🔧 {last_tool.get('summary', 'Using ' + last_tool.get('tool_name', 'unknown tool'))}"
+        # Ensure we have the run_id in the response
+        comprehensive_response["run_id"] = run_id
         
-        # For completed workflows, extract final result from logs
-        if status == "completed":
-            logs = status_response.get("logs", "")
-            # Extract result type from final log entries
-            if "error_max_turns" in logs:
-                final_result = "⏰ Reached maximum turns - workflow stopped at turn limit"
-            elif "result.success" in logs:
-                final_result = "✅ Workflow completed successfully"
-            elif "execution_complete" in logs:
-                final_result = "✅ Workflow execution completed"
-            else:
-                final_result = "✅ Workflow completed"
-        elif status == "failed":
-            error_msg = status_response.get("error", "Unknown error")
-            final_result = f"❌ Workflow failed: {error_msg}"
-
-        # Build concise response with orchestrator context
-        concise_response = {
-            "run_id": run_id,
-            "status": status,
-            "workflow_name": workflow_name,
-            "progress": {
-                "current_turns": turns,
-                "is_running": status in ["pending", "running"],
-                "is_completed": status == "completed",
-                "is_failed": status == "failed"
-            },
-            "metrics": {
-                "execution_time_seconds": round(execution_time, 1) if execution_time else 0,
-                "total_cost_usd": round(cost, 4) if cost else 0,
-                "total_tokens": tokens if tokens else 0
-            }
-        }
-
-        # Add orchestrator context
-        if latest_activity:
-            concise_response["current_activity"] = latest_activity
+        # Add backward compatibility fields if they're missing
+        if "current_turns" not in comprehensive_response and turns > 0:
+            comprehensive_response["current_turns"] = turns
         
-        if final_result:
-            concise_response["final_result"] = final_result
-            concise_response["message"] = final_result
-        elif status in ["pending", "running"]:
-            activity_msg = f" - {latest_activity}" if latest_activity else ""
-            concise_response["message"] = f"⏳ Running... ({turns} turns completed){activity_msg}"
-        else:
-            concise_response["message"] = f"Status: {status}"
+        # Normalize turns field for backward compatibility
+        if "turns" not in comprehensive_response and "current_turns" in comprehensive_response:
+            comprehensive_response["turns"] = comprehensive_response["current_turns"]
+        elif "current_turns" not in comprehensive_response and "turns" in comprehensive_response:
+            comprehensive_response["current_turns"] = comprehensive_response["turns"]
 
-        # Add completion timestamp if available
-        if status == "completed" and status_response.get("completed_at"):
-            concise_response["completed_at"] = status_response["completed_at"]
-
-        return concise_response
+        return comprehensive_response
 
     except Exception as e:
         if ctx:

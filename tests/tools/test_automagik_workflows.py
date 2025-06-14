@@ -143,13 +143,14 @@ class TestRunWorkflow:
 
     @pytest.mark.asyncio
     async def test_run_workflow_success(self, mock_context):
-        """Test successful workflow execution"""
+        """Test successful workflow execution (returns immediately)"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.return_value = {"run_id": "test-123"}
-            mock_client.get_workflow_status.side_effect = [
-                {"status": "running", "turns": 5},
-                {"status": "completed", "turns": 10, "result": {"success": True}},
-            ]
+            mock_client.start_workflow = AsyncMock(return_value={
+                "run_id": "test-123",
+                "status": "running",
+                "started_at": "2024-01-15T10:00:00Z",
+                "session_id": "session-456"
+            })
 
             result = await run_workflow(
                 workflow_name="test",
@@ -158,60 +159,56 @@ class TestRunWorkflow:
                 ctx=mock_context,
             )
 
-            assert result["status"] == "completed"
+            # Verify immediate return response (not completion data)
+            assert result["status"] == "running"  # Initial status
             assert result["run_id"] == "test-123"
             assert result["workflow_name"] == "test"
-            assert result["turns_used"] == 10
             assert result["max_turns"] == 20
-            assert "execution_time" in result
+            assert result["started_at"] == "2024-01-15T10:00:00Z"
+            assert result["session_id"] == "session-456"
+            assert "tracking_info" in result
+            assert result["tracking_info"]["run_id"] == "test-123"
 
             mock_context.info.assert_called()
-            mock_context.report_progress.assert_called()
+            # run_workflow doesn't call report_progress since it returns immediately
+            mock_context.report_progress.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_run_workflow_failure(self, mock_context):
-        """Test workflow execution failure"""
+    async def test_run_workflow_start_failure(self, mock_context):
+        """Test workflow start failure (API error during initialization)"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.return_value = {"run_id": "test-456"}
-            mock_client.get_workflow_status.return_value = {
-                "status": "failed",
-                "turns": 3,
-                "error": "Workflow failed due to timeout",
-            }
+            # Simulate API error during workflow start
+            mock_client.start_workflow = AsyncMock(side_effect=Exception("API Error: Invalid workflow type"))
 
             result = await run_workflow(
-                workflow_name="test",
-                message="Test workflow",
+                workflow_name="invalid_workflow",
+                message="Test workflow", 
                 max_turns=10,
                 ctx=mock_context,
             )
 
-            assert result["status"] == "failed"
-            assert result["error"] == "Workflow failed due to timeout"
-            assert result["turns_used"] == 3
+            assert result["status"] == "error"
+            assert "API Error: Invalid workflow type" in result["error"]
+            assert result["workflow_name"] == "invalid_workflow"
             mock_context.error.assert_called()
 
     @pytest.mark.asyncio
-    async def test_run_workflow_timeout(self, mock_context):
-        """Test workflow execution timeout"""
+    async def test_run_workflow_missing_run_id(self, mock_context):
+        """Test workflow start when API doesn't return run_id"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.return_value = {"run_id": "test-789"}
-            mock_client.get_workflow_status.return_value = {
-                "status": "running",
-                "turns": 2,
-            }
+            # Simulate API response without run_id
+            mock_client.start_workflow = AsyncMock(return_value={"status": "error", "message": "Invalid request"})
 
-            # Use very short timeout to trigger timeout condition
             result = await run_workflow(
                 workflow_name="test",
                 message="Test workflow",
                 max_turns=10,
-                timeout=1,  # 1 second timeout
                 ctx=mock_context,
             )
 
-            assert result["status"] == "timeout"
-            assert result["run_id"] == "test-789"
+            assert result["status"] == "error"
+            assert "Failed to start workflow" in result["error"]
+            assert result["workflow_name"] == "test"
             mock_context.error.assert_called()
 
     @pytest.mark.asyncio
@@ -233,7 +230,7 @@ class TestRunWorkflow:
     async def test_run_workflow_api_error(self, mock_context):
         """Test handling of API errors"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.side_effect = Exception("API Error")
+            mock_client.start_workflow = AsyncMock(side_effect=Exception("API Error"))
 
             result = await run_workflow(
                 workflow_name="test", message="Test workflow", ctx=mock_context
@@ -255,7 +252,7 @@ class TestListWorkflows:
                 {"name": "test", "description": "Test workflow"},
                 {"name": "fix", "description": "Bug fix workflow"},
             ]
-            mock_client.list_workflows.return_value = mock_workflows
+            mock_client.list_workflows = AsyncMock(return_value=mock_workflows)
 
             result = await list_workflows(ctx=mock_context)
 
@@ -268,7 +265,7 @@ class TestListWorkflows:
     async def test_list_workflows_error(self, mock_context):
         """Test error handling in list_workflows"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.list_workflows.side_effect = Exception("Connection failed")
+            mock_client.list_workflows = AsyncMock(side_effect=Exception("Connection failed"))
 
             result = await list_workflows(ctx=mock_context)
 
@@ -291,7 +288,7 @@ class TestListRecentRuns:
                     {"run_id": "run-2", "status": "running", "workflow_name": "fix"},
                 ]
             }
-            mock_client.list_runs.return_value = mock_runs_response
+            mock_client.list_runs = AsyncMock(return_value=mock_runs_response)
 
             result = await list_recent_runs(
                 workflow_name="test", status="completed", limit=5, ctx=mock_context
@@ -307,26 +304,119 @@ class TestGetWorkflowStatus:
 
     @pytest.mark.asyncio
     async def test_get_workflow_status(self, mock_context):
-        """Test getting workflow status"""
+        """Test getting workflow status with comprehensive API response"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
+            # Create a comprehensive mock response that includes all the fields
+            # mentioned in the bug report
             mock_status = {
                 "status": "running",
                 "turns": 7,
+                "current_turns": 7,
+                "max_turns": 30,
+                "workflow_name": "test",
                 "progress": "Processing files",
+                "current_phase": "execution",
+                "cache_efficiency": 85.5,
+                "tools_used": ["bash", "edit", "read"],
+                "performance_score": 92.3,
+                "execution_time": 145.2,
+                "total_cost": 0.0234,
+                "total_tokens": 12450,
+                "token_breakdown": {
+                    "input_tokens": 8900,
+                    "output_tokens": 3550,
+                    "cached_tokens": 2100
+                },
+                "started_at": "2024-01-15T10:00:00Z",
+                "error": None
             }
-            mock_client.get_workflow_status.return_value = mock_status
+            # Use AsyncMock to properly handle await
+            mock_client.get_workflow_status = AsyncMock(return_value=mock_status)
 
             result = await get_workflow_status(run_id="test-123", ctx=mock_context)
 
+            # Verify that ALL comprehensive data is preserved
             assert result["status"] == "running"
             assert result["turns"] == 7
+            assert result["current_turns"] == 7
+            assert result["max_turns"] == 30
+            assert result["current_phase"] == "execution"
+            assert result["cache_efficiency"] == 85.5
+            assert result["tools_used"] == ["bash", "edit", "read"]
+            assert result["performance_score"] == 92.3
+            assert result["token_breakdown"]["input_tokens"] == 8900
+            assert result["run_id"] == "test-123"  # Added by the function
+            
+            # Verify context logging includes comprehensive data
             mock_context.info.assert_called()
+            
+            # Check that context reported cache efficiency and tools used
+            info_calls = [call.args[0] for call in mock_context.info.call_args_list]
+            assert any("Cache efficiency: 85.5%" in call for call in info_calls)
+            assert any("Tools used: bash, edit, read" in call for call in info_calls)
+            assert any("Current phase: execution" in call for call in info_calls)
+
+    @pytest.mark.asyncio
+    async def test_comprehensive_data_parity(self, mock_context):
+        """Test that MCP tool returns same comprehensive data as direct API"""
+        with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
+            # Simulate a comprehensive API response with all expected fields
+            direct_api_response = {
+                "run_id": "test-run-123",
+                "status": "running",
+                "workflow_name": "implement",
+                "turns": 15,
+                "max_turns": 30,
+                "current_phase": "initialization",
+                "cache_efficiency": 92.8,
+                "tools_used": ["bash", "edit", "read", "write"],
+                "performance_score": 88.5,
+                "execution_time": 245.7,
+                "total_cost": 0.0456,
+                "total_tokens": 18720,
+                "token_breakdown": {
+                    "input_tokens": 12400,
+                    "output_tokens": 6320,
+                    "cached_tokens": 3890
+                },
+                "started_at": "2024-01-15T14:30:00Z",
+                "completed_at": None,
+                "error": None,
+                "logs": "Processing user request...",
+                "session_id": "session-789",
+                # Additional comprehensive fields
+                "memory_usage": 85.2,
+                "average_response_time": 1.8,
+                "success_rate": 0.95
+            }
+            
+            mock_client.get_workflow_status = AsyncMock(return_value=direct_api_response)
+
+            # Call the MCP tool function
+            mcp_result = await get_workflow_status(run_id="test-run-123", ctx=mock_context)
+
+            # Verify that ALL fields from the direct API are preserved in MCP response
+            for key, expected_value in direct_api_response.items():
+                assert key in mcp_result, f"Missing field '{key}' in MCP response"
+                assert mcp_result[key] == expected_value, f"Field '{key}' value mismatch: expected {expected_value}, got {mcp_result[key]}"
+            
+            # Verify run_id is properly added even if not in original response
+            assert mcp_result["run_id"] == "test-run-123"
+            
+            # Verify comprehensive fields that were mentioned in the bug report
+            assert "current_phase" in mcp_result
+            assert "cache_efficiency" in mcp_result  
+            assert "tools_used" in mcp_result
+            assert "performance_score" in mcp_result
+            assert "token_breakdown" in mcp_result
+            assert isinstance(mcp_result["token_breakdown"], dict)
+            assert "input_tokens" in mcp_result["token_breakdown"]
 
     @pytest.mark.asyncio
     async def test_get_status_error(self, mock_context):
         """Test error handling in get_workflow_status"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.get_workflow_status.side_effect = Exception("Status error")
+            mock_client.get_workflow_status = AsyncMock(side_effect=Exception("Status error"))
 
             result = await get_workflow_status(run_id="test-123", ctx=mock_context)
 
@@ -456,7 +546,7 @@ class TestAutomagikWorkflowsPerformance:
     async def test_run_workflow_response_time(self, mock_context):
         """Test workflow execution response time"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.return_value = {"run_id": "perf-test"}
+            mock_client.start_workflow = AsyncMock(return_value={"run_id": "perf-test"})
             mock_client.get_workflow_status.return_value = {
                 "status": "completed",
                 "turns": 1,
@@ -477,27 +567,23 @@ class TestAutomagikWorkflowsPerformance:
 
     @pytest.mark.asyncio
     async def test_context_progress_reporting(self, mock_context):
-        """Test that progress reporting works correctly"""
+        """Test that progress reporting works correctly in get_workflow_status"""
         with patch("automagik_tools.tools.automagik_workflows.client") as mock_client:
-            mock_client.start_workflow.return_value = {"run_id": "progress-test"}
-            mock_client.get_workflow_status.side_effect = [
-                {"status": "running", "turns": 2},
-                {"status": "running", "turns": 5},
-                {"status": "completed", "turns": 8, "result": {}},
-            ]
+            mock_client.get_workflow_status = AsyncMock(return_value={
+                "status": "running", 
+                "turns": 8,
+                "max_turns": 10,
+                "workflow_name": "test",
+                "current_phase": "execution"
+            })
 
-            await run_workflow(
-                workflow_name="test",
-                message="Progress test",
-                max_turns=10,
-                ctx=mock_context,
-            )
+            await get_workflow_status(run_id="progress-test", ctx=mock_context)
 
-            # Verify progress was reported multiple times
-            assert mock_context.report_progress.call_count >= 2
+            # Verify progress was reported
+            mock_context.report_progress.assert_called_once()
 
-            # Check that final progress shows completion
-            final_call = mock_context.report_progress.call_args_list[-1]
-            args, kwargs = final_call
-            assert kwargs["progress"] == 10  # max_turns
-            assert kwargs["total"] == 10
+            # Check that progress reporting shows correct values
+            call_args = mock_context.report_progress.call_args
+            args, kwargs = call_args
+            assert kwargs["progress"] == 8  # current turns
+            assert kwargs["total"] == 10  # max turns
