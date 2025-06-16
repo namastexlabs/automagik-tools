@@ -17,11 +17,6 @@ from automagik_tools.tools.wait import (
     wait_minutes,
     wait_until_timestamp,
     wait_with_progress,
-    start_timer,
-    get_timer_status,
-    cancel_timer,
-    list_active_timers,
-    cleanup_timers,
 )
 from automagik_tools.tools.wait.config import WaitConfig
 
@@ -79,7 +74,7 @@ class TestWaitMetadata:
         assert "version" in metadata
         assert "description" in metadata
         assert metadata["name"] == "wait"
-        assert metadata["version"] == "2.0.0"
+        assert metadata["version"] == "2.1.0"
         assert "Timing functions" in metadata["description"]
         assert "author" in metadata
         assert "category" in metadata
@@ -140,8 +135,7 @@ class TestWaitServer:
         tool_names = list(tools.keys())
 
         expected_tools = {
-            "wait_seconds", "wait_minutes", "wait_until_timestamp", "wait_with_progress",
-            "start_timer", "get_timer_status", "cancel_timer", "list_active_timers", "cleanup_timers"
+            "wait_seconds", "wait_minutes", "wait_until_timestamp", "wait_with_progress"
         }
         assert expected_tools.issubset(set(tool_names))
 
@@ -444,7 +438,7 @@ class TestWaitIntegration:
         """Test MCP protocol compliance"""
         # Test server has tools
         tools = await server.get_tools()
-        assert len(tools) == 9  # Now includes non-blocking timer functions
+        assert len(tools) == 4  # Four blocking wait functions
 
         # Test each tool has required properties
         for tool_name, tool_info in tools.items():
