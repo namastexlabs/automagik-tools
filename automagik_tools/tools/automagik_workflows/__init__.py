@@ -37,6 +37,7 @@ async def run_workflow(
     workflow_name: str,
     message: str,
     max_turns: int = 30,
+    persistent: bool = True,
     session_name: Optional[str] = None,
     git_branch: Optional[str] = None,
     repository_url: Optional[str] = None,
@@ -49,6 +50,7 @@ async def run_workflow(
         workflow_name: Workflow type (test, pr, fix, refactor, implement, review, document, architect)
         message: Task description for the workflow
         max_turns: Maximum conversation turns (1-100, default: 30)
+        persistent: Use persistent workspace (default: True, set False for temporary workspace)
         session_name: Optional session identifier
         git_branch: Git branch for the workflow
         repository_url: Repository URL if applicable
@@ -77,7 +79,7 @@ async def run_workflow(
 
     try:
         # Start the workflow and return immediately
-        start_response = await client.start_workflow(workflow_name, request_data)
+        start_response = await client.start_workflow(workflow_name, request_data, persistent)
 
         if "run_id" not in start_response:
             raise ValueError(f"Failed to start workflow: {start_response}")
@@ -148,46 +150,59 @@ async def list_workflows(ctx: Optional[Context] = None) -> List[Dict[str, str]]:
 async def list_recent_runs(
     workflow_name: Optional[str] = None,
     status: Optional[str] = None,
-    limit: int = 10,
+    user_id: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     sort_by: str = "started_at",
     sort_order: str = "desc",
     ctx: Optional[Context] = None,
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """
-    📊 List recent workflow runs with optional filtering
+    📊 List recent workflow runs with optional filtering and pagination
 
     Args:
         workflow_name: Filter by specific workflow type
         status: Filter by status (pending, running, completed, failed)
-        limit: Maximum number of runs to return (default: 10)
-        sort_by: Sort field (started_at, workflow_name, status)
+        user_id: Filter by user ID
+        page: Page number (starts from 1, default: 1)
+        page_size: Number of runs per page (max 100, default: 20)
+        sort_by: Sort field (started_at, completed_at, execution_time, total_cost)
         sort_order: Sort order (asc, desc)
         ctx: MCP context for logging
 
     Returns:
-        List of recent workflow runs with execution details
+        Paginated workflow runs with execution details and pagination info
     """
     global client
     if not client:
         raise ValueError("Tool not configured")
 
     try:
-        filters = {"limit": limit, "sort_by": sort_by, "sort_order": sort_order}
+        filters = {
+            "page": page,
+            "page_size": page_size,
+            "sort_by": sort_by,
+            "sort_order": sort_order
+        }
 
         if workflow_name:
             filters["workflow_name"] = workflow_name
         if status:
             filters["status"] = status
+        if user_id:
+            filters["user_id"] = user_id
 
         runs_response = await client.list_runs(filters)
 
-        # Extract runs from response
+        # Extract runs from paginated response
         runs = runs_response.get("runs", []) if isinstance(runs_response, dict) else []
+        pagination_info = runs_response.get("pagination", {}) if isinstance(runs_response, dict) else {}
 
         if ctx:
-            ctx.info(f"📊 Found {len(runs)} workflow runs")
+            total_runs = pagination_info.get("total", len(runs))
+            ctx.info(f"📊 Found {len(runs)} workflow runs (page {page}, total: {total_runs})")
 
-        # Return concise summary of runs
+        # Return concise summary of runs with pagination
         concise_runs = []
         for run in runs:
             concise_run = {
@@ -203,24 +218,40 @@ async def list_recent_runs(
                 concise_run["completed_at"] = run["completed_at"]
             concise_runs.append(concise_run)
 
-        return concise_runs
+        return {
+            "runs": concise_runs,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": pagination_info.get("total", len(runs)),
+                "total_pages": pagination_info.get("total_pages", 1),
+                "has_next": pagination_info.get("has_next", False),
+                "has_prev": pagination_info.get("has_prev", False)
+            }
+        }
 
     except Exception as e:
         if ctx:
             ctx.error(f"💥 Failed to list runs: {str(e)}")
 
-        return [{"error": str(e), "message": "Failed to retrieve workflow runs"}]
+        return {
+            "runs": [],
+            "pagination": {"page": page, "page_size": page_size, "total": 0, "total_pages": 0, "has_next": False, "has_prev": False},
+            "error": str(e),
+            "message": "Failed to retrieve workflow runs"
+        }
 
 
 @mcp.tool()
 async def get_workflow_status(
-    run_id: str, ctx: Optional[Context] = None
+    run_id: str, detailed: bool = True, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
     """
     📈 Get detailed status of specific workflow run with progress tracking
 
     Args:
         run_id: Unique identifier for the workflow run
+        detailed: Get enhanced detailed information (default: True)
         ctx: MCP context for progress reporting
 
     Returns:
@@ -231,7 +262,7 @@ async def get_workflow_status(
         raise ValueError("Tool not configured")
 
     try:
-        status_response = await client.get_workflow_status(run_id)
+        status_response = await client.get_workflow_status(run_id, detailed=detailed)
 
         # Extract key information for context reporting
         status = status_response.get("status", "unknown")
@@ -305,15 +336,73 @@ async def get_workflow_status(
         }
 
 
+@mcp.tool()
+async def kill_workflow(
+    run_id: str, force: bool = False, ctx: Optional[Context] = None
+) -> Dict[str, Any]:
+    """
+    ⚡ Emergency termination of a running Claude Code workflow
+
+    Args:
+        run_id: Unique identifier for the workflow run to terminate
+        force: If True, force kill immediately. If False, graceful shutdown (default: False)
+        ctx: MCP context for logging
+
+    Returns:
+        Kill confirmation with cleanup status and audit information
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    if ctx:
+        kill_type = "force kill" if force else "graceful shutdown"
+        ctx.info(f"⚡ Initiating {kill_type} for workflow run: {run_id}")
+
+    try:
+        kill_response = await client.kill_workflow(run_id, force)
+
+        if ctx:
+            status = kill_response.get("status", "unknown")
+            if status == "killed":
+                ctx.info(f"✅ Workflow {run_id} terminated successfully")
+            elif status == "not_found":
+                ctx.warning(f"⚠️ Workflow {run_id} not found or already completed")
+            else:
+                ctx.info(f"📋 Kill request processed: {status}")
+
+        return {
+            "status": kill_response.get("status", "processed"),
+            "run_id": run_id,
+            "force": force,
+            "killed_at": kill_response.get("killed_at"),
+            "cleanup_status": kill_response.get("cleanup_status", "completed"),
+            "message": kill_response.get("message", f"Kill request processed for run {run_id}"),
+            "audit_info": kill_response.get("audit_info", {}),
+        }
+
+    except Exception as e:
+        if ctx:
+            ctx.error(f"💥 Failed to kill workflow {run_id}: {str(e)}")
+
+        return {
+            "status": "error",
+            "run_id": run_id,
+            "force": force,
+            "error": str(e),
+            "message": f"Failed to kill workflow {run_id}: {str(e)}",
+        }
+
+
 def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
         "name": "automagik-workflows",
-        "version": "1.0.0",
-        "description": "Smart Claude workflow orchestration with real-time progress tracking",
+        "version": "1.1.0",
+        "description": "Smart Claude workflow orchestration with real-time progress tracking, emergency controls, and enhanced status monitoring",
         "author": "Namastex Labs",
         "category": "workflow",
-        "tags": ["claude", "workflow", "automation", "progress", "monitoring"],
+        "tags": ["claude", "workflow", "automation", "progress", "monitoring", "emergency", "pagination"],
     }
 
 

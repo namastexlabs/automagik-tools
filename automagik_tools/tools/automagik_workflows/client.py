@@ -17,16 +17,24 @@ class ClaudeCodeClient:
         self.timeout = httpx.Timeout(config.timeout)
 
     async def start_workflow(
-        self, workflow_name: str, request_data: Dict[str, Any]
+        self, workflow_name: str, request_data: Dict[str, Any], persistent: bool = True
     ) -> Dict[str, Any]:
         """Start a Claude Code workflow execution"""
         endpoint = f"/api/v1/workflows/claude-code/run/{workflow_name}"
-        return await self._make_request("POST", endpoint, json=request_data)
+        params = {"persistent": persistent}
+        return await self._make_request("POST", endpoint, json=request_data, params=params)
 
-    async def get_workflow_status(self, run_id: str) -> Dict[str, Any]:
+    async def get_workflow_status(
+        self, run_id: str, debug: bool = False, detailed: bool = False
+    ) -> Dict[str, Any]:
         """Get the status of a specific workflow run"""
         endpoint = f"/api/v1/workflows/claude-code/run/{run_id}/status"
-        return await self._make_request("GET", endpoint)
+        params = {}
+        if debug:
+            params["debug"] = debug
+        if detailed:
+            params["detailed"] = detailed
+        return await self._make_request("GET", endpoint, params=params if params else None)
 
     async def list_workflows(self) -> List[Dict[str, Any]]:
         """List all available Claude Code workflows"""
@@ -43,10 +51,21 @@ class ClaudeCodeClient:
     async def list_runs(
         self, filters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """List workflow runs with optional filtering"""
+        """List workflow runs with optional filtering and pagination"""
         endpoint = "/api/v1/workflows/claude-code/runs"
         params = filters or {}
+        # Ensure page defaults are set if not provided
+        if "page" not in params:
+            params["page"] = 1
+        if "page_size" not in params:
+            params["page_size"] = 20
         return await self._make_request("GET", endpoint, params=params)
+
+    async def kill_workflow(self, run_id: str, force: bool = False) -> Dict[str, Any]:
+        """Kill a running Claude Code workflow"""
+        endpoint = f"/api/v1/workflows/claude-code/run/{run_id}/kill"
+        params = {"force": force} if force else None
+        return await self._make_request("POST", endpoint, params=params)
 
     async def _make_request(
         self,

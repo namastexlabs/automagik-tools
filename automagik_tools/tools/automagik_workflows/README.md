@@ -2,7 +2,7 @@
 
 ## Overview
 
-AutoMagik Workflows provides intelligent MCP integration for Claude Code workflow API with real-time progress tracking. This tool enables seamless execution, monitoring, and management of Claude Code workflows through a humanized interface.
+AutoMagik Workflows provides intelligent MCP integration for Claude Code workflow API with real-time progress tracking, emergency controls, and enhanced status monitoring. This tool enables seamless execution, monitoring, and management of Claude Code workflows through a humanized interface with powerful control capabilities.
 
 ## Configuration
 
@@ -48,12 +48,12 @@ Execute a Claude Code workflow with intelligent progress tracking.
 - `workflow_name`: Workflow type (test, pr, fix, refactor, implement, review, document, architect)
 - `message`: Task description for the workflow
 - `max_turns`: Maximum conversation turns (1-100, default: 30)
+- `persistent`: Use persistent workspace (default: True, set False for temporary workspace)
 - `session_name`: Optional session identifier
 - `git_branch`: Git branch for the workflow
 - `repository_url`: Repository URL if applicable
-- `timeout`: Workflow timeout in seconds (default: 2 hours)
 
-**Returns:** Complete workflow results with metrics and execution details
+**Returns:** Initial workflow status and run_id for tracking
 
 ### 📋 list_workflows
 Discover all available Claude workflows with descriptions.
@@ -61,24 +61,36 @@ Discover all available Claude workflows with descriptions.
 **Returns:** List of available workflows with their capabilities
 
 ### 📊 list_recent_runs
-View workflow execution history with optional filtering.
+View workflow execution history with optional filtering and pagination.
 
 **Parameters:**
 - `workflow_name`: Filter by specific workflow type
 - `status`: Filter by status (pending, running, completed, failed)
-- `limit`: Maximum number of runs to return (default: 10)
-- `sort_by`: Sort field (started_at, workflow_name, status)
+- `user_id`: Filter by user ID
+- `page`: Page number (starts from 1, default: 1)
+- `page_size`: Number of runs per page (max 100, default: 20)
+- `sort_by`: Sort field (started_at, completed_at, execution_time, total_cost)
 - `sort_order`: Sort order (asc, desc)
 
-**Returns:** Paginated list of recent workflow runs
+**Returns:** Paginated workflow runs with execution details and pagination info
 
 ### 📈 get_workflow_status
-Get detailed status of a specific workflow run.
+Get detailed status of a specific workflow run with enhanced information.
 
 **Parameters:**
 - `run_id`: Unique identifier for the workflow run
+- `detailed`: Get enhanced detailed information (default: True)
 
 **Returns:** Real-time status, progress, metrics, and results
+
+### ⚡ kill_workflow
+Emergency termination of a running Claude Code workflow.
+
+**Parameters:**
+- `run_id`: Unique identifier for the workflow run to terminate
+- `force`: If True, force kill immediately. If False, graceful shutdown (default: False)
+
+**Returns:** Kill confirmation with cleanup status and audit information
 
 ## Examples
 
