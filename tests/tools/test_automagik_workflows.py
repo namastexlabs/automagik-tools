@@ -15,6 +15,12 @@ from automagik_tools.tools.automagik_workflows import (
     list_workflows,
     list_recent_runs,
     get_workflow_status,
+    kill_workflow,
+    # Enhanced functions
+    get_health_status,
+    list_runs_by_status,
+    list_runs_by_workflow,
+    list_runs_by_time_range,
 )
 from automagik_tools.tools.automagik_workflows.config import AutomagikWorkflowsConfig
 from automagik_tools.tools.automagik_workflows.client import ClaudeCodeClient
@@ -23,13 +29,14 @@ from automagik_tools.tools.automagik_workflows.client import ClaudeCodeClient
 @pytest.fixture
 def mock_config():
     """Create mock configuration"""
-    return AutomagikWorkflowsConfig(
-        api_key="test-api-key",
-        base_url="https://api.test.com",
-        timeout=30,
-        polling_interval=1,
-        max_retries=2,
-    )
+    config = AutomagikWorkflowsConfig()
+    # Set fields directly to bypass environment variable lookup
+    config.api_key = "test-api-key"
+    config.base_url = "https://api.test.com"
+    config.timeout = 30
+    config.polling_interval = 1
+    config.max_retries = 2
+    return config
 
 
 @pytest.fixture
@@ -79,7 +86,7 @@ class TestAutomagikWorkflowsMetadata:
         assert "version" in metadata
         assert "description" in metadata
         assert metadata["name"] == "automagik-workflows"
-        assert metadata["version"] == "1.0.0"
+        assert metadata["version"] == "1.2.0"
         assert "Smart Claude workflow orchestration" in metadata["description"]
 
     def test_config_class(self):
@@ -132,10 +139,19 @@ class TestAutomagikWorkflowsServer:
             "list_workflows",
             "list_recent_runs",
             "get_workflow_status",
+            "kill_workflow",
+            # Enhanced/new tools
+            "get_health_status",
+            "list_runs_by_status",
+            "list_runs_by_workflow",
+            "list_runs_by_time_range"
         ]
 
         for tool_name in expected_tools:
             assert tool_name in tool_names
+            
+        # Verify we have all 9 enhanced tools
+        assert len(tools_dict) >= 9
 
 
 class TestRunWorkflow:
@@ -291,11 +307,11 @@ class TestListRecentRuns:
             mock_client.list_runs = AsyncMock(return_value=mock_runs_response)
 
             result = await list_recent_runs(
-                workflow_name="test", status="completed", limit=5, ctx=mock_context
+                workflow_name="test", status="completed", page_size=5, ctx=mock_context
             )
 
-            assert len(result) == 2
-            assert result[0]["run_id"] == "run-1"
+            assert len(result["runs"]) == 2
+            assert result["runs"][0]["run_id"] == "run-1"
             mock_context.info.assert_called()
 
 
@@ -465,7 +481,7 @@ class TestClaudeCodeClient:
 
             await client._make_request("GET", "/test")
 
-            call_kwargs = mock_client.request.call_args[1]
+            call_kwargs = mock_client.request.call_args.kwargs
             assert "X-API-Key" in call_kwargs["headers"]
             assert call_kwargs["headers"]["X-API-Key"] == "test-api-key"
 
@@ -476,10 +492,11 @@ class TestClaudeCodeClient:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
-            # First two calls fail, third succeeds
+            # First two calls fail with connection error, third succeeds
+            import httpx
             mock_client.request.side_effect = [
-                Exception("Connection error"),
-                Exception("Connection error"),
+                httpx.ConnectError("Connection error"),
+                httpx.ConnectError("Connection error"),
                 Mock(status_code=200, json=lambda: {"success": True}),
             ]
 
@@ -495,10 +512,12 @@ class TestClaudeCodeClient:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client.request.side_effect = Exception("Persistent error")
+            
+            import httpx
+            mock_client.request.side_effect = httpx.ConnectError("Persistent error")
 
             with patch("asyncio.sleep"):  # Speed up the test
-                with pytest.raises(Exception, match="Persistent error"):
+                with pytest.raises(ConnectionError, match="Failed to connect"):
                     await client._make_request("GET", "/test")
 
             # Should try max_retries + 1 times (initial + 2 retries = 3 total)
@@ -529,7 +548,7 @@ class TestAutomagikWorkflowsIntegration:
         """Test MCP protocol compliance"""
         # Test tool listing
         tools_dict = await server.get_tools()
-        assert len(tools_dict) == 4
+        assert len(tools_dict) == 9  # Enhanced from 4 to 9 tools
 
         # Test each tool has required properties
         for tool_name, tool in tools_dict.items():

@@ -5,8 +5,6 @@ This tool provides MCP integration for Claude Code workflow API with intelligent
 Enables execution, monitoring, and management of Claude Code workflows with real-time progress reporting.
 """
 
-import asyncio
-import time
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP, Context
 from .config import AutomagikWorkflowsConfig
@@ -41,6 +39,7 @@ async def run_workflow(
     session_name: Optional[str] = None,
     git_branch: Optional[str] = None,
     repository_url: Optional[str] = None,
+    auto_merge: bool = False,
     ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
@@ -54,6 +53,7 @@ async def run_workflow(
         session_name: Optional session identifier
         git_branch: Git branch for the workflow
         repository_url: Repository URL if applicable
+        auto_merge: Automatically merge successful workflow results (default: False)
         ctx: MCP context for logging
 
     Returns:
@@ -76,6 +76,8 @@ async def run_workflow(
         request_data["git_branch"] = git_branch
     if repository_url:
         request_data["repository_url"] = repository_url
+    if auto_merge:
+        request_data["auto_merge"] = auto_merge
 
     try:
         # Start the workflow and return immediately
@@ -155,6 +157,7 @@ async def list_recent_runs(
     page_size: int = 20,
     sort_by: str = "started_at",
     sort_order: str = "desc",
+    detailed: bool = False,
     ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
@@ -168,6 +171,7 @@ async def list_recent_runs(
         page_size: Number of runs per page (max 100, default: 20)
         sort_by: Sort field (started_at, completed_at, execution_time, total_cost)
         sort_order: Sort order (asc, desc)
+        detailed: Include full orchestration data (workspace_path, git_branch, error_message, tools_used, session_name)
         ctx: MCP context for logging
 
     Returns:
@@ -202,24 +206,48 @@ async def list_recent_runs(
             total_runs = pagination_info.get("total", len(runs))
             ctx.info(f"📊 Found {len(runs)} workflow runs (page {page}, total: {total_runs})")
 
-        # Return concise summary of runs with pagination
-        concise_runs = []
+        # Return concise or detailed summary of runs with pagination
+        processed_runs = []
         for run in runs:
-            concise_run = {
-                "run_id": run.get("run_id", "unknown"),
-                "workflow_name": run.get("workflow_name", "unknown"),
-                "status": run.get("status", "unknown"),
-                "started_at": run.get("started_at", "unknown"),
-                "turns": run.get("turns", 0),
-                "execution_time": round(run.get("execution_time", 0), 1) if run.get("execution_time") else 0,
-                "cost": round(run.get("total_cost", 0), 4) if run.get("total_cost") else 0
-            }
-            if run.get("completed_at"):
-                concise_run["completed_at"] = run["completed_at"]
-            concise_runs.append(concise_run)
+            if detailed:
+                # Include full orchestration data for GENIE
+                processed_run = {
+                    "run_id": run.get("run_id", "unknown"),
+                    "workflow_name": run.get("workflow_name", "unknown"),
+                    "status": run.get("status", "unknown"),
+                    "started_at": run.get("started_at", "unknown"),
+                    "turns": run.get("turns", 0),
+                    "execution_time": round(run.get("execution_time", 0), 1) if run.get("execution_time") else 0,
+                    "cost": round(run.get("total_cost", 0), 4) if run.get("total_cost") else 0,
+                    # Enhanced orchestration data
+                    "workspace_path": run.get("workspace_path"),
+                    "git_branch": run.get("git_branch"),
+                    "error_message": run.get("error_message"),
+                    "tools_used": run.get("tools_used", []),
+                    "session_name": run.get("session_name"),
+                    "repository_url": run.get("repository_url"),
+                    "user_id": run.get("user_id"),
+                    "tokens": run.get("tokens", 0)
+                }
+                if run.get("completed_at"):
+                    processed_run["completed_at"] = run["completed_at"]
+            else:
+                # Backward compatible concise format
+                processed_run = {
+                    "run_id": run.get("run_id", "unknown"),
+                    "workflow_name": run.get("workflow_name", "unknown"),
+                    "status": run.get("status", "unknown"),
+                    "started_at": run.get("started_at", "unknown"),
+                    "turns": run.get("turns", 0),
+                    "execution_time": round(run.get("execution_time", 0), 1) if run.get("execution_time") else 0,
+                    "cost": round(run.get("total_cost", 0), 4) if run.get("total_cost") else 0
+                }
+                if run.get("completed_at"):
+                    processed_run["completed_at"] = run["completed_at"]
+            processed_runs.append(processed_run)
 
         return {
-            "runs": concise_runs,
+            "runs": processed_runs,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -394,15 +422,359 @@ async def kill_workflow(
         }
 
 
+@mcp.tool()
+async def get_health_status(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """
+    🩺 Check health status of the Automagik Agents Platform
+    
+    Returns comprehensive system health information for orchestration planning:
+    - System status (healthy/degraded/error)
+    - Active workflow count and resource usage
+    - Service availability and performance metrics
+    - Last error information if any
+    
+    Args:
+        ctx: MCP context for logging
+        
+    Returns:
+        System health data with status, metrics, and availability info
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+    
+    if ctx:
+        ctx.info("🩺 Checking Automagik Agents Platform health status")
+    
+    try:
+        health_response = await client.get_health_status()
+        
+        # Extract key health metrics for context reporting
+        status = health_response.get("status", "unknown")
+        active_workflows = health_response.get("workflows", {}).get("active_count", 0)
+        
+        if ctx:
+            ctx.info(f"🩺 System status: {status}")
+            if active_workflows > 0:
+                ctx.info(f"⚡ Active workflows: {active_workflows}")
+            
+            # Report any concerning metrics
+            system_info = health_response.get("system", {})
+            cpu_usage = system_info.get("cpu_usage", 0)
+            memory_usage = system_info.get("memory_usage", 0)
+            
+            if cpu_usage > 80:
+                ctx.warning(f"⚠️ High CPU usage: {cpu_usage}%")
+            if memory_usage > 80:
+                ctx.warning(f"⚠️ High memory usage: {memory_usage}%")
+            
+            if status == "healthy":
+                ctx.info("✅ System is healthy and ready for orchestration")
+            elif status == "degraded":
+                ctx.warning("⚠️ System is degraded - proceed with caution")
+            elif status == "error":
+                ctx.error("❌ System has errors - investigate before orchestration")
+        
+        # Ensure we have the timestamp in the response
+        if "timestamp" not in health_response:
+            from datetime import datetime
+            health_response["timestamp"] = datetime.now().isoformat() + "Z"
+        
+        return health_response
+        
+    except Exception as e:
+        if ctx:
+            ctx.error(f"💥 Failed to check health status: {str(e)}")
+        
+        # Return error status with graceful degradation
+        from datetime import datetime
+        return {
+            "status": "unknown",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat() + "Z",
+            "message": f"Health check failed: {str(e)}",
+            "recommendation": "Proceed with caution or retry health check",
+            "system": {"available": False},
+            "workflows": {"active_count": 0, "accessible": False},
+            "services": {"health_endpoint": "unavailable"}
+        }
+
+
+@mcp.tool()
+async def list_runs_by_status(
+    status: str, 
+    limit: int = 10, 
+    ctx: Optional[Context] = None
+) -> List[Dict[str, Any]]:
+    """
+    🔍 Query workflow runs by status for orchestration decisions
+    
+    Filters workflow runs by their execution status, useful for:
+    - Finding running workflows to coordinate resources
+    - Analyzing failed workflows for retry strategies
+    - Checking completed workflows for success patterns
+    
+    Args:
+        status: Status to filter by (running, completed, failed, pending)
+        limit: Maximum number of runs to return (default: 10)
+        ctx: MCP context for logging
+    
+    Returns:
+        List of workflow runs matching the status with enhanced orchestration data
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+    
+    try:
+        # Get runs with enhanced data and filter by status
+        all_runs_response = await client.list_runs({
+            "page_size": limit * 3,  # Get more to filter from
+            "detailed": True,  # Include full orchestration data
+            "sort_by": "started_at",
+            "sort_order": "desc"
+        })
+        
+        all_runs = all_runs_response.get("runs", []) if isinstance(all_runs_response, dict) else []
+        
+        # Filter by status
+        filtered_runs = [
+            run for run in all_runs 
+            if run.get("status", "").lower() == status.lower()
+        ][:limit]
+        
+        if ctx:
+            ctx.info(f"🔍 Found {len(filtered_runs)} workflows with status '{status}'")
+            
+            # Provide insights for orchestration
+            if status.lower() == "running" and len(filtered_runs) > 2:
+                ctx.warning(f"⚠️ {len(filtered_runs)} workflows running - consider resource coordination")
+            elif status.lower() == "failed" and len(filtered_runs) > 0:
+                ctx.info(f"📊 {len(filtered_runs)} failed workflows available for analysis")
+            elif status.lower() == "completed":
+                ctx.info(f"✅ {len(filtered_runs)} completed workflows for pattern analysis")
+        
+        return filtered_runs
+        
+    except Exception as e:
+        if ctx:
+            ctx.error(f"💥 Failed to list runs by status '{status}': {str(e)}")
+        
+        return [{
+            "error": str(e),
+            "status": status,
+            "message": f"Failed to retrieve runs with status '{status}'"
+        }]
+
+
+@mcp.tool()
+async def list_runs_by_workflow(
+    workflow_name: str, 
+    limit: int = 10, 
+    ctx: Optional[Context] = None
+) -> List[Dict[str, Any]]:
+    """
+    🔍 Query workflow runs by workflow type for performance analysis
+    
+    Filters workflow runs by their workflow type, useful for:
+    - Analyzing performance patterns for specific workflows
+    - Checking success rates before starting similar workflows
+    - Identifying workflow-specific issues or bottlenecks
+    
+    Args:
+        workflow_name: Workflow type to filter by (builder, tester, analyzer, etc.)
+        limit: Maximum number of runs to return (default: 10)
+        ctx: MCP context for logging
+    
+    Returns:
+        List of runs for the specified workflow with performance metrics
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+    
+    try:
+        # Use API filtering if available
+        runs_response = await client.list_runs({
+            "workflow_name": workflow_name,  # API-level filter
+            "page_size": limit,
+            "detailed": True,  # Include orchestration data
+            "sort_by": "started_at",
+            "sort_order": "desc"
+        })
+        
+        runs = runs_response.get("runs", []) if isinstance(runs_response, dict) else []
+        
+        if ctx:
+            ctx.info(f"🔍 Found {len(runs)} recent '{workflow_name}' workflow runs")
+            
+            if runs:
+                # Calculate performance insights
+                completed_runs = [r for r in runs if r.get("status") == "completed"]
+                failed_runs = [r for r in runs if r.get("status") == "failed"]
+                running_runs = [r for r in runs if r.get("status") == "running"]
+                
+                if completed_runs:
+                    success_rate = (len(completed_runs) / len(runs)) * 100
+                    ctx.info(f"📊 Success rate: {success_rate:.1f}% ({len(completed_runs)}/{len(runs)})")
+                    
+                    # Average execution time for completed runs
+                    avg_time = sum(r.get("execution_time", 0) for r in completed_runs) / len(completed_runs)
+                    if avg_time > 0:
+                        ctx.info(f"⏱️ Average execution time: {avg_time:.1f} seconds")
+                
+                if failed_runs:
+                    ctx.warning(f"⚠️ {len(failed_runs)} recent failures - investigate patterns")
+                
+                if running_runs:
+                    ctx.info(f"⚡ {len(running_runs)} currently running")
+        
+        return runs
+        
+    except Exception as e:
+        if ctx:
+            ctx.error(f"💥 Failed to list runs for workflow '{workflow_name}': {str(e)}")
+        
+        return [{
+            "error": str(e),
+            "workflow_name": workflow_name,
+            "message": f"Failed to retrieve runs for workflow '{workflow_name}'"
+        }]
+
+
+@mcp.tool()
+async def list_runs_by_time_range(
+    start_time: str, 
+    end_time: str, 
+    limit: int = 50, 
+    ctx: Optional[Context] = None
+) -> List[Dict[str, Any]]:
+    """
+    🔍 Query workflow runs within time range for historical analysis
+    
+    Filters workflow runs by execution time range, useful for:
+    - Analyzing activity patterns and system load
+    - Historical performance review and trend analysis
+    - Identifying peak usage periods and resource optimization
+    
+    Args:
+        start_time: Start time in ISO format (2025-01-20T00:00:00Z)
+        end_time: End time in ISO format (2025-01-20T23:59:59Z)
+        limit: Maximum number of runs to return (default: 50)
+        ctx: MCP context for logging
+    
+    Returns:
+        List of workflow runs within time range with activity patterns
+    """
+    from datetime import datetime
+    
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+    
+    try:
+        # Parse time range
+        start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+        
+        # Get runs from API (may need to fetch more and filter)
+        all_runs_response = await client.list_runs({
+            "page_size": limit * 2,  # Get extra to filter by time
+            "detailed": True,  # Include orchestration data
+            "sort_by": "started_at",
+            "sort_order": "desc"
+        })
+        
+        all_runs = all_runs_response.get("runs", []) if isinstance(all_runs_response, dict) else []
+        
+        # Filter by time range
+        filtered_runs = []
+        for run in all_runs:
+            run_time_str = run.get("started_at", "")
+            if run_time_str:
+                try:
+                    run_time = datetime.fromisoformat(run_time_str.replace('Z', '+00:00'))
+                    if start_dt <= run_time <= end_dt:
+                        filtered_runs.append(run)
+                except ValueError:
+                    # Skip runs with invalid timestamps
+                    continue
+        
+        # Limit results
+        filtered_runs = filtered_runs[:limit]
+        
+        if ctx:
+            duration = end_dt - start_dt
+            ctx.info(f"🔍 Found {len(filtered_runs)} workflow runs in {duration.days} day(s)")
+            
+            if filtered_runs:
+                # Activity analysis for orchestration insights
+                workflow_types = {}
+                status_counts = {}
+                total_cost = 0
+                total_execution_time = 0
+                
+                for run in filtered_runs:
+                    # Workflow type distribution
+                    wf_type = run.get("workflow_name", "unknown")
+                    workflow_types[wf_type] = workflow_types.get(wf_type, 0) + 1
+                    
+                    # Status distribution
+                    status = run.get("status", "unknown")
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                    
+                    # Cost and time aggregation
+                    total_cost += run.get("total_cost", 0)
+                    total_execution_time += run.get("execution_time", 0)
+                
+                if total_cost > 0:
+                    ctx.info(f"💰 Total cost: ${total_cost:.2f}")
+                
+                if total_execution_time > 0:
+                    avg_time = total_execution_time / len(filtered_runs)
+                    ctx.info(f"⏱️ Average execution time: {avg_time:.1f} seconds")
+                
+                ctx.info(f"📊 Workflow types: {dict(workflow_types)}")
+                ctx.info(f"📈 Status distribution: {dict(status_counts)}")
+                
+                # Peak activity detection
+                if len(filtered_runs) / max(duration.days, 1) > 10:
+                    ctx.warning("⚠️ High activity period detected - monitor system resources")
+        
+        return filtered_runs
+        
+    except ValueError as ve:
+        if ctx:
+            ctx.error(f"💥 Invalid time format: {str(ve)}")
+        
+        return [{
+            "error": str(ve),
+            "start_time": start_time,
+            "end_time": end_time,
+            "message": "Invalid time format - use ISO format (YYYY-MM-DDTHH:MM:SSZ)"
+        }]
+        
+    except Exception as e:
+        if ctx:
+            ctx.error(f"💥 Failed to list runs by time range: {str(e)}")
+        
+        return [{
+            "error": str(e),
+            "start_time": start_time,
+            "end_time": end_time,
+            "message": f"Failed to retrieve runs for time range: {str(e)}"
+        }]
+
+
 def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
         "name": "automagik-workflows",
-        "version": "1.1.0",
-        "description": "Smart Claude workflow orchestration with real-time progress tracking, emergency controls, and enhanced status monitoring",
+        "version": "1.2.0",
+        "description": "Smart Claude workflow orchestration with GENIE orchestration features, health monitoring, advanced filtering, and enhanced status tracking",
         "author": "Namastex Labs",
         "category": "workflow",
-        "tags": ["claude", "workflow", "automation", "progress", "monitoring", "emergency", "pagination"],
+        "tags": ["claude", "workflow", "automation", "orchestration", "genie", "health", "filtering", "monitoring"],
     }
 
 

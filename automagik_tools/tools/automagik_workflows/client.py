@@ -67,6 +67,11 @@ class ClaudeCodeClient:
         params = {"force": force} if force else None
         return await self._make_request("POST", endpoint, params=params)
 
+    async def get_health_status(self) -> Dict[str, Any]:
+        """Get health status of the Automagik Agents Platform"""
+        endpoint = "/api/v1/workflows/claude-code/health"
+        return await self._make_request("GET", endpoint)
+
     async def _make_request(
         self,
         method: str,
@@ -98,7 +103,7 @@ class ClaudeCodeClient:
                     if response.status_code == 200:
                         try:
                             return response.json()
-                        except json.JSONDecodeError:
+                        except ValueError:
                             return {
                                 "message": response.text,
                                 "status_code": response.status_code,
