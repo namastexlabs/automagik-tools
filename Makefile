@@ -505,7 +505,7 @@ install-service: ## 🔧 Install systemd service for automagik-tools
 		printf "WorkingDirectory=%s\n" "$$PROJECT_ROOT" >> $$TMP_FILE; \
 		printf "Environment=PATH=%s/.venv/bin:%s/.local/bin:/usr/local/bin:/usr/bin:/bin\n" "$$PROJECT_ROOT" "$(HOME)" >> $$TMP_FILE; \
 		printf "EnvironmentFile=%s/.env\n" "$$PROJECT_ROOT" >> $$TMP_FILE; \
-		printf "ExecStart=%s/.venv/bin/uv run automagik-tools serve-all --host %s --port %s\n" "$$PROJECT_ROOT" "${HOST:-127.0.0.1}" "${PORT:-8000}" >> $$TMP_FILE; \
+		printf "ExecStart=%s/.venv/bin/uv run automagik-tools serve-all --host %s --port %s\n" "$$PROJECT_ROOT" "${HOST:-127.0.0.1}" "${AUTOMAGIK_TOOLS_PORT:-8884}" >> $$TMP_FILE; \
 		printf "Restart=always\n" >> $$TMP_FILE; \
 		printf "RestartSec=10\n" >> $$TMP_FILE; \
 		printf "StandardOutput=journal\n" >> $$TMP_FILE; \
