@@ -483,6 +483,88 @@ finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
 	echo -e "$(FONT_CYAN)💡 Ready for: make publish$(FONT_RESET)"
 
 # ===========================================
+# 🔧 System Service Management
+# ===========================================
+.PHONY: install-service start-service stop-service restart-service uninstall-service service-status
+
+install-service: ## 🔧 Install systemd service for automagik-tools
+	@$(call print_status,Installing automagik-tools systemd service...)
+	@SERVICE_NAME="automagik-tools"; \
+	SERVICE_FILE="/etc/systemd/system/$$SERVICE_NAME.service"; \
+	PROJECT_ROOT="$(PROJECT_ROOT)"; \
+	if [ ! -f "$$SERVICE_FILE" ]; then \
+		TMP_FILE=$$(mktemp); \
+		printf "[Unit]\n" > $$TMP_FILE; \
+		printf "Description=Automagik Tools MCP Service\n" >> $$TMP_FILE; \
+		printf "After=network.target\n" >> $$TMP_FILE; \
+		printf "Wants=network.target\n" >> $$TMP_FILE; \
+		printf "\n" >> $$TMP_FILE; \
+		printf "[Service]\n" >> $$TMP_FILE; \
+		printf "Type=simple\n" >> $$TMP_FILE; \
+		printf "User=%s\n" "$(shell whoami)" >> $$TMP_FILE; \
+		printf "WorkingDirectory=%s\n" "$$PROJECT_ROOT" >> $$TMP_FILE; \
+		printf "Environment=PATH=%s/.venv/bin:%s/.local/bin:/usr/local/bin:/usr/bin:/bin\n" "$$PROJECT_ROOT" "$(HOME)" >> $$TMP_FILE; \
+		printf "EnvironmentFile=%s/.env\n" "$$PROJECT_ROOT" >> $$TMP_FILE; \
+		printf "ExecStart=%s/.venv/bin/uv run automagik-tools serve-all --host %s --port %s\n" "$$PROJECT_ROOT" "${HOST:-127.0.0.1}" "${PORT:-8000}" >> $$TMP_FILE; \
+		printf "Restart=always\n" >> $$TMP_FILE; \
+		printf "RestartSec=10\n" >> $$TMP_FILE; \
+		printf "StandardOutput=journal\n" >> $$TMP_FILE; \
+		printf "StandardError=journal\n" >> $$TMP_FILE; \
+		printf "\n" >> $$TMP_FILE; \
+		printf "[Install]\n" >> $$TMP_FILE; \
+		printf "WantedBy=multi-user.target\n" >> $$TMP_FILE; \
+		sudo cp $$TMP_FILE $$SERVICE_FILE; \
+		rm $$TMP_FILE; \
+		sudo systemctl daemon-reload; \
+		sudo systemctl enable $$SERVICE_NAME; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Service installed and enabled$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_YELLOW)$(WARNING) Service already installed$(FONT_RESET)"; \
+	fi
+	@$(call print_success,automagik-tools systemd service ready!)
+
+start-service: ## 🚀 Start the automagik-tools systemd service
+	@$(call print_status,Starting automagik-tools service...)
+	@sudo systemctl start automagik-tools
+	@$(call print_success,Service started!)
+
+stop-service: ## 🛑 Stop the automagik-tools systemd service
+	@$(call print_status,Stopping automagik-tools service...)
+	@sudo systemctl stop automagik-tools
+	@$(call print_success,Service stopped!)
+
+restart-service: ## 🔄 Restart the automagik-tools systemd service
+	@$(call print_status,Restarting automagik-tools service...)
+	@sudo systemctl restart automagik-tools
+	@$(call print_success,Service restarted!)
+
+uninstall-service: ## 🗑️ Uninstall systemd service
+	@$(call print_status,Uninstalling automagik-tools systemd service...)
+	@SERVICE_NAME="automagik-tools"; \
+	SERVICE_FILE="/etc/systemd/system/$$SERVICE_NAME.service"; \
+	if [ -f "$$SERVICE_FILE" ]; then \
+		sudo systemctl stop $$SERVICE_NAME 2>/dev/null || true; \
+		sudo systemctl disable $$SERVICE_NAME 2>/dev/null || true; \
+		sudo rm -f $$SERVICE_FILE; \
+		sudo systemctl daemon-reload; \
+		$(call print_success,Service uninstalled!); \
+	else \
+		$(call print_warning,Service not found); \
+	fi
+
+service-status: ## 📊 Check automagik-tools service status
+	@$(call print_status,Checking automagik-tools service status...)
+	@if systemctl is-active --quiet automagik-tools; then \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Service automagik-tools is running$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)   Status: $$(systemctl is-active automagik-tools)$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)   Since:  $$(systemctl show automagik-tools --property=ActiveEnterTimestamp --value | cut -d' ' -f2-3)$(FONT_RESET)"; \
+	elif systemctl is-enabled --quiet automagik-tools; then \
+		echo -e "$(FONT_YELLOW)$(WARNING) Service automagik-tools is enabled but not running$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_RED)$(ERROR) Service automagik-tools is not installed or enabled$(FONT_RESET)"; \
+	fi
+
+# ===========================================
 # 🧹 Maintenance
 # ===========================================
 .PHONY: clean
