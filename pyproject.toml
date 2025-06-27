@@ -7,11 +7,12 @@ name = "automagik-tools"
 version = "0.5.5"
 description = "A monorepo package for MCP tools with dynamic loading capabilities"
 authors = [
-    {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"},
+    {name = "Felipe Rosa", email = "felipe@namastex.ai"},
+    {name = "Cezar Vasconcelos", email = "cezar@namastex.ai"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["mcp", "tools", "ai", "agents", "fastmcp", "whatsapp", "discord", "notion"]
 classifiers = [
     "Development Status :: 3 - Alpha",
