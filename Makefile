@@ -492,44 +492,76 @@ finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
 # Service configuration variables
 SERVICE_NAME := automagik-tools
 
-install-service: ## 🔧 Install PM2 service for automagik-tools
-	$(call print_status,Installing PM2 service)
+# ===========================================
+# 🔧 Local PM2 Management (Standalone Mode)
+# ===========================================
+.PHONY: setup-pm2 start-local stop-local restart-local
+setup-pm2: ## 📦 Setup local PM2 ecosystem
+	$(call print_status,Setting up local PM2 ecosystem...)
+	@$(call check_pm2)
+	@echo -e "$(FONT_CYAN)$(INFO) Installing PM2 log rotation...$(FONT_RESET)"
+	@if ! pm2 list | grep -q pm2-logrotate; then \
+		pm2 install pm2-logrotate; \
+	else \
+		echo -e "$(FONT_GREEN)✓ PM2 logrotate already installed$(FONT_RESET)"; \
+	fi
+	@pm2 set pm2-logrotate:max_size 100M
+	@pm2 set pm2-logrotate:retain 7
+	@echo -e "$(FONT_CYAN)$(INFO) Setting up PM2 startup...$(FONT_RESET)"
+	@if ! pm2 startup -s 2>/dev/null; then \
+		echo -e "$(FONT_YELLOW)Warning: PM2 startup may already be configured$(FONT_RESET)"; \
+	fi
+	@$(call print_success,Local PM2 ecosystem configured!)
+
+start-local: ## 🚀 Start service using local PM2 ecosystem
+	$(call print_status,Starting automagik-tools with local PM2...)
+	@$(call check_pm2)
+	@if [ ! -d ".venv" ]; then \
+		$(call print_error,Virtual environment not found); \
+		echo -e "$(FONT_YELLOW)💡 Run 'make install' first$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	@$(call ensure_env_file)
+	@pm2 start ecosystem.config.js
+	@$(call print_success,Service started with local PM2!)
+
+stop-local: ## 🛑 Stop service using local PM2 ecosystem
+	$(call print_status,Stopping automagik-tools with local PM2...)
+	@$(call check_pm2)
+	@pm2 stop automagik-tools 2>/dev/null || true
+	@$(call print_success,Service stopped!)
+
+restart-local: ## 🔄 Restart service using local PM2 ecosystem
+	$(call print_status,Restarting automagik-tools with local PM2...)
+	@$(call check_pm2)
+	@pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js
+	@$(call print_success,Service restarted!)
+
+install-service: ## 🔧 Install local PM2 service for automagik-tools
+	$(call print_status,Installing local PM2 service)
 	@if [ ! -d ".venv" ]; then \
 		$(call print_warning,Virtual environment not found - creating it now...); \
 		$(MAKE) install; \
 	fi
-	@$(call check_pm2)
-	@$(call print_status,Starting service with PM2...)
-	@cd $(PROJECT_ROOT)/.. && pm2 start ecosystem.config.js --only automagik-tools
-	@pm2 save
-	@$(call print_success,PM2 service installed!)
+	@$(MAKE) setup-pm2
+	@$(MAKE) start-local
+	@$(call print_success,Local PM2 service installed!)
 
-start-service: ## 🚀 Start the automagik-tools PM2 service
-	$(call print_status,Starting PM2 service)
-	@$(call check_pm2)
-	@cd $(PROJECT_ROOT)/.. && pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js --only automagik-tools
-	@echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 service started!$(FONT_RESET)"
-	@echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Recent logs:$(FONT_RESET)"
-	@pm2 logs automagik-tools --lines 20 --nostream
+start-service: ## 🚀 Start local PM2 service
+	@$(MAKE) start-local
 
-stop-service: ## 🛑 Stop the automagik-tools PM2 service
-	$(call print_status,Stopping PM2 service)
-	@$(call check_pm2)
-	@pm2 stop automagik-tools 2>/dev/null || true
-	$(call print_success,Service stopped)
+stop-service: ## 🛑 Stop local PM2 service
+	@$(MAKE) stop-local
 
-restart-service: ## 🔄 Restart the automagik-tools PM2 service
-	$(call print_status,Restarting PM2 service)
-	@$(call check_pm2)
-	@cd $(PROJECT_ROOT)/.. && pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js --only automagik-tools
-	@echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 service restarted!$(FONT_RESET)"
+restart-service: ## 🔄 Restart local PM2 service
+	@$(MAKE) restart-local
 
-uninstall-service: ## 🗑️ Uninstall PM2 service
-	$(call print_status,Uninstalling PM2 service)
+uninstall-service: ## 🗑️ Uninstall local PM2 service
+	$(call print_status,Uninstalling local PM2 service)
 	@$(call check_pm2)
 	@pm2 delete automagik-tools 2>/dev/null || true
 	@pm2 save --force
-	@$(call print_success,PM2 service uninstalled!)
+	@$(call print_success,Local PM2 service uninstalled!)
 
 define check_pm2
 	@if ! command -v pm2 >/dev/null 2>&1; then \
