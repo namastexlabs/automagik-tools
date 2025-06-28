@@ -491,97 +491,68 @@ finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
 
 # Service configuration variables
 SERVICE_NAME := automagik-tools
-SERVICE_FILE := /etc/systemd/system/$(SERVICE_NAME).service
 
-install-service: ## 🔧 Install systemd service for automagik-tools
-	$(call print_status,Installing systemd service)
-	@if [ ! -f "$(SERVICE_FILE)" ]; then \
-		TMP_FILE=$$(mktemp); \
-		printf "[Unit]\n" > $$TMP_FILE; \
-		printf "Description=Automagik Tools MCP Hub Service\n" >> $$TMP_FILE; \
-		printf "After=network.target\n" >> $$TMP_FILE; \
-		printf "Wants=network.target\n" >> $$TMP_FILE; \
-		printf "\n" >> $$TMP_FILE; \
-		printf "[Service]\n" >> $$TMP_FILE; \
-		printf "Type=simple\n" >> $$TMP_FILE; \
-		printf "User=%s\n" "$(USER)" >> $$TMP_FILE; \
-		printf "WorkingDirectory=%s\n" "$(PROJECT_ROOT)" >> $$TMP_FILE; \
-		printf "Environment=PATH=%s/.venv/bin:/usr/local/bin:/usr/bin:/bin\n" "$(PROJECT_ROOT)" >> $$TMP_FILE; \
-		printf "EnvironmentFile=%s/.env\n" "$(PROJECT_ROOT)" >> $$TMP_FILE; \
-		printf "ExecStart=/bin/bash -c 'cd %s && source .env && %s/.venv/bin/uv run automagik-tools hub --host $${HOST:-127.0.0.1} --port $${PORT:-8884} --transport sse'\n" "$(PROJECT_ROOT)" "$(PROJECT_ROOT)" >> $$TMP_FILE; \
-		printf "Restart=always\n" >> $$TMP_FILE; \
-		printf "RestartSec=10\n" >> $$TMP_FILE; \
-		printf "StandardOutput=journal\n" >> $$TMP_FILE; \
-		printf "StandardError=journal\n" >> $$TMP_FILE; \
-		printf "\n" >> $$TMP_FILE; \
-		printf "[Install]\n" >> $$TMP_FILE; \
-		printf "WantedBy=multi-user.target\n" >> $$TMP_FILE; \
-		sudo cp $$TMP_FILE $(SERVICE_FILE); \
-		rm $$TMP_FILE; \
-		sudo systemctl daemon-reload; \
-		sudo systemctl enable $(SERVICE_NAME); \
-		echo "✅ Service installed and enabled"; \
-	else \
-		echo "⚠️ Service already installed"; \
+install-service: ## 🔧 Install PM2 service for automagik-tools
+	$(call print_status,Installing PM2 service)
+	@if [ ! -d ".venv" ]; then \
+		$(call print_warning,Virtual environment not found - creating it now...); \
+		$(MAKE) install; \
 	fi
+	@$(call check_pm2)
+	@$(call print_status,Starting service with PM2...)
+	@cd $(PROJECT_ROOT)/.. && pm2 start ecosystem.config.js --only automagik-tools
+	@pm2 save
+	@$(call print_success,PM2 service installed!)
 
-start-service: ## 🚀 Start the automagik-tools systemd service
-	$(call print_status,Starting $(SERVICE_NAME) service)
-	@sudo systemctl start $(SERVICE_NAME)
-	@sleep 2
-	$(call check_service_status)
+start-service: ## 🚀 Start the automagik-tools PM2 service
+	$(call print_status,Starting PM2 service)
+	@$(call check_pm2)
+	@cd $(PROJECT_ROOT)/.. && pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js --only automagik-tools
+	@echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 service started!$(FONT_RESET)"
+	@echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Recent logs:$(FONT_RESET)"
+	@pm2 logs automagik-tools --lines 20 --nostream
 
-stop-service: ## 🛑 Stop the automagik-tools systemd service
-	$(call print_status,Stopping $(SERVICE_NAME) service)
-	@sudo systemctl stop $(SERVICE_NAME)
+stop-service: ## 🛑 Stop the automagik-tools PM2 service
+	$(call print_status,Stopping PM2 service)
+	@$(call check_pm2)
+	@pm2 stop automagik-tools 2>/dev/null || true
 	$(call print_success,Service stopped)
 
-restart-service: ## 🔄 Restart the automagik-tools systemd service
-	$(call print_status,Restarting $(SERVICE_NAME) service)
-	@sudo systemctl restart $(SERVICE_NAME)
-	@sleep 2
-	$(call check_service_status)
+restart-service: ## 🔄 Restart the automagik-tools PM2 service
+	$(call print_status,Restarting PM2 service)
+	@$(call check_pm2)
+	@cd $(PROJECT_ROOT)/.. && pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js --only automagik-tools
+	@echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 service restarted!$(FONT_RESET)"
 
-uninstall-service: ## 🗑️ Uninstall systemd service
-	$(call print_status,Uninstalling $(SERVICE_NAME) systemd service)
-	@if [ -f "$(SERVICE_FILE)" ]; then \
-		sudo systemctl stop $(SERVICE_NAME) 2>/dev/null || true; \
-		sudo systemctl disable $(SERVICE_NAME) 2>/dev/null || true; \
-		sudo rm -f $(SERVICE_FILE); \
-		sudo systemctl daemon-reload; \
-		$(call print_success,Service uninstalled); \
-	else \
-		$(call print_warning,Service not found); \
-	fi
+uninstall-service: ## 🗑️ Uninstall PM2 service
+	$(call print_status,Uninstalling PM2 service)
+	@$(call check_pm2)
+	@pm2 delete automagik-tools 2>/dev/null || true
+	@pm2 save --force
+	@$(call print_success,PM2 service uninstalled!)
 
-define check_service_status
-	@if systemctl is-active --quiet $(SERVICE_NAME); then \
-		echo -e "$(FONT_GREEN)$(CHECKMARK) Service $(SERVICE_NAME) is running$(FONT_RESET)"; \
-		echo -e "$(FONT_CYAN)   Status: $$(systemctl is-active $(SERVICE_NAME))$(FONT_RESET)"; \
-		echo -e "$(FONT_CYAN)   Since:  $$(systemctl show $(SERVICE_NAME) --property=ActiveEnterTimestamp --value | cut -d' ' -f2-3)$(FONT_RESET)"; \
-	elif systemctl is-enabled --quiet $(SERVICE_NAME); then \
-		echo -e "$(FONT_YELLOW)$(WARNING) Service $(SERVICE_NAME) is enabled but not running$(FONT_RESET)"; \
-	else \
-		echo -e "$(FONT_RED)$(ERROR) Service $(SERVICE_NAME) is not installed or enabled$(FONT_RESET)"; \
+define check_pm2
+	@if ! command -v pm2 >/dev/null 2>&1; then \
+		$(call print_error,PM2 not found. Install with: npm install -g pm2); \
+		exit 1; \
 	fi
 endef
 
-service-status: ## 📊 Check automagik-tools service status
-	$(call print_status,Checking $(SERVICE_NAME) service status)
-	$(call check_service_status)
+service-status: ## 📊 Check automagik-tools PM2 service status
+	$(call print_status,Checking PM2 service status)
+	@$(call check_pm2)
+	@pm2 show automagik-tools 2>/dev/null || echo "Service not found"
 
-.PHONY: logs
-logs: ## 📄 Show service logs (N=lines FOLLOW=1 for follow mode)
+.PHONY: logs logs-follow
+logs: ## 📄 Show service logs (N=lines)
 	$(eval N := $(or $(N),30))
-	$(call print_status,Recent automagik-tools service logs)
-	@if [ "$(FOLLOW)" = "1" ]; then \
-		echo -e "$(FONT_YELLOW)Press Ctrl+C to stop following logs$(FONT_RESET)"; \
-		journalctl -u automagik-tools -f --lines $(N) --no-pager 2>/dev/null || \
-		{ echo "Note: Trying with sudo (password required)"; sudo journalctl -u automagik-tools -f --lines $(N) --no-pager; }; \
-	else \
-		journalctl -u automagik-tools -n $(N) --no-pager 2>/dev/null || \
-		{ echo "Note: Trying with sudo (password required)"; sudo journalctl -u automagik-tools -n $(N) --no-pager; }; \
-	fi
+	$(call print_status,Recent logs)
+	@pm2 logs automagik-tools --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+
+logs-follow: ## 📄 Follow service logs in real-time
+	$(call print_status,Following logs)
+	@echo -e "$(FONT_YELLOW)Press Ctrl+C to stop following logs$(FONT_RESET)"
+	@pm2 logs automagik-tools 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 .PHONY: health
 health: ## 🩺 Check service health endpoints
