@@ -1,0 +1,9 @@
+{
+  "name": "automagik-tools",
+  "version": "0.5.5",
+  "description": "Automagik Tools - MCP Hub",
+  "private": true,
+  "scripts": {
+    "start": "echo 'This is a Python service managed by PM2'"
+  }
+}
