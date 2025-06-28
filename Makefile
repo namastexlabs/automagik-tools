@@ -68,7 +68,7 @@ endef
 
 define check_prerequisites
 	@if ! command -v uv >/dev/null 2>&1 || ! command -v make >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then \
-		$(call print_error,Missing dependencies detected); \
+		echo -e "$(FONT_RED)$(ERROR) Missing dependencies detected$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Run the full installer: ./scripts/install.sh$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -77,7 +77,7 @@ endef
 define ensure_env_file
 	@if [ ! -f ".env" ]; then \
 		cp .env.example .env; \
-		$(call print_info,.env created from example); \
+		echo -e "$(FONT_CYAN)$(INFO) .env created from example$(FONT_RESET)"; \
 	fi
 endef
 
