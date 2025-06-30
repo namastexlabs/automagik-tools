@@ -83,9 +83,14 @@ class GenieConfig:
     )
 
     def __post_init__(self):
-        # Validate required fields
+        # Only validate if the genie tool is being actively used
+        # Skip validation during tool discovery or when other tools are running
+        self._validate_on_use = not self.openai_api_key
+        
+    def validate_for_use(self):
+        """Validate configuration when actually using the genie tool"""
         if not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required")
+            raise ValueError("OPENAI_API_KEY environment variable is required for Genie tool")
 
     @property
     def mcp_server_configs(self) -> Dict[str, Dict[str, Any]]:

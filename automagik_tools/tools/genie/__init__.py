@@ -93,6 +93,8 @@ async def ask_genie(
         ask_genie("remember that I prefer Python over JavaScript")
     """
     config = _ensure_config()
+    # Validate configuration only when actually using the tool
+    config.validate_for_use()
     session_id = user_id or config.shared_session_id
 
     logger.info(f"🧞 Genie processing query: {query[:100]}...")
@@ -361,6 +363,8 @@ async def genie_memory_stats(
         Memory count and recent memories
     """
     config = _ensure_config()
+    # Validate configuration only when actually using the tool
+    config.validate_for_use()
     session_id = user_id or config.shared_session_id
 
     try:
@@ -424,6 +428,8 @@ async def genie_clear_memories(
         return "❌ To clear memories, set confirm=True. This action cannot be undone!"
 
     config = _ensure_config()
+    # Validate configuration only when actually using the tool
+    config.validate_for_use()
     session_id = user_id or config.shared_session_id
 
     try:
