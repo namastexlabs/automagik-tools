@@ -43,14 +43,21 @@ logger = logging.getLogger(__name__)
 # FastMCP server setup
 mcp = FastMCP("Genie")
 
-# Initialize config at module level to check for MCP servers
-_module_config = get_config()
-if _module_config.mcp_server_configs:
-    logger.info(
-        f"📡 Genie configured with MCP servers: {list(_module_config.mcp_server_configs.keys())}"
-    )
-else:
-    logger.warning("⚠️ No MCP servers configured in environment variables")
+# Lazy config initialization - defer until actually needed
+_module_config = None
+
+def _ensure_config():
+    """Ensure config is loaded, initializing only when needed"""
+    global _module_config
+    if _module_config is None:
+        _module_config = get_config()
+        if _module_config.mcp_server_configs:
+            logger.info(
+                f"📡 Genie configured with MCP servers: {list(_module_config.mcp_server_configs.keys())}"
+            )
+        else:
+            logger.warning("⚠️ No MCP servers configured in environment variables")
+    return _module_config
 
 
 @mcp.tool()
@@ -85,7 +92,7 @@ async def ask_genie(
         ask_genie("help me analyze this codebase")
         ask_genie("remember that I prefer Python over JavaScript")
     """
-    config = get_config()
+    config = _ensure_config()
     session_id = user_id or config.shared_session_id
 
     logger.info(f"🧞 Genie processing query: {query[:100]}...")
@@ -353,7 +360,7 @@ async def genie_memory_stats(
     Returns:
         Memory count and recent memories
     """
-    config = get_config()
+    config = _ensure_config()
     session_id = user_id or config.shared_session_id
 
     try:
@@ -416,7 +423,7 @@ async def genie_clear_memories(
     if not confirm:
         return "❌ To clear memories, set confirm=True. This action cannot be undone!"
 
-    config = get_config()
+    config = _ensure_config()
     session_id = user_id or config.shared_session_id
 
     try:
