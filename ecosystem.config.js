@@ -1,8 +1,9 @@
 // ===================================================================
-// 🛠️ Automagik-Tools - Standalone PM2 Configuration
+// 🛠️ Automagik-Tools - PM2 Configuration for Two Services
 // ===================================================================
-// This file enables automagik-tools to run independently
-// It extracts the same configuration from the central ecosystem
+// This file creates two separate PM2 services:
+// - automagik-tools-sse (port 8884)
+// - automagik-tools-http (port 8885)
 
 const path = require('path');
 const fs = require('fs');
@@ -60,16 +61,16 @@ if (fs.existsSync(envPath)) {
 module.exports = {
   apps: [
     {
-      name: 'automagik-tools',
+      name: 'automagik-tools-sse',
       cwd: PROJECT_ROOT,
       script: '.venv/bin/automagik-tools',
-      args: 'hub --host 0.0.0.0 --port ' + (envVars.AUTOMAGIK_TOOLS_PORT || '8884') + ' --transport sse',
+      args: 'hub --host 0.0.0.0 --port ' + (envVars.PORT || '8884') + ' --transport sse',
       interpreter: 'none',
       version: extractVersionFromPyproject(PROJECT_ROOT),
       env: {
         ...envVars,
         PYTHONPATH: PROJECT_ROOT,
-        AUTOMAGIK_TOOLS_PORT: envVars.AUTOMAGIK_TOOLS_PORT || '8884',
+        PORT: envVars.PORT || '8884',
         HOST: envVars.HOST || '0.0.0.0',
         NODE_ENV: 'production'
       },
@@ -82,9 +83,40 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 1000,
       kill_timeout: 5000,
-      error_file: path.join(PROJECT_ROOT, 'logs/err.log'),
-      out_file: path.join(PROJECT_ROOT, 'logs/out.log'),
-      log_file: path.join(PROJECT_ROOT, 'logs/combined.log'),
+      error_file: path.join(PROJECT_ROOT, 'logs/sse-err.log'),
+      out_file: path.join(PROJECT_ROOT, 'logs/sse-out.log'),
+      log_file: path.join(PROJECT_ROOT, 'logs/sse-combined.log'),
+      merge_logs: true,
+      time: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'automagik-tools-http',
+      cwd: PROJECT_ROOT,
+      script: '.venv/bin/automagik-tools',
+      args: 'hub --host 0.0.0.0 --port ' + (envVars.AUTOMAGIK_TOOLS_PORT || '8885') + ' --transport http',
+      interpreter: 'none',
+      version: extractVersionFromPyproject(PROJECT_ROOT),
+      env: {
+        ...envVars,
+        PYTHONPATH: PROJECT_ROOT,
+        PORT: envVars.AUTOMAGIK_TOOLS_PORT || '8885',
+        AUTOMAGIK_TOOLS_PORT: envVars.AUTOMAGIK_TOOLS_PORT || '8885',
+        HOST: envVars.HOST || '0.0.0.0',
+        NODE_ENV: 'production'
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      max_restarts: 10,
+      min_uptime: '10s',
+      restart_delay: 1000,
+      kill_timeout: 5000,
+      error_file: path.join(PROJECT_ROOT, 'logs/http-err.log'),
+      out_file: path.join(PROJECT_ROOT, 'logs/http-out.log'),
+      log_file: path.join(PROJECT_ROOT, 'logs/http-combined.log'),
       merge_logs: true,
       time: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
