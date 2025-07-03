@@ -38,10 +38,10 @@ UV := uv
 -include .env
 export
 
-# Default values
-HOST ?= 127.0.0.1
-PORT ?= 8884
-AUTOMAGIK_TOOLS_PORT ?= 8884
+# Default values  
+AUTOMAGIK_TOOLS_HOST ?= 127.0.0.1
+AUTOMAGIK_TOOLS_SSE_PORT ?= 8884
+AUTOMAGIK_TOOLS_HTTP_PORT ?= 8885
 
 # ===========================================
 # 🛠️ Utility Functions

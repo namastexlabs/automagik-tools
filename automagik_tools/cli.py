@@ -279,8 +279,8 @@ def hub(
 ):
     """Serve all tools on a single server with path-based routing using the hub"""
     # Get host and port from environment variables or defaults
-    serve_host = host or os.getenv("HOST", "127.0.0.1")
-    serve_port = port or int(os.getenv("PORT", "8000"))
+    serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
+    serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
 
     # For stdio transport, we can't serve multiple tools
     if transport == "stdio":
@@ -357,8 +357,8 @@ def tool(
         sys.exit(1)
 
     # Get host and port from environment variables or defaults
-    serve_host = host or os.getenv("HOST", "127.0.0.1")
-    serve_port = port or int(os.getenv("PORT", "8000"))
+    serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
+    serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
 
     # Only print to console for non-stdio transports
     if transport != "stdio":
@@ -405,10 +405,10 @@ def tool(
 def openapi(
     url: str = typer.Argument(..., help="OpenAPI specification URL"),
     host: Optional[str] = typer.Option(
-        None, help="Host to bind to (overrides HOST env var)"
+        None, help="Host to bind to (overrides AUTOMAGIK_TOOLS_HOST env var)"
     ),
     port: Optional[int] = typer.Option(
-        None, help="Port to bind to (overrides PORT env var)"
+        None, help="Port to bind to (overrides AUTOMAGIK_TOOLS_SSE_PORT env var)"
     ),
     transport: str = typer.Option(
         "stdio", "--transport", "-t", help="Transport type: stdio (default), http, sse"
@@ -431,8 +431,8 @@ def openapi(
         )
 
         # Get host and port
-        serve_host = host or os.getenv("HOST", "127.0.0.1")
-        serve_port = port or int(os.getenv("PORT", "8000"))
+        serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
+        serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
 
         # Start the server
         os.environ["MCP_TRANSPORT"] = transport
