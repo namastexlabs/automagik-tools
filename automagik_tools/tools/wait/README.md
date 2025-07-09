@@ -19,10 +19,10 @@ WAIT_DEFAULT_PROGRESS_INTERVAL=1.0
 ### Standalone
 ```bash
 # Run with stdio transport (for Claude Desktop)
-uvx automagik-tools serve wait
+uvx automagik-tools tool wait
 
 # Run with SSE transport
-uvx automagik-tools serve wait --transport sse --port 8000
+uvx automagik-tools tool wait --transport sse --port 8000
 ```
 
 ### Claude Desktop Configuration

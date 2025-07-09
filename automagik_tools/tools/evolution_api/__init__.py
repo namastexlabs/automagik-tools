@@ -4,13 +4,31 @@ Evolution API MCP Tool - Complete WhatsApp messaging suite for Evolution API v2
 
 import asyncio
 from typing import Dict, Any, Optional, List
-from fastmcp import mcp
+from fastmcp import FastMCP, Context
 from .config import EvolutionAPIConfig
 from .client import EvolutionAPIClient
 
 # Global configuration and client
 config: Optional[EvolutionAPIConfig] = None
 client: Optional[EvolutionAPIClient] = None
+
+# Create FastMCP instance
+mcp = FastMCP(
+    "Evolution API",
+    instructions="""
+Evolution API - Complete WhatsApp messaging suite for Evolution API v2
+
+🚀 Send WhatsApp messages with auto-typing indicators
+📱 Send media (images, videos, documents) with captions
+🎵 Send audio messages and voice notes
+😊 Send emoji reactions to messages
+📍 Send location coordinates with address details
+👤 Send contact information
+⌨️ Send typing/recording presence indicators
+
+All tools support optional fixed recipient mode for security-controlled access.
+""",
+)
 
 def _get_target_number(provided_number: str) -> str:
     """Get target number based on fixed recipient configuration"""
@@ -412,15 +430,15 @@ def get_instance_info(instance_id: str) -> str:
 - Security: {'Fixed recipient' if config.fixed_recipient else 'Dynamic recipient'}
 """
 
-def create_server(server_config: EvolutionAPIConfig) -> mcp.Server:
+def create_server(server_config: Optional[EvolutionAPIConfig] = None):
     """Create Evolution API MCP server"""
     global config, client
     
-    config = server_config
+    config = server_config or EvolutionAPIConfig()
     if config and config.api_key:
         client = EvolutionAPIClient(config)
     
-    return mcp.Server("Evolution API")
+    return mcp
 
 def get_metadata() -> Dict[str, Any]:
     """Get tool metadata for discovery"""

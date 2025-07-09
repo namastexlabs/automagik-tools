@@ -187,7 +187,7 @@ wheels = [
 
 [[package]]
 name = "automagik-tools"
-version = "0.5.8"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },

@@ -25,7 +25,7 @@ AUTOMAGIK_WORKFLOWS_MAX_RETRIES=3                    # HTTP retry attempts
 
 ```bash
 # Serve the tool via automagik-tools
-uvx automagik-tools serve automagik_workflows --transport stdio
+uvx automagik-tools tool automagik-workflows --transport stdio
 
 # List all available tools (includes automagik_workflows)
 uvx automagik-tools list

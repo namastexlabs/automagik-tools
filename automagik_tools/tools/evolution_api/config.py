@@ -2,7 +2,8 @@
 Evolution API Configuration
 """
 
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from typing import Optional
 
 
@@ -39,7 +40,9 @@ class EvolutionAPIConfig(BaseSettings):
         description="Maximum number of retry attempts"
     )
     
-    class Config:
-        env_prefix = "EVOLUTION_API_"
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_prefix": "EVOLUTION_API_",
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore"
+    }

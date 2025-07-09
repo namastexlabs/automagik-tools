@@ -12,10 +12,10 @@ uvx automagik-tools serve --openapi-url https://petstore3.swagger.io/api/v3/open
 uvx automagik-tools serve --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_...
 
 # With custom base URL (if different from OpenAPI spec)
-uvx automagik-tools serve --openapi-url https://example.com/openapi.json --base-url https://api.example.com --api-key your-key
+uvx automagik-tools openapi --openapi-url https://example.com/openapi.json --base-url https://api.example.com --api-key your-key
 
 # For stdio transport (Claude Desktop, Cursor, etc.)
-uvx automagik-tools serve --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_... --transport stdio
+uvx automagik-tools openapi --openapi-url https://api.stripe.com/v1/openapi.json --api-key sk_test_... --transport stdio
 ```
 
 ## 2. MCP Client Configuration

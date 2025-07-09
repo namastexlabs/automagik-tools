@@ -125,7 +125,7 @@ export GENIE_AUTOMAGIK_TIMEOUT="600"
 Enterprise-grade agent orchestration that speaks human:
 
 ```bash
-uvx automagik-tools serve --tool automagik --transport sse --port 8000
+uvx automagik-tools tool automagik --transport sse --port 8000
 ```
 
 **Real examples from our users:**
@@ -246,7 +246,7 @@ export GENIE_MCP_CONFIGS='{
 export GENIE_MCP_CONFIGS='{
   "automagik": {
     "command": "uvx",
-    "args": ["automagik-tools", "serve", "--tool", "automagik", "--transport", "stdio"],
+    "args": ["automagik-tools", "tool", "automagik", "--transport", "stdio"],
     "env": {
       "AUTOMAGIK_API_KEY": "prod-key",
       "AUTOMAGIK_BASE_URL": "https://api.yourcompany.com"
