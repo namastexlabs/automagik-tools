@@ -30,17 +30,19 @@ All tools support optional fixed recipient mode for security-controlled access.
 """,
 )
 
-def _get_target_number(provided_number: str) -> str:
-    """Get target number based on fixed recipient configuration"""
+def _get_target_number(provided_number: Optional[str] = None) -> str:
+    """Get target number based on fixed recipient configuration or provided number"""
     if config and config.fixed_recipient:
         return config.fixed_recipient
-    return provided_number
+    if provided_number:
+        return provided_number
+    raise ValueError("No recipient number provided and EVOLUTION_API_FIXED_RECIPIENT not set")
 
 @mcp.tool()
 def send_text_message(
     instance: str,
-    number: str,
     message: str,
+    number: Optional[str] = None,
     delay: int = 0,
     linkPreview: bool = True,
     mentions: Optional[List[str]] = None
@@ -50,14 +52,16 @@ def send_text_message(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code (e.g., +1234567890@s.whatsapp.net)
         message: Text message to send
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         delay: Optional delay in milliseconds before sending
         linkPreview: Whether to show link preview for URLs
         mentions: Optional list of numbers to mention in the message
     
     Returns:
         Dictionary with message status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
@@ -90,10 +94,10 @@ def send_text_message(
 @mcp.tool()
 def send_media(
     instance: str,
-    number: str,
     media: str,
     mediatype: str,
     mimetype: str,
+    number: Optional[str] = None,
     caption: str = "",
     fileName: str = "",
     delay: int = 0,
@@ -105,10 +109,10 @@ def send_media(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code
         media: Base64 encoded media data or URL
         mediatype: Type of media (image, video, document)
         mimetype: MIME type (e.g., image/jpeg, video/mp4)
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         caption: Optional caption for the media
         fileName: Optional filename for the media
         delay: Optional delay in milliseconds before sending
@@ -117,6 +121,8 @@ def send_media(
     
     Returns:
         Dictionary with message status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
@@ -148,8 +154,8 @@ def send_media(
 @mcp.tool()
 def send_audio(
     instance: str,
-    number: str,
     audio: str,
+    number: Optional[str] = None,
     delay: int = 0,
     linkPreview: bool = True,
     mentions: Optional[List[str]] = None,
@@ -160,8 +166,8 @@ def send_audio(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code
         audio: Base64 encoded audio data or URL
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         delay: Optional delay in milliseconds before sending
         linkPreview: Whether to show link preview for URLs
         mentions: Optional list of numbers to mention
@@ -169,6 +175,8 @@ def send_audio(
     
     Returns:
         Dictionary with message status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
@@ -245,9 +253,9 @@ def send_reaction(
 @mcp.tool()
 def send_location(
     instance: str,
-    number: str,
     latitude: float,
     longitude: float,
+    number: Optional[str] = None,
     name: str = "",
     address: str = "",
     delay: int = 0,
@@ -258,9 +266,9 @@ def send_location(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code
         latitude: Latitude coordinate
         longitude: Longitude coordinate
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         name: Optional location name
         address: Optional location address
         delay: Optional delay in milliseconds before sending
@@ -268,6 +276,8 @@ def send_location(
     
     Returns:
         Dictionary with message status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
@@ -298,8 +308,8 @@ def send_location(
 @mcp.tool()
 def send_contact(
     instance: str,
-    number: str,
     contact: List[Dict[str, str]],
+    number: Optional[str] = None,
     delay: int = 0,
     mentions: Optional[List[str]] = None
 ) -> Dict[str, Any]:
@@ -308,13 +318,15 @@ def send_contact(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code
         contact: List of contact dictionaries with fullName, wuid, phoneNumber, organization, email, url
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         delay: Optional delay in milliseconds before sending
         mentions: Optional list of numbers to mention
     
     Returns:
         Dictionary with message status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
@@ -344,7 +356,7 @@ def send_contact(
 @mcp.tool()
 def send_presence(
     instance: str,
-    number: str,
+    number: Optional[str] = None,
     presence: str = "composing",
     delay: int = 3000
 ) -> Dict[str, Any]:
@@ -353,12 +365,14 @@ def send_presence(
     
     Args:
         instance: Evolution API instance name
-        number: WhatsApp number with country code
+        number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         presence: Presence type (composing, recording, paused)
         delay: Duration in milliseconds to show presence
     
     Returns:
         Dictionary with presence status and details
+    
+    Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
