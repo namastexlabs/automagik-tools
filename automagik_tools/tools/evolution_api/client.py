@@ -16,7 +16,7 @@ class EvolutionAPIClient:
         self.base_url = config.base_url.rstrip('/')
         self.headers = {
             "Content-Type": "application/json",
-            "X-API-Key": config.api_key
+            "apikey": config.api_key
         }
     
     async def _make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict[str, Any]:
@@ -33,7 +33,7 @@ class EvolutionAPIClient:
                         json=data if data else None
                     )
                     
-                    if response.status_code == 200:
+                    if response.status_code in [200, 201]:
                         return response.json()
                     elif response.status_code == 401:
                         raise ValueError("Evolution API authentication failed - check API key")
