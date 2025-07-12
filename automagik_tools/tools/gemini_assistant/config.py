@@ -64,6 +64,7 @@ class GeminiAssistantConfig(BaseSettings):
     @validator('model')
     def validate_model(cls, v):
         valid_models = [
+            "gemini-2.5-pro",
             "gemini-2.0-flash-exp",
             "gemini-2.0-flash-thinking-exp-1219",
             "gemini-1.5-flash",
