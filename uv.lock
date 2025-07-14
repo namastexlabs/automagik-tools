@@ -187,13 +187,14 @@ wheels = [
 
 [[package]]
 name = "automagik-tools"
-version = "0.7.6"
+version = "0.7.7"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
     { name = "build" },
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "google-genai" },
     { name = "importlib-metadata" },
     { name = "openai" },
     { name = "psutil" },
@@ -292,6 +293,7 @@ requires-dist = [
     { name = "discord-py", marker = "extra == 'discord'", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "fastmcp", specifier = ">=2.5.0" },
+    { name = "google-genai", specifier = ">=0.5.0" },
     { name = "google-genai", marker = "extra == 'gemini-assistant'", specifier = ">=0.5.0" },
     { name = "httpx", marker = "extra == 'ask'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'automagik'", specifier = ">=0.28.1" },

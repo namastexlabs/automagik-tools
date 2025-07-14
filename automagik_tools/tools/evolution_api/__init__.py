@@ -2,7 +2,6 @@
 Evolution API MCP Tool - Complete WhatsApp messaging suite for Evolution API v2
 """
 
-import asyncio
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP, Context
 from .config import EvolutionAPIConfig
@@ -39,7 +38,7 @@ def _get_target_number(provided_number: Optional[str] = None) -> str:
     raise ValueError("No recipient number provided and EVOLUTION_API_FIXED_RECIPIENT not set")
 
 @mcp.tool()
-def send_text_message(
+async def send_text_message(
     instance: str,
     message: str,
     number: Optional[str] = None,
@@ -63,18 +62,23 @@ def send_text_message(
     
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
+    global config, client
+    
+    # Ensure client is initialized (in case MCP hasn't called create_server yet)
     if not client:
-        return {"error": "Evolution API client not configured"}
+        if not config:
+            config = EvolutionAPIConfig()
+        if config.api_key:
+            client = EvolutionAPIClient(config)
+        else:
+            return {"error": "Evolution API client not configured - missing API key"}
     
     try:
         target_number = _get_target_number(number)
         
-        # Auto-send typing indicator 3 seconds before text
-        asyncio.run(client.send_presence(instance, target_number, "composing", 3000))
-        
-        result = asyncio.run(client.send_text_message(
+        result = await client.send_text_message(
             instance, target_number, message, delay, linkPreview, mentions
-        ))
+        )
         
         return {
             "status": "success",
@@ -92,7 +96,7 @@ def send_text_message(
         }
 
 @mcp.tool()
-def send_media(
+async def send_media(
     instance: str,
     media: str,
     mediatype: str,
@@ -130,10 +134,10 @@ def send_media(
     try:
         target_number = _get_target_number(number)
         
-        result = asyncio.run(client.send_media(
+        result = await client.send_media(
             instance, target_number, media, mediatype, mimetype, 
             caption, fileName, delay, linkPreview, mentions
-        ))
+        )
         
         return {
             "status": "success",
@@ -152,7 +156,7 @@ def send_media(
         }
 
 @mcp.tool()
-def send_audio(
+async def send_audio(
     instance: str,
     audio: str,
     number: Optional[str] = None,
@@ -185,11 +189,11 @@ def send_audio(
         target_number = _get_target_number(number)
         
         # Auto-send typing indicator 3 seconds before audio
-        asyncio.run(client.send_presence(instance, target_number, "composing", 3000))
+        await client.send_presence(instance, target_number, "composing", 3000)
         
-        result = asyncio.run(client.send_audio(
+        result = await client.send_audio(
             instance, target_number, audio, delay, linkPreview, mentions, quoted
-        ))
+        )
         
         return {
             "status": "success",
@@ -207,7 +211,7 @@ def send_audio(
         }
 
 @mcp.tool()
-def send_reaction(
+async def send_reaction(
     instance: str,
     remote_jid: str,
     from_me: bool,
@@ -231,9 +235,9 @@ def send_reaction(
         return {"error": "Evolution API client not configured"}
     
     try:
-        result = asyncio.run(client.send_reaction(
+        result = await client.send_reaction(
             instance, remote_jid, from_me, message_id, reaction
-        ))
+        )
         
         return {
             "status": "success",
@@ -251,7 +255,7 @@ def send_reaction(
         }
 
 @mcp.tool()
-def send_location(
+async def send_location(
     instance: str,
     latitude: float,
     longitude: float,
@@ -285,9 +289,9 @@ def send_location(
     try:
         target_number = _get_target_number(number)
         
-        result = asyncio.run(client.send_location(
+        result = await client.send_location(
             instance, target_number, latitude, longitude, name, address, delay, mentions
-        ))
+        )
         
         return {
             "status": "success",
@@ -306,7 +310,7 @@ def send_location(
         }
 
 @mcp.tool()
-def send_contact(
+async def send_contact(
     instance: str,
     contact: List[Dict[str, str]],
     number: Optional[str] = None,
@@ -334,9 +338,9 @@ def send_contact(
     try:
         target_number = _get_target_number(number)
         
-        result = asyncio.run(client.send_contact(
+        result = await client.send_contact(
             instance, target_number, contact, delay, mentions
-        ))
+        )
         
         return {
             "status": "success",
@@ -354,7 +358,7 @@ def send_contact(
         }
 
 @mcp.tool()
-def send_presence(
+async def send_presence(
     instance: str,
     number: Optional[str] = None,
     presence: str = "composing",
@@ -380,9 +384,9 @@ def send_presence(
     try:
         target_number = _get_target_number(number)
         
-        result = asyncio.run(client.send_presence(
+        result = await client.send_presence(
             instance, target_number, presence, delay
-        ))
+        )
         
         return {
             "status": "success",
@@ -448,9 +452,15 @@ def create_server(server_config: Optional[EvolutionAPIConfig] = None):
     """Create Evolution API MCP server"""
     global config, client
     
+    # Always create fresh config to pick up environment variables
     config = server_config or EvolutionAPIConfig()
+    
+    # Initialize client if we have an API key
     if config and config.api_key:
         client = EvolutionAPIClient(config)
+    else:
+        # Log for debugging
+        print(f"Warning: Evolution API key not found. Base URL: {config.base_url if config else 'No config'}")
     
     return mcp
 

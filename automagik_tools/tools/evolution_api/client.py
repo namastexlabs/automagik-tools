@@ -73,12 +73,11 @@ class EvolutionAPIClient:
         data = {
             "number": number,
             "text": message,
-            "delay": delay,
-            "linkPreview": linkPreview
+            "options": {
+                "delay": delay,
+                "presence": "composing"
+            }
         }
-        
-        if mentions:
-            data["mentions"] = mentions
         
         return await self._make_request(
             "POST", 
@@ -237,10 +236,8 @@ class EvolutionAPIClient:
         """Send presence indicator via Evolution API v2"""
         data = {
             "number": number,
-            "options": {
-                "presence": presence,
-                "delay": delay
-            }
+            "presence": presence,
+            "delay": delay
         }
         
         return await self._make_request(
