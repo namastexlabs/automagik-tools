@@ -357,17 +357,31 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
                 session.problem_description = problem_description
                 session.code_context = code_context
                 
-                # Build initial context
-                context_parts = [
-                    f"I'm Claude, an AI assistant, and I need your help with a complex coding problem. Here's the context:\n\n**Problem Description:**\n{problem_description}"
-                ]
+                # Estimate message size for optimization
+                total_context_size = len(problem_description) + (len(code_context) if code_context else 0)
+                is_small_request = total_context_size < 500 and not attached_files
                 
-                # Add code context if provided
-                if code_context:
-                    context_parts.append(f"\n**Code Context:**\n{code_context}")
+                # Build initial context with simplified format for small requests
+                if is_small_request:
+                    # Simplified format for small requests
+                    context_parts = [
+                        f"Problem: {problem_description}"
+                    ]
+                    if code_context:
+                        context_parts.append(f"\n\nCode:\n{code_context}")
+                    context_parts.append(f"\n\nQuestion: {specific_question}")
+                else:
+                    # Full format for complex requests
+                    context_parts = [
+                        f"I'm Claude, an AI assistant, and I need your help with a complex coding problem. Here's the context:\n\n**Problem Description:**\n{problem_description}"
+                    ]
+                    
+                    # Add code context if provided
+                    if code_context:
+                        context_parts.append(f"\n**Code Context:**\n{code_context}")
                 
-                # Handle file attachments
-                if attached_files:
+                # Handle file attachments (only for complex requests)
+                if attached_files and not is_small_request:
                     context_parts.append("\n**Attached Files:**")
                     
                     # Create parallel upload tasks
@@ -398,19 +412,34 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
                             context_parts.append(f"\n- {file_info.file_name}{description}")
                     
                     print(f"[{datetime.now().isoformat()}] Session {session.session_id}: Parallel upload completed", file=sys.stderr)
+                elif attached_files and is_small_request:
+                    # For small requests with files, fall back to complex format
+                    is_small_request = False
+                    context_parts = [
+                        f"I'm Claude, an AI assistant, and I need your help with a coding problem.\n\n**Problem:** {problem_description}"
+                    ]
+                    if code_context:
+                        context_parts.append(f"\n**Code:**\n{code_context}")
                 
-                context_parts.append("\n\nPlease help me solve this problem. I may have follow-up questions, so please maintain context throughout our conversation.")
+                if not is_small_request:
+                    context_parts.append("\n\nPlease help me solve this problem. I may have follow-up questions, so please maintain context throughout our conversation.")
                 
-                # Build message content - include text and uploaded file objects
-                message_content = ["".join(context_parts)]
-                
-                # Add uploaded file objects for this session's new files
-                for file_path in attached_files or []:
-                    if file_path in session.processed_files:
-                        file_info = session.processed_files[file_path]
-                        # Get the actual uploaded file object from Gemini
-                        uploaded_file = gemini_server.client.files.get(name=file_info.gemini_file_id)
-                        message_content.append(uploaded_file)
+                # Build message content
+                if is_small_request:
+                    # For small requests, send as simple text
+                    initial_message = "".join(context_parts)
+                    message_content = [initial_message]
+                else:
+                    # For complex requests, include text and uploaded file objects
+                    message_content = ["".join(context_parts)]
+                    
+                    # Add uploaded file objects for this session's new files
+                    for file_path in attached_files or []:
+                        if file_path in session.processed_files:
+                            file_info = session.processed_files[file_path]
+                            # Get the actual uploaded file object from Gemini
+                            uploaded_file = gemini_server.client.files.get(name=file_info.gemini_file_id)
+                            message_content.append(uploaded_file)
                 
                 # Send initial context
                 response = await asyncio.get_event_loop().run_in_executor(
@@ -420,9 +449,35 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
                 
                 file_count = len(session.processed_files)
                 code_length = len(code_context) if code_context else 0
-                print(f"[{datetime.now().isoformat()}] Session {session.session_id}: Initial context sent ({code_length} chars, {file_count} files)", file=sys.stderr)
+                print(f"[{datetime.now().isoformat()}] Session {session.session_id}: Initial context sent ({code_length} chars, {file_count} files, simplified={is_small_request})", file=sys.stderr)
+                
+                # For small requests, return immediately since question was included
+                if is_small_request:
+                    response_text = response.text
+                    
+                    # Extract any file requests or search queries from response
+                    gemini_server._extract_requests_from_response(response_text, session)
+                    
+                    # Build response with session info
+                    result_parts = [
+                        f"**Session ID:** {session.session_id}",
+                        f"**Message #{session.message_count}**\n",
+                        response_text
+                    ]
+                    
+                    # Add summary of requests if any
+                    if session.requested_files or session.search_queries:
+                        result_parts.append("\n\n---")
+                        if session.requested_files:
+                            result_parts.append(f"\n**Files Requested:** {', '.join(session.requested_files)}")
+                        if session.search_queries:
+                            result_parts.append(f"\n**Searches Requested:** {'; '.join(session.search_queries)}")
+                    
+                    result_parts.append(f"\n\n---\n*Use session_id: \"{session.session_id}\" for follow-up questions*")
+                    
+                    return "\n".join(result_parts)
             
-            # Build the question
+            # Build the question (for complex requests or follow-up questions)
             question_parts = [f"**Question:** {specific_question}"]
             
             if additional_context:
@@ -472,8 +527,14 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
             error_message = str(e)
             if "RESOURCE_EXHAUSTED" in error_message:
                 error_message = "Gemini API quota exceeded. Please try again later."
+            elif "UNAUTHENTICATED" in error_message or "API_KEY_INVALID" in error_message:
+                error_message = "Gemini API authentication failed. Please check your GEMINI_API_KEY environment variable."
+            elif "PERMISSION_DENIED" in error_message:
+                error_message = "Gemini API access denied. Please check your API key permissions."
             elif "INVALID_ARGUMENT" in error_message:
                 error_message = "Request too large. Try reducing code context size."
+            elif "Gemini API key is required" in error_message:
+                error_message = "Gemini API key is required. Please set the GEMINI_API_KEY environment variable."
             
             return f"Error: {error_message}"
 
