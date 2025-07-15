@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,13 +55,15 @@ class GeminiAssistantConfig(BaseSettings):
         le=100
     )
     
-    @validator('api_key')
+    @field_validator('api_key')
+    @classmethod
     def validate_api_key(cls, v):
         if not v or v.strip() == "":
             raise ValueError("Gemini API key is required")
         return v.strip()
     
-    @validator('model')
+    @field_validator('model')
+    @classmethod
     def validate_model(cls, v):
         valid_models = [
             "gemini-2.5-pro",
