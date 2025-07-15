@@ -88,6 +88,11 @@ gemini-assistant = [
     "python-dotenv>=1.1.0",
 ]
 
+genie-agents = [
+    "httpx>=0.28.1",
+    "python-dotenv>=1.1.0",
+]
+
 discord = [
     "discord.py>=2.3.0",
     "python-dotenv>=1.1.0",
@@ -114,7 +119,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,discord,notion,github]",
+    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,genie-agents,discord,notion,github]",
 ]
 
 [project.urls]
