@@ -253,4 +253,4 @@ def create_hub_server() -> FastMCP:
 # Allow running directly with FastMCP
 if __name__ == "__main__":
     hub = create_hub_server()
-    hub.run()
+    hub.run(show_banner=False)
