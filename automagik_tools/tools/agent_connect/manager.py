@@ -121,7 +121,7 @@ class ChannelManager:
     
     def __init__(self, config):
         self.config = config
-        self.storage = FileStorage()
+        self.storage = FileStorage(config.storage_dir)
         self._lock = asyncio.Lock()
         self._instance_id = get_instance_id()
         self._polling_tasks: Dict[str, asyncio.Task] = {}  # Track polling tasks

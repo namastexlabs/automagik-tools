@@ -45,6 +45,12 @@ class AgentConnectConfig(BaseSettings):
         alias="AGENT_CONNECT_REPLY_TIMEOUT_DEFAULT"
     )
     
+    storage_dir: str = Field(
+        default="/tmp/agent_connect",
+        description="Directory path for storing channel data and message history",
+        alias="AGENT_CONNECT_STORAGE"
+    )
+    
     model_config = {
         "env_prefix": "AGENT_CONNECT_",
         "env_file": ".env",

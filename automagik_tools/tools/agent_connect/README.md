@@ -35,7 +35,8 @@ Add this to your MCP client configuration (e.g., Claude Desktop):
       "args": ["automagik-tools", "serve", "agent-connect"],
       "env": {
         "AGENT_CONNECT_MAX_QUEUE_SIZE": "1000",
-        "AGENT_CONNECT_DEFAULT_TIMEOUT": "300"
+        "AGENT_CONNECT_DEFAULT_TIMEOUT": "300",
+        "AGENT_CONNECT_STORAGE": "/path/to/your/storage"
       }
     }
   }
@@ -179,12 +180,15 @@ Environment variables:
 - `AGENT_CONNECT_CLEANUP_INTERVAL` - Channel cleanup interval in seconds (default: 3600)
 - `AGENT_CONNECT_INACTIVE_CHANNEL_HOURS` - Hours before cleaning inactive channels (default: 24)
 - `AGENT_CONNECT_REPLY_TIMEOUT_DEFAULT` - Default reply timeout in seconds (default: 30)
+- `AGENT_CONNECT_STORAGE` - Directory path for storing channel data (default: "/tmp/agent_connect")
 
 ## Storage
 
-Agent Connect uses file-based storage in `/tmp/agent_connect/` for cross-instance communication:
+Agent Connect uses file-based storage for cross-instance communication (default: `/tmp/agent_connect/`):
 - `channels.json` - Active channels and pending messages
 - `history.json` - Message history
+
+The storage directory can be customized using the `AGENT_CONNECT_STORAGE` environment variable.
 
 This enables true multi-process agent coordination where agents in different processes can communicate seamlessly.
 
