@@ -35,13 +35,13 @@ def main():
             file=sys.stderr,
             flush=True,
         )
-        server.run(transport="stdio")
+        server.run(transport="stdio", show_banner=False)
     elif args.transport == "sse":
         print(
             f"Starting {metadata['name']} with SSE transport on {args.host}:{args.port}",
             flush=True,
         )
-        server.run(transport="sse", host=args.host, port=args.port)
+        server.run(transport="sse", host=args.host, port=args.port, show_banner=False)
     else:
         raise ValueError(f"Unsupported transport: {args.transport}")
 

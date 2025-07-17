@@ -16,4 +16,4 @@ if __name__ == "__main__":
     # Run the server
     # Use stderr for startup message to avoid stdout pollution
     print("🧞 Starting Genie MCP server...", file=sys.stderr)
-    mcp.run()
+    mcp.run(show_banner=False)

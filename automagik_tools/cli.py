@@ -305,17 +305,17 @@ def hub(
 
         # Run the hub server
         if transport == "stdio":
-            hub_server.run(transport="stdio")
+            hub_server.run(transport="stdio", show_banner=False)
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="http", host=serve_host, port=serve_port)
+            hub_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
         elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="sse", host=serve_host, port=serve_port)
+            hub_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -378,17 +378,17 @@ def tool(
         os.environ["MCP_TRANSPORT"] = transport
 
         if transport == "stdio":
-            mcp_server.run(transport="stdio")
+            mcp_server.run(transport="stdio", show_banner=False)
         elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port)
+            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port)
+            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -438,17 +438,17 @@ def openapi(
         os.environ["MCP_TRANSPORT"] = transport
 
         if transport == "stdio":
-            mcp_server.run(transport="stdio")
+            mcp_server.run(transport="stdio", show_banner=False)
         elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port)
+            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port)
+            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)

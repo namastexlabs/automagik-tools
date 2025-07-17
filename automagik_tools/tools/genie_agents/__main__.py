@@ -6,7 +6,7 @@ from . import create_server
 async def main():
     """Entry point for running the Genie Agents tool server."""
     server = create_server()
-    await server.run()
+    await server.run(show_banner=False)
 
 # Export mcp for FastMCP CLI compatibility
 mcp = create_server()
