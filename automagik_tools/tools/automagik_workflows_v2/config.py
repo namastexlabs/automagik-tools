@@ -2,7 +2,7 @@
 Configuration management for automagik-workflows-v2
 """
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -64,6 +64,7 @@ class AutomagikWorkflowsV2Config(BaseSettings):
         description="Enable elicitation for dynamic parameter collection"
     )
     
-    class Config:
-        env_prefix = "AUTOMAGIK_WORKFLOWS_V2_"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_prefix="AUTOMAGIK_WORKFLOWS_V2_",
+        case_sensitive=False
+    )
