@@ -17,10 +17,10 @@ Seamless multi-agent coordination through blocking message channels. Perfect for
 
 ```bash
 # Start the agent-connect MCP server
-uvx automagik-tools serve agent-connect
+uvx automagik-tools tool agent-connect
 
 # Or with custom transport
-uvx automagik-tools serve agent-connect --transport sse --port 3001
+uvx automagik-tools tool agent-connect --transport sse --port 3001
 ```
 
 ### MCP Server Configuration
@@ -32,7 +32,7 @@ Add this to your MCP client configuration (e.g., Claude Desktop):
   "mcpServers": {
     "agent-connect": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "agent-connect"],
+      "args": ["automagik-tools", "tool", "agent-connect"],
       "env": {
         "AGENT_CONNECT_MAX_QUEUE_SIZE": "1000",
         "AGENT_CONNECT_DEFAULT_TIMEOUT": "300",
@@ -49,7 +49,7 @@ For SSE transport (web-based):
   "mcpServers": {
     "agent-connect": {
       "command": "uvx",
-      "args": ["automagik-tools", "serve", "agent-connect", "--transport", "sse", "--port", "3001"],
+      "args": ["automagik-tools", "tool", "agent-connect", "--transport", "sse", "--port", "3001"],
       "env": {
         "AGENT_CONNECT_MAX_QUEUE_SIZE": "1000",
         "AGENT_CONNECT_DEFAULT_TIMEOUT": "300"
