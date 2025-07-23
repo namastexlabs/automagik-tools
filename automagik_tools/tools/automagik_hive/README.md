@@ -34,7 +34,7 @@ Set the following environment variables in your `.env` file:
 ```bash
 # Automagik Hive Tool Configuration
 HIVE_API_BASE_URL=http://localhost:8886
-HIVE_API_KEY=hive_l_15Bhc_B_ObYltpQ09EtdlSeNs3rXwWoB_g6UBDZ3o  # Optional - only if API requires authentication
+# HIVE_API_KEY=your_hive_api_key_here  # Optional - only if API requires authentication
 HIVE_TIMEOUT=30
 ```
 

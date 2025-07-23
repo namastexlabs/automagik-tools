@@ -17,7 +17,7 @@ class AutomagikHiveClient:
         self.config = config
         headers = {}
         if config.api_key:
-            headers["Authorization"] = f"Bearer {config.api_key}"
+            headers["x-api-key"] = config.api_key
         
         self.client = httpx.AsyncClient(
             base_url=config.api_base_url,
@@ -59,8 +59,15 @@ class AutomagikHiveClient:
     
     async def request_form_urlencoded(self, method: str, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Make a form-urlencoded request to the Automagik Hive API."""
-        # Filter out None values and convert to strings
-        form_data = {key: str(value) for key, value in data.items() if value is not None}
+        # Filter out None values and convert to strings, handling booleans properly
+        form_data = {}
+        for key, value in data.items():
+            if value is not None:
+                if isinstance(value, bool):
+                    form_data[key] = "true" if value else "false"
+                else:
+                    form_data[key] = str(value)
+        
         response = await self.client.request(method, endpoint, data=form_data)
         response.raise_for_status()
         
@@ -129,10 +136,12 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         message: str
     ) -> Dict[str, Any]:
         """Continue an ongoing conversation with an agent. Send your next message to keep the conversation going."""
-        # API expects form-urlencoded data with "tools" field containing the message
+        # API expects form-urlencoded data with "tools" field containing JSON array
+        import json
+        tools_json = json.dumps([{"type": "message", "content": message}])
         data = {
-            "tools": message,
-            "stream": "false"
+            "tools": tools_json,
+            "stream": False
         }
         async with AutomagikHiveClient(config) as client:
             return await client.request_form_urlencoded("POST", f"/playground/agents/{agent_id}/runs/{run_id}/continue", data)
@@ -210,7 +219,10 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute a workflow with your input data. The workflow will process your request through multiple steps."""
-        data = {"input": input_data}
+        data = {
+            "input": input_data,
+            "stream": False  # Disable streaming for better tool integration
+        }
         if user_id:
             data["user_id"] = user_id
         async with AutomagikHiveClient(config) as client:
