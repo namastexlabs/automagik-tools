@@ -1,6 +1,6 @@
-# Genie Agents Playground Tool
+# Automagik Hive Tool
 
-A user-friendly MCP tool for interacting with the Genie Agents Playground. This tool provides an intuitive interface to test and interact with agents, teams, and workflows in a safe sandbox environment.
+A comprehensive MCP tool for interacting with the Automagik Hive. This tool provides an intuitive interface to test and interact with agents, teams, and workflows in the Automagik ecosystem.
 
 ## Features
 
@@ -22,9 +22,9 @@ A user-friendly MCP tool for interacting with the Genie Agents Playground. This 
 - **Team Memory**: Access shared team knowledge and experiences
 - **Progress Tracking**: Monitor team collaboration sessions and results
 
-### 🎮 Playground Features
+### 🎮 Hive Features
 - **Safe Testing**: Experiment with agents in a risk-free environment
-- **Status Monitoring**: Check playground health and availability
+- **Status Monitoring**: Check hive health and availability
 - **Quick Actions**: Fast way to run tasks without complex setup
 
 ## Configuration
@@ -32,10 +32,10 @@ A user-friendly MCP tool for interacting with the Genie Agents Playground. This 
 Set the following environment variables in your `.env` file:
 
 ```bash
-# Genie Agents Tool Configuration
-GENIE_AGENTS_API_BASE_URL=http://localhost:9888
-# GENIE_AGENTS_API_KEY=your_api_key_here  # Optional - only if API requires authentication
-GENIE_AGENTS_TIMEOUT=30
+# Automagik Hive Tool Configuration
+HIVE_API_BASE_URL=http://localhost:8886
+HIVE_API_KEY=hive_l_15Bhc_B_ObYltpQ09EtdlSeNs3rXwWoB_g6UBDZ3o  # Optional - only if API requires authentication
+HIVE_TIMEOUT=30
 ```
 
 ## Usage
@@ -43,13 +43,13 @@ GENIE_AGENTS_TIMEOUT=30
 ### Command Line
 ```bash
 # Start the tool
-uvx automagik-tools tool genie-agents
+uvx automagik-tools tool automagik-hive
 
 # With specific transport
-uvx automagik-tools tool genie-agents --transport sse
+uvx automagik-tools tool automagik-hive --transport sse
 
 # Generate Claude Desktop config
-uvx automagik-tools mcp-config genie-agents
+uvx automagik-tools mcp-config automagik-hive
 ```
 
 ### MCP Integration
@@ -57,9 +57,9 @@ Add to your Claude Desktop config:
 ```json
 {
   "mcpServers": {
-    "genie-agents": {
+    "automagik-hive": {
       "command": "uvx",
-      "args": ["automagik-tools", "tool", "genie-agents", "--transport", "stdio"]
+      "args": ["automagik-tools", "tool", "automagik-hive", "--transport", "stdio"]
     }
   }
 }
@@ -67,8 +67,8 @@ Add to your Claude Desktop config:
 
 ## Available Functions
 
-### 🎮 Playground Status
-- `check_playground_status()` - Check if the playground is running and healthy
+### 🎮 Hive Status
+- `check_playground_status()` - Check if the hive is running and healthy
 
 ### 🤖 Agent Operations
 - `list_available_agents()` - See all agents you can talk to
@@ -169,7 +169,7 @@ result = await quick_run(
 ## Error Handling
 
 The tool includes comprehensive error handling:
-- Connection errors to the playground
+- Connection errors to the hive
 - Invalid agent, team, or workflow IDs
 - Session not found errors
 - Invalid parameters
@@ -182,10 +182,10 @@ All errors are properly formatted and returned as MCP error responses with helpf
 ### Testing
 ```bash
 # Run tests
-uv run pytest tests/tools/test_genie_agents.py -v
+uv run pytest tests/tools/test_automagik_hive.py -v
 
 # Run with coverage
-uv run pytest tests/tools/test_genie_agents.py --cov=automagik_tools.tools.genie_agents
+uv run pytest tests/tools/test_automagik_hive.py --cov=automagik_tools.tools.automagik_hive
 ```
 
 ### Local Development
@@ -194,12 +194,12 @@ uv run pytest tests/tools/test_genie_agents.py --cov=automagik_tools.tools.genie
 uv pip install -e .
 
 # Run directly
-uv run python -m automagik_tools.tools.genie_agents
+uv run python -m automagik_tools.tools.automagik_hive
 ```
 
 ## API Documentation
 
-This tool provides access to the Genie Agents Playground API endpoints. All playground-related endpoints are included with user-friendly function names and descriptions.
+This tool provides access to the Automagik Hive API endpoints. All hive-related endpoints are included with user-friendly function names and descriptions.
 
 ## License
 

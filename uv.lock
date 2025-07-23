@@ -187,7 +187,7 @@ wheels = [
 
 [[package]]
 name = "automagik-tools"
-version = "0.8.14"
+version = "0.8.16"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -240,6 +240,10 @@ automagik-enhanced = [
     { name = "openai" },
     { name = "python-dotenv" },
 ]
+automagik-hive = [
+    { name = "httpx" },
+    { name = "python-dotenv" },
+]
 dev = [
     { name = "black" },
     { name = "mypy" },
@@ -267,10 +271,6 @@ genie = [
     { name = "python-dotenv" },
     { name = "sqlalchemy" },
 ]
-genie-agents = [
-    { name = "httpx" },
-    { name = "python-dotenv" },
-]
 github = [
     { name = "pygithub" },
     { name = "python-dotenv" },
@@ -293,7 +293,7 @@ requires-dist = [
     { name = "agno", marker = "extra == 'automagik'", specifier = ">=0.1.0" },
     { name = "agno", marker = "extra == 'automagik-enhanced'", specifier = ">=0.1.0" },
     { name = "agno", marker = "extra == 'genie'", specifier = ">=1.5.9" },
-    { name = "automagik-tools", extras = ["evolution-api", "automagik", "automagik-enhanced", "ask", "genie-agents", "discord", "notion", "github"], marker = "extra == 'all'" },
+    { name = "automagik-tools", extras = ["evolution-api", "automagik", "automagik-enhanced", "ask", "automagik-hive", "discord", "notion", "github"], marker = "extra == 'all'" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "build", specifier = ">=1.2.2.post1" },
     { name = "discord-py", marker = "extra == 'discord'", specifier = ">=2.3.0" },
@@ -305,8 +305,8 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'ask'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'automagik'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'automagik-enhanced'", specifier = ">=0.28.1" },
+    { name = "httpx", marker = "extra == 'automagik-hive'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'evolution-api'", specifier = ">=0.28.1" },
-    { name = "httpx", marker = "extra == 'genie-agents'", specifier = ">=0.28.1" },
     { name = "importlib-metadata", specifier = ">=6.0.0" },
     { name = "markdown", marker = "extra == 'automagik-enhanced'", specifier = ">=3.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -328,11 +328,11 @@ requires-dist = [
     { name = "python-dotenv", marker = "extra == 'ask'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'automagik'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'automagik-enhanced'", specifier = ">=1.1.0" },
+    { name = "python-dotenv", marker = "extra == 'automagik-hive'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'discord'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'evolution-api'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'gemini-assistant'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'genie'", specifier = ">=1.1.0" },
-    { name = "python-dotenv", marker = "extra == 'genie-agents'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'github'", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'notion'", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.1" },
@@ -345,7 +345,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.24.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
-provides-extras = ["evolution-api", "automagik", "automagik-enhanced", "ask", "genie", "gemini-assistant", "genie-agents", "discord", "notion", "github", "dev", "all"]
+provides-extras = ["evolution-api", "automagik", "automagik-enhanced", "ask", "genie", "gemini-assistant", "automagik-hive", "discord", "notion", "github", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -591,7 +591,7 @@ version = "3.22.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
-    { name = "docstring-parser", marker = "python_full_version < '4.0'" },
+    { name = "docstring-parser", marker = "python_full_version < '4'" },
     { name = "rich" },
     { name = "rich-rst" },
 ]

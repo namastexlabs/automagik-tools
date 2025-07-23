@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.8.15"
+version = "0.8.16"
 description = "A monorepo package for MCP tools with dynamic loading capabilities - featuring Evolution API v2 WhatsApp integration"
 authors = [
     {name = "Felipe Rosa", email = "felipe@namastex.ai"},
@@ -88,7 +88,7 @@ gemini-assistant = [
     "python-dotenv>=1.1.0",
 ]
 
-genie-agents = [
+automagik-hive = [
     "httpx>=0.28.1",
     "python-dotenv>=1.1.0",
 ]
@@ -119,7 +119,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,genie-agents,discord,notion,github]",
+    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,automagik-hive,discord,notion,github]",
 ]
 
 [project.urls]

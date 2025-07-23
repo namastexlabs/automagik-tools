@@ -7,13 +7,13 @@ import httpx
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from .config import GenieAgentsConfig
+from .config import AutomagikHiveConfig
 
 
-class GenieAgentsClient:
-    """Client for interacting with the Genie Agents API."""
+class AutomagikHiveClient:
+    """Client for interacting with the Automagik Hive API."""
     
-    def __init__(self, config: GenieAgentsConfig):
+    def __init__(self, config: AutomagikHiveConfig):
         self.config = config
         headers = {}
         if config.api_key:
@@ -32,13 +32,13 @@ class GenieAgentsClient:
         await self.client.aclose()
     
     async def request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
-        """Make a request to the Genie Agents API."""
+        """Make a request to the Automagik Hive API."""
         response = await self.client.request(method, endpoint, **kwargs)
         response.raise_for_status()
         return response.json()
     
     async def request_multipart(self, method: str, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Make a multipart form request to the Genie Agents API."""
+        """Make a multipart form request to the Automagik Hive API."""
         files = {key: (None, str(value)) for key, value in data.items() if value is not None}
         response = await self.client.request(method, endpoint, files=files)
         response.raise_for_status()
@@ -58,7 +58,7 @@ class GenieAgentsClient:
             }
     
     async def request_form_urlencoded(self, method: str, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Make a form-urlencoded request to the Genie Agents API."""
+        """Make a form-urlencoded request to the Automagik Hive API."""
         # Filter out None values and convert to strings
         form_data = {key: str(value) for key, value in data.items() if value is not None}
         response = await self.client.request(method, endpoint, data=form_data)
@@ -79,25 +79,25 @@ class GenieAgentsClient:
             }
 
 
-def create_server(config: GenieAgentsConfig = None) -> FastMCP:
-    """Create and configure the Genie Agents MCP server."""
+def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
+    """Create and configure the Automagik Hive MCP server."""
     if config is None:
-        config = GenieAgentsConfig()
-    mcp = FastMCP("Genie Agents")
+        config = AutomagikHiveConfig()
+    mcp = FastMCP("Automagik Hive")
     
     # 🎮 Playground Status
     @mcp.tool()
     async def check_playground_status(app_id: Optional[str] = None) -> Dict[str, Any]:
         """Check the current status of the playground environment. Optionally specify an app ID to check a specific application."""
         params = {"app_id": app_id} if app_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", "/playground/status", params=params)
     
     # 🤖 Agent Operations
     @mcp.tool()
     async def list_available_agents() -> List[Dict[str, Any]]:
         """List all available agents in the playground that you can interact with."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", "/playground/agents")
     
     @mcp.tool()
@@ -119,7 +119,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
         if session_id:
             data["session_id"] = session_id
         
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request_multipart("POST", f"/playground/agents/{agent_id}/runs", data)
     
     @mcp.tool()
@@ -134,7 +134,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
             "tools": message,
             "stream": "false"
         }
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request_form_urlencoded("POST", f"/playground/agents/{agent_id}/runs/{run_id}/continue", data)
     
     @mcp.tool()
@@ -144,7 +144,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> List[Dict[str, Any]]:
         """View all your conversation sessions with a specific agent."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/agents/{agent_id}/sessions", params=params)
     
     @mcp.tool()
@@ -155,7 +155,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Get details of a specific conversation session with an agent."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/agents/{agent_id}/sessions/{session_id}", params=params)
     
     @mcp.tool()
@@ -166,7 +166,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Delete a conversation session with an agent. This cannot be undone."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("DELETE", f"/playground/agents/{agent_id}/sessions/{session_id}", params=params)
     
     @mcp.tool()
@@ -177,7 +177,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Give a custom name to your conversation session with an agent for easier identification."""
         data = {"name": new_name}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("POST", f"/playground/agents/{agent_id}/sessions/{session_id}/rename", json=data)
     
     @mcp.tool()
@@ -187,20 +187,20 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """View what an agent remembers about your interactions and conversations."""
         params = {"user_id": user_id}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/agents/{agent_id}/memories", params=params)
     
     # 🔄 Workflow Operations
     @mcp.tool()
     async def list_available_workflows() -> List[Dict[str, Any]]:
         """List all available workflows in the playground that you can execute."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", "/playground/workflows")
     
     @mcp.tool()
     async def get_workflow_details(workflow_id: str) -> Dict[str, Any]:
         """Get detailed information about a specific workflow including its steps and capabilities."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/workflows/{workflow_id}")
     
     @mcp.tool()
@@ -213,7 +213,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
         data = {"input": input_data}
         if user_id:
             data["user_id"] = user_id
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("POST", f"/playground/workflows/{workflow_id}/runs", json=data)
     
     @mcp.tool()
@@ -223,7 +223,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> List[Dict[str, Any]]:
         """View all your execution sessions with a specific workflow."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/workflows/{workflow_id}/sessions", params=params)
     
     @mcp.tool()
@@ -234,7 +234,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Get detailed results and logs from a specific workflow execution."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/workflows/{workflow_id}/sessions/{session_id}", params=params)
     
     @mcp.tool()
@@ -243,7 +243,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
         session_id: str
     ) -> Dict[str, Any]:
         """Delete a workflow execution session. This cannot be undone."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("DELETE", f"/playground/workflows/{workflow_id}/sessions/{session_id}")
     
     @mcp.tool()
@@ -254,20 +254,20 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Give a custom name to your workflow execution session for easier identification."""
         data = {"name": new_name}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("POST", f"/playground/workflows/{workflow_id}/sessions/{session_id}/rename", json=data)
     
     # 👥 Team Operations
     @mcp.tool()
     async def list_available_teams() -> Dict[str, Any]:
         """List all available agent teams in the playground that you can collaborate with."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", "/playground/teams")
     
     @mcp.tool()
     async def get_team_details(team_id: str) -> Dict[str, Any]:
         """Get detailed information about a specific team including its members and capabilities."""
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/teams/{team_id}")
     
     @mcp.tool()
@@ -286,7 +286,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
         if user_id:
             data["user_id"] = user_id
         
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request_multipart("POST", f"/playground/teams/{team_id}/runs", data)
     
     @mcp.tool()
@@ -296,7 +296,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> List[Dict[str, Any]]:
         """View all your collaboration sessions with a specific team."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/teams/{team_id}/sessions", params=params)
     
     @mcp.tool()
@@ -307,7 +307,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Get detailed results and communication logs from a specific team collaboration session."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/teams/{team_id}/sessions/{session_id}", params=params)
     
     @mcp.tool()
@@ -318,7 +318,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Delete a team collaboration session. This cannot be undone."""
         params = {"user_id": user_id} if user_id else {}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("DELETE", f"/playground/teams/{team_id}/sessions/{session_id}", params=params)
     
     @mcp.tool()
@@ -329,7 +329,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Give a custom name to your team collaboration session for easier identification."""
         data = {"name": new_name}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("POST", f"/playground/teams/{team_id}/sessions/{session_id}/rename", json=data)
     
     @mcp.tool()
@@ -339,7 +339,7 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """View what a team remembers about your collaborations and shared experiences."""
         params = {"user_id": user_id}
-        async with GenieAgentsClient(config) as client:
+        async with AutomagikHiveClient(config) as client:
             return await client.request("GET", f"/playground/team/{team_id}/memories", params=params)
     
     # 🚀 Quick Actions - NOTE: This endpoint doesn't exist in the API, removing it
@@ -349,13 +349,13 @@ def create_server(config: GenieAgentsConfig = None) -> FastMCP:
 
 
 def get_metadata() -> Dict[str, Any]:
-    """Get metadata about the Genie Agents tool."""
+    """Get metadata about the Automagik Hive tool."""
     return {
-        "name": "genie_agents",
-        "description": "Comprehensive tool for testing all Genie Agents API capabilities",
+        "name": "automagik_hive",
+        "description": "Comprehensive tool for testing all Automagik Hive API capabilities",
         "version": "1.0.0",
         "author": "Automagik Tools",
-        "tags": ["agents", "ai", "monitoring", "playground", "api"],
+        "tags": ["agents", "ai", "monitoring", "playground", "api", "hive"],
         "capabilities": [
             "Agent management and conversations",
             "Workflow execution",
@@ -367,5 +367,5 @@ def get_metadata() -> Dict[str, Any]:
 
 
 def get_config_class():
-    """Get the configuration class for the Genie Agents tool."""
-    return GenieAgentsConfig
+    """Get the configuration class for the Automagik Hive tool."""
+    return AutomagikHiveConfig
