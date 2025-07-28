@@ -1,11 +1,17 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from typing import Optional
 
 
-class AutomagikHiveConfig(BaseModel):
+class AutomagikHiveConfig(BaseSettings):
     """Configuration for Automagik Hive API tool."""
     
-    model_config = ConfigDict(env_prefix="HIVE_")
+    model_config = {
+        "env_prefix": "HIVE_",
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore"
+    }
     
     api_base_url: str = Field(
         default="http://localhost:8886",
