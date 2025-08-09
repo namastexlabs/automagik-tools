@@ -43,6 +43,10 @@ AUTOMAGIK_TOOLS_HOST ?= 127.0.0.1
 AUTOMAGIK_TOOLS_SSE_PORT ?= 8884
 AUTOMAGIK_TOOLS_HTTP_PORT ?= 8885
 
+# Simplified aliases for command-line use
+HOST ?= $(AUTOMAGIK_TOOLS_HOST)
+PORT ?= $(AUTOMAGIK_TOOLS_SSE_PORT)
+
 # ===========================================
 # 🛠️ Utility Functions
 # ===========================================
@@ -667,11 +671,11 @@ serve-dual: ## 🌐 Serve all tools on dual transports (SSE:8884 + HTTP:8885)
 .PHONY: http-start http-stop http-restart http-status http-logs http-dev http-network
 http-start: ## 🌐 Start HTTP development server (HOST=0.0.0.0 PORT=8000 TOOLS=all)
 	$(call print_status,Starting HTTP development server...)
-	@./scripts/start_http_server.sh $(or $(HOST),0.0.0.0) $(or $(PORT),8000) $(or $(TOOLS),all)
+	@./scripts/deploy_http_dev.sh start $(or $(HOST),0.0.0.0) $(or $(PORT),8000) $(or $(TOOLS),all)
 
 http-stop: ## 🛑 Stop HTTP development server (PORT=8000)
 	$(call print_status,Stopping HTTP development server...)
-	@./scripts/stop_http_server.sh $(or $(PORT),8000)
+	@./scripts/deploy_http_dev.sh stop $(or $(PORT),8000)
 
 http-restart: ## 🔄 Restart HTTP development server
 	$(call print_status,Restarting HTTP development server...)
