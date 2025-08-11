@@ -60,6 +60,17 @@
       "env": {
         "API_KEY": "your-api-key-here"
       }
+    },
+    "omni": {
+      "command": "uvx",
+      "args": ["automagik-tools", "tool", "omni"],
+      "env": {
+        "OMNI_API_KEY": "namastex888",
+        "OMNI_BASE_URL": "http://localhost:8882",
+        "OMNI_DEFAULT_INSTANCE": "teste",
+        "OMNI_TIMEOUT": "30",
+        "OMNI_MAX_RETRIES": "3"
+      }
     }
   }
 }
