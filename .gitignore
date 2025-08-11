@@ -212,4 +212,4 @@ ask_master_memory.db
 
 # Temporary files
 *.pid
-nohup.out
+nohup.out*.whl
