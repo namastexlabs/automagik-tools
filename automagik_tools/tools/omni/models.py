@@ -97,38 +97,50 @@ class QRCodeResponse(BaseModel):
 # Message Models
 class SendTextRequest(BaseModel):
     """Text message request"""
-    phone: str = Field(..., description="Phone number with country code")
-    message: str = Field(..., description="Message text")
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
+    text: str = Field(..., description="Message text", alias="message") 
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = Field(None, description="Delay in milliseconds")
+    
+    class Config:
+        populate_by_name = True
 
 
 class SendMediaRequest(BaseModel):
     """Media message request"""
-    phone: str
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
     media_url: str = Field(..., description="URL of the media file")
     media_type: Literal["image", "video", "document"] = "image"
     caption: Optional[str] = None
     filename: Optional[str] = None
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = None
+    
+    class Config:
+        populate_by_name = True
 
 
 class SendAudioRequest(BaseModel):
     """Audio message request"""
-    phone: str
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
     audio_url: str = Field(..., description="URL of the audio file")
     ptt: bool = Field(True, description="Send as voice note")
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = None
+    
+    class Config:
+        populate_by_name = True
 
 
 class SendStickerRequest(BaseModel):
     """Sticker message request"""
-    phone: str
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
     sticker_url: str = Field(..., description="URL of the sticker file")
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = None
+    
+    class Config:
+        populate_by_name = True
 
 
 class ContactInfo(BaseModel):
@@ -142,17 +154,23 @@ class ContactInfo(BaseModel):
 
 class SendContactRequest(BaseModel):
     """Contact message request"""
-    phone: str
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
     contacts: List[ContactInfo]
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = None
+    
+    class Config:
+        populate_by_name = True
 
 
 class SendReactionRequest(BaseModel):
     """Reaction message request"""
-    phone: str
+    phone_number: str = Field(..., description="Phone number with country code", alias="phone")
     message_id: str = Field(..., description="ID of message to react to")
     emoji: str = Field(..., description="Emoji reaction")
+    
+    class Config:
+        populate_by_name = True
 
 
 class MessageResponse(BaseModel):

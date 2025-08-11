@@ -259,8 +259,8 @@ async def send_message(
             if not phone or not message:
                 return json.dumps({"error": "phone and message required for text messages"})
             request = SendTextRequest(
-                phone=phone,
-                message=message,
+                phone_number=phone,
+                text=message,
                 quoted_message_id=quoted_message_id,
                 delay=delay
             )
@@ -270,7 +270,7 @@ async def send_message(
             if not phone or not media_url:
                 return json.dumps({"error": "phone and media_url required for media messages"})
             request = SendMediaRequest(
-                phone=phone,
+                phone_number=phone,
                 media_url=media_url,
                 media_type=media_type,
                 caption=caption,
@@ -283,7 +283,7 @@ async def send_message(
             if not phone or not audio_url:
                 return json.dumps({"error": "phone and audio_url required for audio messages"})
             request = SendAudioRequest(
-                phone=phone,
+                phone_number=phone,
                 audio_url=audio_url,
                 quoted_message_id=quoted_message_id,
                 delay=delay
@@ -294,7 +294,7 @@ async def send_message(
             if not phone or not sticker_url:
                 return json.dumps({"error": "phone and sticker_url required for sticker messages"})
             request = SendStickerRequest(
-                phone=phone,
+                phone_number=phone,
                 sticker_url=sticker_url,
                 quoted_message_id=quoted_message_id,
                 delay=delay
@@ -306,7 +306,7 @@ async def send_message(
                 return json.dumps({"error": "phone and contacts required for contact messages"})
             contact_objs = [ContactInfo(**c) for c in contacts]
             request = SendContactRequest(
-                phone=phone,
+                phone_number=phone,
                 contacts=contact_objs,
                 quoted_message_id=quoted_message_id,
                 delay=delay
@@ -317,7 +317,7 @@ async def send_message(
             if not phone or not message_id or not emoji:
                 return json.dumps({"error": "phone, message_id and emoji required for reactions"})
             request = SendReactionRequest(
-                phone=phone,
+                phone_number=phone,
                 message_id=message_id,
                 emoji=emoji
             )
