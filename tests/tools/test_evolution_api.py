@@ -143,7 +143,7 @@ class TestEvolutionAPIResources:
 
         # Check for specific resources
         resource_uris = list(resources.keys())
-        expected_uris = ["evolution://instances", "evolution://config"]
+        expected_uris = ["evolution://status", "evolution://config"]
 
         for expected_uri in expected_uris:
             assert any(expected_uri in uri for uri in resource_uris)
@@ -164,7 +164,7 @@ class TestEvolutionAPIPrompts:
 
         # Check for specific prompts
         prompt_names = list(prompts.keys())
-        expected_prompts = ["whatsapp_message_template", "instance_setup_guide"]
+        expected_prompts = ["whatsapp_message_template", "evolution_api_setup_guide"]
 
         for expected_prompt in expected_prompts:
             assert expected_prompt in prompt_names

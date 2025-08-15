@@ -245,3 +245,40 @@ class EvolutionAPIClient:
             f"/chat/sendPresence/{instance}",
             data
         )
+    
+    async def create_instance(
+        self,
+        instance_name: str,
+        token: Optional[str] = None,
+        webhook: Optional[str] = None,
+        webhookByEvents: bool = False,
+        webhookBase64: bool = True,
+        events: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Create a new Evolution API instance"""
+        data = {
+            "instanceName": instance_name,
+            "token": token or "",
+            "qrcode": True,
+            "webhook": webhook or "",
+            "webhookByEvents": webhookByEvents,
+            "webhookBase64": webhookBase64,
+            "events": events or []
+        }
+        
+        return await self._make_request(
+            "POST",
+            f"/instance/create",
+            data
+        )
+    
+    async def get_instance_info(
+        self,
+        instance_name: str
+    ) -> Dict[str, Any]:
+        """Get information about an Evolution API instance"""
+        return await self._make_request(
+            "GET",
+            f"/instance/fetchInstances/{instance_name}",
+            None
+        )

@@ -13,7 +13,7 @@ client: Optional[EvolutionAPIClient] = None
 
 # Create FastMCP instance
 mcp = FastMCP(
-    "Evolution API",
+    "Evolution API Tool",
     instructions="""
 Evolution API - Complete WhatsApp messaging suite for Evolution API v2
 
@@ -404,48 +404,284 @@ async def send_presence(
             "number": number
         }
 
-@mcp.resource("evolution://config/{config_type}")
-def get_config_info(config_type: str) -> str:
+@mcp.tool()
+async def create_instance(
+    instance_name: str,
+    token: Optional[str] = None,
+    webhook: Optional[str] = None,
+    webhookByEvents: bool = False,
+    webhookBase64: bool = True,
+    events: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Create a new Evolution API instance
+    
+    Args:
+        instance_name: Name for the new instance
+        token: Optional authentication token for the instance
+        webhook: Optional webhook URL for receiving events
+        webhookByEvents: Whether to send events to webhook
+        webhookBase64: Whether to encode webhook data in base64
+        events: List of events to subscribe to
+    
+    Returns:
+        Dictionary with instance creation status and details
+    """
+    if not client:
+        return {"error": "Evolution API client not configured"}
+    
+    try:
+        result = await client.create_instance(
+            instance_name, token, webhook, webhookByEvents, webhookBase64, events
+        )
+        
+        return {
+            "status": "success",
+            "result": result,
+            "instance_name": instance_name,
+            "webhook_configured": bool(webhook)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "instance_name": instance_name
+        }
+
+@mcp.tool()
+async def get_instance_info(
+    instance_name: str
+) -> Dict[str, Any]:
+    """
+    Get information about an Evolution API instance
+    
+    Args:
+        instance_name: Name of the instance to get info for
+    
+    Returns:
+        Dictionary with instance information and status
+    """
+    if not client:
+        return {"error": "Evolution API client not configured"}
+    
+    try:
+        result = await client.get_instance_info(instance_name)
+        
+        return {
+            "status": "success",
+            "result": result,
+            "instance_name": instance_name
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "instance_name": instance_name
+        }
+
+@mcp.resource("evolution://config")
+def get_config_info() -> str:
     """Get Evolution API configuration information"""
     if not config:
-        return "Evolution API not configured"
+        return "Evolution API not configured - missing environment variables"
     
-    if config_type == "general":
-        return f"""Evolution API Configuration:
+    return f"""Evolution API Configuration:
 - Base URL: {config.base_url}
 - Instance: {config.instance}
 - Timeout: {config.timeout}s
 - Max Retries: {config.max_retries}
 - Fixed Recipient: {'Yes' if config.fixed_recipient else 'No'}
-"""
-    elif config_type == "connection":
-        return f"""Connection Settings:
+- API Key: {'Configured' if config.api_key else 'Not configured'}
+
+Connection Settings:
 - API URL: {config.base_url}
 - Timeout: {config.timeout} seconds
 - Max Retries: {config.max_retries}
 - Authentication: API Key configured
-"""
-    elif config_type == "security":
-        return f"""Security Settings:
+
+Security Settings:
 - Fixed Recipient Mode: {'Enabled' if config.fixed_recipient else 'Disabled'}
 - Target Number: {config.fixed_recipient if config.fixed_recipient else 'Dynamic'}
-- API Key: {'Configured' if config.api_key else 'Not configured'}
 """
-    else:
-        return "Invalid config type. Use: general, connection, or security"
 
-@mcp.resource("evolution://instances/{instance_id}")
-def get_instance_info(instance_id: str) -> str:
+@mcp.resource("evolution://status")
+def get_instance_info_resource() -> str:
     """Get Evolution API instance information"""
     if not config:
-        return "Evolution API not configured"
+        return "Evolution API not configured - missing environment variables"
     
-    return f"""Evolution API Instance: {instance_id}
+    return f"""Evolution API Instance Status:
 - Base URL: {config.base_url}
 - Current Instance: {config.instance}
-- Status: {'Current' if instance_id == config.instance else 'Other'}
-- Available Tools: 7 messaging tools
+- Available Tools: 9 messaging tools
 - Security: {'Fixed recipient' if config.fixed_recipient else 'Dynamic recipient'}
+
+Available messaging functions:
+- send_text_message: Send text messages with typing indicators
+- send_media: Send images, videos, documents with captions
+- send_audio: Send audio messages and voice notes
+- send_reaction: Send emoji reactions to messages
+- send_location: Send location coordinates with address
+- send_contact: Send contact information
+- send_presence: Send typing/recording presence indicators
+- create_instance: Create new Evolution API instances
+- get_instance_info: Get instance information and status
+"""
+
+@mcp.prompt()
+def whatsapp_message_template(
+    message_type: str = "text",
+    recipient: str = "",
+    urgency: str = "normal"
+) -> str:
+    """
+    Generate a WhatsApp message template for Evolution API
+    
+    Args:
+        message_type: Type of message (text, media, audio, contact, location)
+        recipient: Recipient identifier or description
+        urgency: Message urgency level (low, normal, high)
+    
+    Returns:
+        Formatted message template
+    """
+    templates = {
+        "text": f"""📱 WhatsApp Text Message Template
+To: {recipient or '[recipient]'}
+Priority: {urgency}
+
+Message: [Your message here]
+
+Example:
+"Hello! This is a test message from Evolution API. 👋"
+
+Tips:
+- Keep messages concise and clear
+- Use emojis to add personality
+- Consider time zones when sending
+""",
+        "media": f"""📷 WhatsApp Media Message Template
+To: {recipient or '[recipient]'}
+Priority: {urgency}
+
+Media Type: [image/video/document]
+Caption: [Optional caption]
+File: [URL or base64 data]
+
+Example:
+Caption: "Check out this amazing view! 🌅"
+
+Tips:
+- Optimize images for mobile viewing
+- Add descriptive captions
+- Use appropriate file formats
+""",
+        "audio": f"""🎵 WhatsApp Audio Message Template
+To: {recipient or '[recipient]'}
+Priority: {urgency}
+
+Audio Type: Voice message
+Duration: [estimated duration]
+
+Tips:
+- Keep voice messages under 1 minute
+- Speak clearly and at moderate pace
+- Consider background noise
+""",
+        "location": f"""📍 WhatsApp Location Template
+To: {recipient or '[recipient]'}
+Priority: {urgency}
+
+Location: [Place name]
+Address: [Full address]
+Coordinates: [Lat, Lng]
+
+Example:
+Name: "Coffee Shop Downtown"
+Address: "123 Main St, City"
+
+Tips:
+- Include landmark references
+- Verify coordinates accuracy
+""",
+        "contact": f"""👤 WhatsApp Contact Template
+To: {recipient or '[recipient]'}
+Priority: {urgency}
+
+Contact Name: [Full name]
+Phone: [Phone number with country code]
+Organization: [Company/Organization]
+Email: [Email address]
+
+Tips:
+- Use complete contact information
+- Verify phone number format
+- Include professional context
+"""
+    }
+    
+    return templates.get(message_type, templates["text"])
+
+@mcp.prompt()
+def evolution_api_setup_guide(
+    instance_name: str = "my-whatsapp",
+    deployment_type: str = "local"
+) -> str:
+    """
+    Generate setup guide for Evolution API integration
+    
+    Args:
+        instance_name: Name for the Evolution API instance
+        deployment_type: Deployment type (local, cloud, docker)
+    
+    Returns:
+        Step-by-step setup guide
+    """
+    return f"""🚀 Evolution API Setup Guide
+
+Instance: {instance_name}
+Deployment: {deployment_type}
+
+## Step 1: Environment Configuration
+```bash
+export EVOLUTION_API_BASE_URL="http://localhost:18080"
+export EVOLUTION_API_KEY="your-api-key-here"
+export EVOLUTION_API_INSTANCE="{instance_name}"
+export EVOLUTION_API_TIMEOUT="30"
+```
+
+## Step 2: Create Instance
+Use the create_instance tool:
+- Instance Name: {instance_name}
+- Configure webhook (optional)
+- Set authentication token
+
+## Step 3: Connect WhatsApp
+1. Call create_instance
+2. Get QR code from Evolution API
+3. Scan with WhatsApp mobile app
+4. Wait for connection confirmation
+
+## Step 4: Test Messaging
+Use send_text_message tool:
+```
+Instance: {instance_name}
+Number: +1234567890
+Message: "Hello from Evolution API! 👋"
+```
+
+## Security Notes:
+- Keep API keys secure
+- Use EVOLUTION_API_FIXED_RECIPIENT for restricted environments
+- Monitor webhook events for security
+
+## Troubleshooting:
+- Check Evolution API server status
+- Verify network connectivity
+- Confirm WhatsApp connection status
+- Review API key permissions
+
+Ready to start messaging! 📱
 """
 
 def create_server(server_config: Optional[EvolutionAPIConfig] = None):

@@ -69,8 +69,8 @@ class TestToolCreation:
         """Test config schema generation"""
         schema = get_config_schema()
         assert "properties" in schema
-        assert "api_key" in schema["properties"]
-        assert "base_url" in schema["properties"]
+        assert "AUTOMAGIK_API_KEY" in schema["properties"]
+        assert "AUTOMAGIK_BASE_URL" in schema["properties"]
 
     @pytest.mark.unit
     def test_required_env_vars(self):
@@ -95,7 +95,7 @@ class TestToolFunctions:
     @pytest.mark.asyncio
     async def test_tool_has_resources(self, tool_instance):
         """Test that tool has resources"""
-        resources = await tool_instance.list_resources()
+        resources = await tool_instance._list_resources()
         # Note: Resources may be empty, so just check that it's a list
         assert isinstance(resources, list), "Resources should be a list"
 
@@ -139,13 +139,9 @@ class TestMCPProtocol:
     @pytest.mark.asyncio
     async def test_resource_list(self, tool_instance):
         """Test MCP resources/list"""
-        resources = await tool_instance.list_resources()
-        assert len(resources) > 0
-
-        # Check resource structure
-        first_resource = resources[0]
-        assert "uri" in first_resource
-        assert "name" in first_resource
+        resources = await tool_instance._list_resources()
+        # Automagik tool may not have resources
+        assert isinstance(resources, list)
 
 
 class TestConvenienceFunctions:

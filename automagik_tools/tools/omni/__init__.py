@@ -100,7 +100,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.GET:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for get operation"})
+                return json.dumps({"success": False, "error": "instance_name required for get operation"})
             instance = await client.get_instance(instance_name, include_status)
             return json.dumps({
                 "success": True,
@@ -109,7 +109,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.CREATE:
             if not config:
-                return json.dumps({"error": "config required for create operation"})
+                return json.dumps({"success": False, "error": "config required for create operation"})
             instance_config = InstanceConfig(**config)
             instance = await client.create_instance(instance_config)
             return json.dumps({
@@ -120,7 +120,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.UPDATE:
             if not instance_name or not config:
-                return json.dumps({"error": "instance_name and config required for update"})
+                return json.dumps({"success": False, "error": "instance_name and config required for update"})
             instance = await client.update_instance(instance_name, config)
             return json.dumps({
                 "success": True,
@@ -130,7 +130,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.DELETE:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for delete"})
+                return json.dumps({"success": False, "error": "instance_name required for delete"})
             await client.delete_instance(instance_name)
             return json.dumps({
                 "success": True,
@@ -139,7 +139,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.SET_DEFAULT:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for set_default"})
+                return json.dumps({"success": False, "error": "instance_name required for set_default"})
             instance = await client.set_default_instance(instance_name)
             return json.dumps({
                 "success": True,
@@ -149,7 +149,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.STATUS:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for status"})
+                return json.dumps({"success": False, "error": "instance_name required for status"})
             status = await client.get_instance_status(instance_name)
             return json.dumps({
                 "success": True,
@@ -158,7 +158,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.QR:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for QR"})
+                return json.dumps({"success": False, "error": "instance_name required for QR"})
             qr = await client.get_instance_qr(instance_name)
             return json.dumps({
                 "success": True,
@@ -167,7 +167,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.RESTART:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for restart"})
+                return json.dumps({"success": False, "error": "instance_name required for restart"})
             result = await client.restart_instance(instance_name)
             return json.dumps({
                 "success": True,
@@ -177,7 +177,7 @@ async def manage_instances(
             
         elif operation == InstanceOperation.LOGOUT:
             if not instance_name:
-                return json.dumps({"error": "instance_name required for logout"})
+                return json.dumps({"success": False, "error": "instance_name required for logout"})
             result = await client.logout_instance(instance_name)
             return json.dumps({
                 "success": True,
@@ -186,11 +186,11 @@ async def manage_instances(
             }, default=str, indent=2)
             
         else:
-            return json.dumps({"error": f"Unknown operation: {operation}"})
+            return json.dumps({"success": False, "error": f"Unknown operation: {operation}"})
             
     except Exception as e:
         logger.error(f"Instance operation failed: {str(e)}")
-        return json.dumps({"error": str(e)})
+        return json.dumps({"success": False, "error": str(e)})
 
 
 @mcp.tool()
@@ -252,12 +252,12 @@ async def send_message(
         if _config.default_instance:
             instance_name = _config.default_instance
         else:
-            return json.dumps({"error": "No instance_name provided and no default instance configured"})
+            return json.dumps({"success": False, "error": "No instance_name provided and no default instance configured"})
     
     try:
         if message_type == MessageType.TEXT:
             if not phone or not message:
-                return json.dumps({"error": "phone and message required for text messages"})
+                return json.dumps({"success": False, "error": "phone and message required for text messages"})
             request = SendTextRequest(
                 phone_number=phone,
                 text=message,
@@ -268,7 +268,7 @@ async def send_message(
             
         elif message_type == MessageType.MEDIA:
             if not phone or not media_url:
-                return json.dumps({"error": "phone and media_url required for media messages"})
+                return json.dumps({"success": False, "error": "phone and media_url required for media messages"})
             request = SendMediaRequest(
                 phone_number=phone,
                 media_url=media_url,
@@ -281,7 +281,7 @@ async def send_message(
             
         elif message_type == MessageType.AUDIO:
             if not phone or not audio_url:
-                return json.dumps({"error": "phone and audio_url required for audio messages"})
+                return json.dumps({"success": False, "error": "phone and audio_url required for audio messages"})
             request = SendAudioRequest(
                 phone_number=phone,
                 audio_url=audio_url,
@@ -292,7 +292,7 @@ async def send_message(
             
         elif message_type == MessageType.STICKER:
             if not phone or not sticker_url:
-                return json.dumps({"error": "phone and sticker_url required for sticker messages"})
+                return json.dumps({"success": False, "error": "phone and sticker_url required for sticker messages"})
             request = SendStickerRequest(
                 phone_number=phone,
                 sticker_url=sticker_url,
@@ -303,7 +303,7 @@ async def send_message(
             
         elif message_type == MessageType.CONTACT:
             if not phone or not contacts:
-                return json.dumps({"error": "phone and contacts required for contact messages"})
+                return json.dumps({"success": False, "error": "phone and contacts required for contact messages"})
             contact_objs = [ContactInfo(**c) for c in contacts]
             request = SendContactRequest(
                 phone_number=phone,
@@ -315,7 +315,7 @@ async def send_message(
             
         elif message_type == MessageType.REACTION:
             if not phone or not message_id or not emoji:
-                return json.dumps({"error": "phone, message_id and emoji required for reactions"})
+                return json.dumps({"success": False, "error": "phone, message_id and emoji required for reactions"})
             request = SendReactionRequest(
                 phone_number=phone,
                 message_id=message_id,
@@ -324,7 +324,7 @@ async def send_message(
             response = await client.send_reaction(instance_name, request)
             
         else:
-            return json.dumps({"error": f"Unknown message type: {message_type}"})
+            return json.dumps({"success": False, "error": f"Unknown message type: {message_type}"})
         
         return json.dumps({
             "success": response.success,
@@ -336,7 +336,7 @@ async def send_message(
         
     except Exception as e:
         logger.error(f"Send message failed: {str(e)}")
-        return json.dumps({"error": str(e)})
+        return json.dumps({"success": False, "error": str(e)})
 
 
 @mcp.tool()
@@ -418,7 +418,7 @@ async def manage_traces(
             
         elif operation == TraceOperation.GET:
             if not trace_id:
-                return json.dumps({"error": "trace_id required for get operation"})
+                return json.dumps({"success": False, "error": "trace_id required for get operation"})
             trace = await client.get_trace(trace_id)
             return json.dumps({
                 "success": True,
@@ -427,7 +427,7 @@ async def manage_traces(
             
         elif operation == TraceOperation.GET_PAYLOADS:
             if not trace_id:
-                return json.dumps({"error": "trace_id required for get_payloads"})
+                return json.dumps({"success": False, "error": "trace_id required for get_payloads"})
             payloads = await client.get_trace_payloads(trace_id, include_payload)
             return json.dumps({
                 "success": True,
@@ -444,7 +444,7 @@ async def manage_traces(
             
         elif operation == TraceOperation.BY_PHONE:
             if not phone:
-                return json.dumps({"error": "phone required for by_phone operation"})
+                return json.dumps({"success": False, "error": "phone required for by_phone operation"})
             traces = await client.get_traces_by_phone(phone, limit)
             return json.dumps({
                 "success": True,
@@ -463,11 +463,11 @@ async def manage_traces(
             }, default=str, indent=2)
             
         else:
-            return json.dumps({"error": f"Unknown operation: {operation}"})
+            return json.dumps({"success": False, "error": f"Unknown operation: {operation}"})
             
     except Exception as e:
         logger.error(f"Trace operation failed: {str(e)}")
-        return json.dumps({"error": str(e)})
+        return json.dumps({"success": False, "error": str(e)})
 
 
 @mcp.tool()
@@ -506,12 +506,12 @@ async def manage_profiles(
         if _config.default_instance:
             instance_name = _config.default_instance
         else:
-            return json.dumps({"error": "No instance_name provided and no default instance configured"})
+            return json.dumps({"success": False, "error": "No instance_name provided and no default instance configured"})
     
     try:
         if operation == ProfileOperation.FETCH:
             if not user_id and not phone_number:
-                return json.dumps({"error": "Either user_id or phone_number required for fetch"})
+                return json.dumps({"success": False, "error": "Either user_id or phone_number required for fetch"})
             request = FetchProfileRequest(
                 user_id=user_id,
                 phone_number=phone_number
@@ -525,7 +525,7 @@ async def manage_profiles(
             
         elif operation == ProfileOperation.UPDATE_PICTURE:
             if not picture_url:
-                return json.dumps({"error": "picture_url required for update_picture"})
+                return json.dumps({"success": False, "error": "picture_url required for update_picture"})
             request = UpdateProfilePictureRequest(picture_url=picture_url)
             response = await client.update_profile_picture(instance_name, request)
             return json.dumps({
@@ -536,11 +536,11 @@ async def manage_profiles(
             }, default=str, indent=2)
             
         else:
-            return json.dumps({"error": f"Unknown operation: {operation}"})
+            return json.dumps({"success": False, "error": f"Unknown operation: {operation}"})
             
     except Exception as e:
         logger.error(f"Profile operation failed: {str(e)}")
-        return json.dumps({"error": str(e)})
+        return json.dumps({"success": False, "error": str(e)})
 
 
 def get_metadata() -> Dict[str, Any]:

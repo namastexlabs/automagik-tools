@@ -67,13 +67,21 @@ class TestOmniConfig:
         assert config.default_instance == "test-instance"
         assert config.timeout == 60
     
-    def test_config_validation(self):
+    def test_config_validation(self, monkeypatch):
         """Test configuration validation"""
+        # Clear env vars
+        monkeypatch.delenv("OMNI_API_KEY", raising=False)
+        monkeypatch.delenv("OMNI_BASE_URL", raising=False)
+        
+        # Test missing API key
         config = OmniConfig()
         with pytest.raises(ValueError, match="OMNI_API_KEY is required"):
             config.validate_for_use()
         
-        config = OmniConfig(api_key="test-key", base_url="")
+        # Test missing base URL - need to set api_key first
+        monkeypatch.setenv("OMNI_API_KEY", "test-key")
+        monkeypatch.setenv("OMNI_BASE_URL", "")  # Empty string
+        config = OmniConfig()
         with pytest.raises(ValueError, match="OMNI_BASE_URL is required"):
             config.validate_for_use()
 
@@ -102,11 +110,13 @@ class TestOmniServer:
         assert server.name == "OMNI Messaging"
         assert hasattr(server, 'tool')
     
-    def test_server_has_tools(self, server):
+    async def test_server_has_tools(self, server):
         """Test server has expected tools registered"""
         # FastMCP registers tools differently, let's check they exist
-        assert hasattr(server, '_tools')
+        assert hasattr(server, 'get_tools')
         # The tools should be registered via the @mcp.tool() decorator
+        tools = await server.get_tools()
+        assert len(tools) > 0
 
 
 class TestManageInstances:
@@ -124,6 +134,7 @@ class TestManageInstances:
     async def test_list_instances(self, mock_client):
         """Test listing instances"""
         from automagik_tools.tools.omni import manage_instances, _ensure_client
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         # Mock the response
         mock_instance = Mock()
@@ -136,7 +147,7 @@ class TestManageInstances:
         mock_client.list_instances.return_value = [mock_instance]
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_instances(operation=InstanceOperation.LIST)
+            result = await manage_instances_fn(operation=InstanceOperation.LIST)
             result_data = json.loads(result)
             
             assert result_data["success"] is True
@@ -148,6 +159,7 @@ class TestManageInstances:
     async def test_create_instance(self, mock_client):
         """Test creating an instance"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         mock_instance = Mock()
         mock_instance.name = "new-instance"
@@ -164,7 +176,7 @@ class TestManageInstances:
         }
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_instances(
+            result = await manage_instances_fn(
                 operation=InstanceOperation.CREATE,
                 config=config
             )
@@ -178,6 +190,7 @@ class TestManageInstances:
     async def test_get_instance_qr(self, mock_client):
         """Test getting instance QR code"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         mock_qr = Mock()
         mock_qr.model_dump.return_value = {
@@ -188,7 +201,7 @@ class TestManageInstances:
         mock_client.get_instance_qr.return_value = mock_qr
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_instances(
+            result = await manage_instances_fn(
                 operation=InstanceOperation.QR,
                 instance_name="test-instance"
             )
@@ -202,9 +215,10 @@ class TestManageInstances:
     async def test_instance_operation_error_handling(self, mock_client):
         """Test error handling in instance operations"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         # Test missing instance_name for operations that require it
-        result = await manage_instances(operation=InstanceOperation.GET)
+        result = await manage_instances_fn(operation=InstanceOperation.GET)
         result_data = json.loads(result)
         assert "error" in result_data
         assert "instance_name required" in result_data["error"]
@@ -213,7 +227,7 @@ class TestManageInstances:
         mock_client.get_instance.side_effect = Exception("API Error")
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_instances(
+            result = await manage_instances_fn(
                 operation=InstanceOperation.GET,
                 instance_name="test"
             )
@@ -244,6 +258,7 @@ class TestSendMessage:
     async def test_send_text_message(self, mock_client):
         """Test sending text message"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         mock_response = Mock()
         mock_response.success = True
@@ -252,7 +267,7 @@ class TestSendMessage:
         mock_client.send_text.return_value = mock_response
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await send_message(
+            result = await send_message_fn(
                 message_type=MessageType.TEXT,
                 instance_name="test-instance",
                 phone="+1234567890",
@@ -269,6 +284,7 @@ class TestSendMessage:
     async def test_send_media_message(self, mock_client):
         """Test sending media message"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         mock_response = Mock()
         mock_response.success = True
@@ -277,7 +293,7 @@ class TestSendMessage:
         mock_client.send_media.return_value = mock_response
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await send_message(
+            result = await send_message_fn(
                 message_type=MessageType.MEDIA,
                 instance_name="test-instance",
                 phone="+1234567890",
@@ -296,6 +312,7 @@ class TestSendMessage:
     async def test_send_contact_message(self, mock_client):
         """Test sending contact message"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         mock_response = Mock()
         mock_response.success = True
@@ -312,7 +329,7 @@ class TestSendMessage:
         ]
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await send_message(
+            result = await send_message_fn(
                 message_type=MessageType.CONTACT,
                 instance_name="test-instance",
                 phone="+1234567890",
@@ -328,6 +345,7 @@ class TestSendMessage:
     async def test_send_message_with_default_instance(self, mock_client, mock_config):
         """Test sending message with default instance"""
         from automagik_tools.tools.omni import send_message, _config
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         mock_response = Mock()
         mock_response.success = True
@@ -337,7 +355,7 @@ class TestSendMessage:
         
         with patch('automagik_tools.tools.omni._config', mock_config):
             with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-                result = await send_message(
+                result = await send_message_fn(
                     message_type=MessageType.TEXT,
                     phone="+1234567890",
                     message="Using default instance"
@@ -351,9 +369,10 @@ class TestSendMessage:
     async def test_send_message_error_handling(self, mock_client):
         """Test error handling in send_message"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         # Test missing required parameters
-        result = await send_message(
+        result = await send_message_fn(
             message_type=MessageType.TEXT,
             instance_name="test"
         )
@@ -377,6 +396,7 @@ class TestManageTraces:
     async def test_list_traces(self, mock_client):
         """Test listing traces with filters"""
         from automagik_tools.tools.omni import manage_traces
+        manage_traces_fn = manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
         
         mock_trace = Mock()
         mock_trace.model_dump.return_value = {
@@ -389,7 +409,7 @@ class TestManageTraces:
         mock_client.list_traces.return_value = [mock_trace]
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_traces(
+            result = await manage_traces_fn(
                 operation=TraceOperation.LIST,
                 instance_name="test-instance",
                 limit=10
@@ -405,6 +425,7 @@ class TestManageTraces:
     async def test_get_trace_analytics(self, mock_client):
         """Test getting trace analytics"""
         from automagik_tools.tools.omni import manage_traces
+        manage_traces_fn = manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
         
         mock_analytics = Mock()
         mock_analytics.model_dump.return_value = {
@@ -416,7 +437,7 @@ class TestManageTraces:
         mock_client.get_trace_analytics.return_value = mock_analytics
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_traces(
+            result = await manage_traces_fn(
                 operation=TraceOperation.ANALYTICS,
                 start_date="2024-01-01",
                 instance_name="test-instance"
@@ -431,6 +452,7 @@ class TestManageTraces:
     async def test_cleanup_traces(self, mock_client):
         """Test trace cleanup operation"""
         from automagik_tools.tools.omni import manage_traces
+        manage_traces_fn = manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
         
         mock_client.cleanup_traces.return_value = {
             "deleted_count": 50,
@@ -438,7 +460,7 @@ class TestManageTraces:
         }
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_traces(
+            result = await manage_traces_fn(
                 operation=TraceOperation.CLEANUP,
                 days_old=30,
                 dry_run=True
@@ -466,6 +488,7 @@ class TestManageProfiles:
     async def test_fetch_profile(self, mock_client):
         """Test fetching user profile"""
         from automagik_tools.tools.omni import manage_profiles
+        manage_profiles_fn = manage_profiles.fn if hasattr(manage_profiles, "fn") else manage_profiles
         
         mock_client.fetch_profile.return_value = {
             "name": "John Doe",
@@ -475,7 +498,7 @@ class TestManageProfiles:
         }
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_profiles(
+            result = await manage_profiles_fn(
                 operation=ProfileOperation.FETCH,
                 instance_name="test-instance",
                 phone_number="+1234567890"
@@ -490,6 +513,7 @@ class TestManageProfiles:
     async def test_update_profile_picture(self, mock_client):
         """Test updating profile picture"""
         from automagik_tools.tools.omni import manage_profiles
+        manage_profiles_fn = manage_profiles.fn if hasattr(manage_profiles, "fn") else manage_profiles
         
         mock_response = Mock()
         mock_response.success = True
@@ -497,7 +521,7 @@ class TestManageProfiles:
         mock_client.update_profile_picture.return_value = mock_response
         
         with patch('automagik_tools.tools.omni._ensure_client', return_value=mock_client):
-            result = await manage_profiles(
+            result = await manage_profiles_fn(
                 operation=ProfileOperation.UPDATE_PICTURE,
                 instance_name="test-instance",
                 picture_url="https://example.com/new-profile.jpg"
@@ -546,6 +570,7 @@ class TestOmniErrorHandling:
     async def test_missing_config_error(self):
         """Test behavior with missing API key"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         # Clear any existing config
         import automagik_tools.tools.omni as omni_module
@@ -554,12 +579,13 @@ class TestOmniErrorHandling:
         
         # Try to use tool without config
         with pytest.raises(ValueError, match="OMNI_API_KEY is required"):
-            await manage_instances(operation=InstanceOperation.LIST)
+            await manage_instances_fn(operation=InstanceOperation.LIST)
     
     @pytest.mark.asyncio
     async def test_api_connection_error(self):
         """Test handling of API connection errors"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -567,7 +593,7 @@ class TestOmniErrorHandling:
             MockClient.return_value = client
             
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
-                result = await manage_instances(operation=InstanceOperation.LIST)
+                result = await manage_instances_fn(operation=InstanceOperation.LIST)
                 result_data = json.loads(result)
                 
                 assert "error" in result_data
@@ -577,9 +603,10 @@ class TestOmniErrorHandling:
     async def test_invalid_operation(self):
         """Test handling of invalid operations"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         with patch('automagik_tools.tools.omni._ensure_client'):
-            result = await manage_instances(operation="invalid_op")
+            result = await manage_instances_fn(operation="invalid_op")
             result_data = json.loads(result)
             
             assert "error" in result_data
@@ -593,6 +620,7 @@ class TestOmniEdgeCases:
     async def test_empty_instance_list(self):
         """Test handling of empty instance list"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -600,7 +628,7 @@ class TestOmniEdgeCases:
             MockClient.return_value = client
             
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
-                result = await manage_instances(operation=InstanceOperation.LIST)
+                result = await manage_instances_fn(operation=InstanceOperation.LIST)
                 result_data = json.loads(result)
                 
                 assert result_data["success"] is True
@@ -611,6 +639,7 @@ class TestOmniEdgeCases:
     async def test_large_message_payload(self):
         """Test handling of large message payloads"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -624,7 +653,7 @@ class TestOmniEdgeCases:
             large_message = "x" * 10000  # 10KB message
             
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
-                result = await send_message(
+                result = await send_message_fn(
                     message_type=MessageType.TEXT,
                     instance_name="test",
                     phone="+1234567890",
@@ -639,6 +668,7 @@ class TestOmniEdgeCases:
     async def test_special_characters_in_message(self):
         """Test handling of special characters in messages"""
         from automagik_tools.tools.omni import send_message
+        send_message_fn = send_message.fn if hasattr(send_message, "fn") else send_message
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -652,7 +682,7 @@ class TestOmniEdgeCases:
             special_message = "Hello 👋 World! @#$%^&*() \n\t\"quotes\""
             
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
-                result = await send_message(
+                result = await send_message_fn(
                     message_type=MessageType.TEXT,
                     instance_name="test",
                     phone="+1234567890",
@@ -700,10 +730,11 @@ class TestMCPProtocolCompliance:
     async def test_async_tool_execution(self):
         """Test tools execute asynchronously"""
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         import asyncio
         
         # Test that tool functions are coroutines
-        coro = manage_instances(operation=InstanceOperation.LIST)
+        coro = manage_instances_fn(operation=InstanceOperation.LIST)
         assert asyncio.iscoroutine(coro)
         
         # Clean up the coroutine
@@ -723,6 +754,7 @@ class TestOmniPerformance:
         """Test tool response time"""
         import time
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -731,7 +763,7 @@ class TestOmniPerformance:
             
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
                 start = time.time()
-                await manage_instances(operation=InstanceOperation.LIST)
+                await manage_instances_fn(operation=InstanceOperation.LIST)
                 duration = time.time() - start
                 
                 # Should respond quickly for mocked calls
@@ -744,6 +776,7 @@ class TestOmniPerformance:
         import asyncio
         import time
         from automagik_tools.tools.omni import manage_instances
+        manage_instances_fn = manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
         
         with patch('automagik_tools.tools.omni.OmniClient') as MockClient:
             client = AsyncMock()
@@ -753,7 +786,7 @@ class TestOmniPerformance:
             with patch('automagik_tools.tools.omni._ensure_client', return_value=client):
                 # Run multiple operations concurrently
                 tasks = [
-                    manage_instances(operation=InstanceOperation.LIST)
+                    manage_instances_fn(operation=InstanceOperation.LIST)
                     for _ in range(10)
                 ]
                 

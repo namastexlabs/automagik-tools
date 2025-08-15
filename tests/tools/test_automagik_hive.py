@@ -89,7 +89,7 @@ class TestAutomagikHiveClient:
             
         # Check that the client was initialized with auth headers
         args, kwargs = mock_client_class.call_args
-        assert kwargs["headers"]["Authorization"] == "Bearer test-key"
+        assert kwargs["headers"]["x-api-key"] == "test-key"
 
 
 class TestAutomagikHiveServer:

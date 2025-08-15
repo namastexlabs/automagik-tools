@@ -10,7 +10,7 @@ class WaitConfig(BaseSettings):
     """Configuration for Wait Utility MCP Tool"""
 
     max_duration: int = Field(
-        default=3600,  # 1 hour max
+        default=3600,  # 60 minutes max
         description="Maximum wait duration in seconds",
         alias="WAIT_MAX_DURATION",
     )
