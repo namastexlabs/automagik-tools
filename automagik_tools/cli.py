@@ -100,6 +100,7 @@ def create_dynamic_openapi_tool(
 def discover_tools() -> Dict[str, Any]:
     """Discover tools from the tools directory"""
     tools = {}
+    failed_tools = []
 
     # Get the tools directory
     tools_dir = Path(__file__).parent / "tools"
@@ -143,15 +144,25 @@ def discover_tools() -> Dict[str, Any]:
                         "description": metadata.get("description", f"{tool_name} tool"),
                     }
                 except Exception as e:
+                    error_msg = str(e)
+                    # Track failed tools for summary
+                    failed_tools.append((tool_name, error_msg))
+                    
                     # Use stderr for stdio transport to avoid polluting JSON-RPC
                     if os.environ.get("MCP_TRANSPORT") == "stdio":
                         stderr_console.print(
-                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
+                            f"[yellow]Warning: Failed to load {tool_name}: {error_msg}[/yellow]"
                         )
                     else:
-                        console.print(
-                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
-                        )
+                        # Show concise message during discovery
+                        if "No module named" in error_msg:
+                            # Extract the missing module name
+                            missing_module = error_msg.split("'")[1] if "'" in error_msg else "unknown"
+                            console.print(f"[yellow]Warning: Failed to load {tool_name}: Missing dependency '{missing_module}'[/yellow]")
+                        else:
+                            console.print(
+                                f"[yellow]Warning: Failed to load {tool_name}: {error_msg}[/yellow]"
+                            )
     else:
         console.print(f"[red]Tools directory not found: {tools_dir}[/red]")
 

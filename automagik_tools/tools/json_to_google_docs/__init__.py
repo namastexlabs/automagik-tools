@@ -14,8 +14,15 @@ from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from .config import JsonToGoogleDocsConfig
-from .client import GoogleAPIClient
-from .processor import DocumentProcessor
+
+try:
+    from .client import GoogleAPIClient
+    from .processor import DocumentProcessor
+    GOOGLE_API_AVAILABLE = True
+except ImportError:
+    GOOGLE_API_AVAILABLE = False
+    GoogleAPIClient = None
+    DocumentProcessor = None
 
 # Global configuration and client
 config: Optional[JsonToGoogleDocsConfig] = None
@@ -23,19 +30,7 @@ client: Optional[GoogleAPIClient] = None
 processor: Optional[DocumentProcessor] = None
 
 # Create the FastMCP server
-mcp = FastMCP(
-    "JSON to Google Docs",
-    description="""Convert JSON data to DOCX files using Google Docs templates with placeholder substitution and markdown support.
-
-Features:
-📄 JSON to DOCX conversion with template substitution
-🔄 Placeholder replacement with {{key}} syntax  
-📝 Markdown to Word formatting conversion
-☁️ Google Drive integration with sharing capabilities
-📋 Template management and placeholder extraction
-✅ Data validation against templates
-🔐 Service account authentication""",
-)
+mcp = FastMCP("JSON to Google Docs")
 
 @mcp.tool()
 async def convert_json_to_docs(
@@ -348,11 +343,19 @@ def create_server(server_config: Optional[JsonToGoogleDocsConfig] = None):
     # Always create fresh config to pick up environment variables
     config = server_config or JsonToGoogleDocsConfig()
     
+    # Check if Google API is available
+    if not GOOGLE_API_AVAILABLE:
+        print("Warning: Google API dependencies not installed. JSON to Google Docs tool will have limited functionality.")
+        print("         To enable full functionality, install: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client")
+        return mcp
+    
     # Initialize client and processor if we have service account credentials
     if config and config.service_account_json:
         try:
             client = GoogleAPIClient(config)
             processor = DocumentProcessor(config)
+        except ImportError as e:
+            print(f"Warning: Google API dependencies not available: {e}")
         except Exception as e:
             print(f"Warning: Failed to initialize Google API client: {e}")
     else:

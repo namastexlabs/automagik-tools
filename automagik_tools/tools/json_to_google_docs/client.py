@@ -5,11 +5,15 @@ import json
 from typing import Dict, Any, List, Optional
 from io import BytesIO
 
-import google.auth
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
-from googleapiclient.errors import HttpError
+try:
+    import google.auth
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+    from googleapiclient.errors import HttpError
+    GOOGLE_API_AVAILABLE = True
+except ImportError:
+    GOOGLE_API_AVAILABLE = False
 
 from .config import JsonToGoogleDocsConfig
 
@@ -17,7 +21,12 @@ from .config import JsonToGoogleDocsConfig
 class GoogleAPIClient:
     """Client for Google Drive and Docs APIs"""
     
-    def __init__(self, config: JsonToGoogleDocsConfig):
+    def __init__(self, config: 'JsonToGoogleDocsConfig'):
+        if not GOOGLE_API_AVAILABLE:
+            raise ImportError(
+                "Google API dependencies are not installed. "
+                "Please install with: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client"
+            )
         self.config = config
         self.credentials = self._get_credentials()
         self.drive_service = build('drive', 'v3', credentials=self.credentials)
