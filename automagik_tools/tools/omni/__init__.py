@@ -4,7 +4,7 @@ OMNI - Multi-tenant Omnichannel Messaging MCP Tool
 Intelligent MCP interface for managing messaging instances, sending messages,
 tracking traces, and managing profiles across WhatsApp, Slack, Discord and more.
 """
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 import logging
 import json
 from fastmcp import FastMCP
@@ -50,7 +50,7 @@ def _ensure_client() -> OmniClient:
 async def manage_instances(
     operation: InstanceOperation,
     instance_name: Optional[str] = None,
-    config: Optional[Dict[str, Any]] = None,
+    config: Optional[Union[Dict[str, Any], str]] = None,  # Accept both dict and JSON string
     include_status: bool = True,
     skip: int = 0,
     limit: int = 100
@@ -110,6 +110,14 @@ async def manage_instances(
         elif operation == InstanceOperation.CREATE:
             if not config:
                 return json.dumps({"success": False, "error": "config required for create operation"})
+            
+            # Handle both JSON string and dict
+            if isinstance(config, str):
+                try:
+                    config = json.loads(config)
+                except json.JSONDecodeError as e:
+                    return json.dumps({"success": False, "error": f"Invalid JSON in config: {str(e)}"})
+            
             instance_config = InstanceConfig(**config)
             instance = await client.create_instance(instance_config)
             return json.dumps({
@@ -121,6 +129,14 @@ async def manage_instances(
         elif operation == InstanceOperation.UPDATE:
             if not instance_name or not config:
                 return json.dumps({"success": False, "error": "instance_name and config required for update"})
+            
+            # Handle both JSON string and dict
+            if isinstance(config, str):
+                try:
+                    config = json.loads(config)
+                except json.JSONDecodeError as e:
+                    return json.dumps({"success": False, "error": f"Invalid JSON in config: {str(e)}"})
+            
             instance = await client.update_instance(instance_name, config)
             return json.dumps({
                 "success": True,

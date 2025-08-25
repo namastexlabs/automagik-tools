@@ -50,7 +50,9 @@ class ProfileOperation(str, Enum):
 
 # Instance Models
 class InstanceConfig(BaseModel):
-    """Instance configuration model"""
+    """Instance configuration model - supports all channel types with extra fields"""
+    model_config = ConfigDict(extra="allow")  # Allow extra fields for future API updates
+    
     name: str
     channel_type: ChannelType = ChannelType.WHATSAPP
     evolution_url: Optional[str] = None
@@ -67,10 +69,24 @@ class InstanceConfig(BaseModel):
     agent_timeout: Optional[int] = 60
     is_default: Optional[bool] = False
     is_active: Optional[bool] = True
+    
+    # Discord-specific fields (optional, will be included when extra="allow")
+    discord_bot_token: Optional[str] = None
+    discord_client_id: Optional[str] = None
+    discord_public_key: Optional[str] = None
+    discord_voice_enabled: Optional[bool] = None
+    discord_slash_commands_enabled: Optional[bool] = None
+    
+    # Slack-specific fields (optional, for future use)
+    slack_bot_token: Optional[str] = None
+    slack_app_token: Optional[str] = None
+    slack_signing_secret: Optional[str] = None
 
 
 class InstanceResponse(InstanceConfig):
     """Instance response with additional fields"""
+    model_config = ConfigDict(extra="allow")  # Inherit extra field handling
+    
     id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
