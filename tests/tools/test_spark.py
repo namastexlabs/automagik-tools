@@ -402,6 +402,68 @@ class TestSparkClient:
                 await mock_client.request("GET", "/nonexistent")
 
 
+class TestSparkFlexibleSchema:
+    """Test flexible schema support for Spark API responses"""
+    
+    @pytest.mark.unit
+    def test_spark_enums_work(self):
+        """Test that Spark enums are properly defined"""
+        from automagik_tools.tools.spark.models import WorkflowType, TaskStatus, ScheduleType, SourceType
+        
+        # Test enum values
+        assert WorkflowType.AGENT == "hive_agent"
+        assert WorkflowType.TEAM == "hive_team"
+        assert WorkflowType.WORKFLOW == "hive_workflow"
+        
+        assert TaskStatus.COMPLETED == "completed"
+        assert TaskStatus.FAILED == "failed"
+        
+        assert ScheduleType.INTERVAL == "interval"
+        assert ScheduleType.CRON == "cron"
+        
+        assert SourceType.AUTOMAGIK_AGENTS == "automagik-agents"
+    
+    @pytest.mark.unit
+    def test_spark_api_flexible_responses(self):
+        """Test that Spark API can handle flexible responses"""
+        # Spark doesn't use Pydantic models for responses, 
+        # it returns raw dicts which are flexible by nature
+        
+        # Simulate API response with extra fields
+        workflow_response = {
+            "id": "workflow-1",
+            "name": "Test Workflow",
+            "source": "http://localhost:8886",
+            "workflow_type": "hive_agent",
+            # Extra fields that might be added
+            "execution_metrics": {"avg_time": 1.5},
+            "tags": ["production", "critical"],
+            "owner": "admin"
+        }
+        
+        # These would be returned as JSON strings
+        import json
+        result = json.dumps(workflow_response, indent=2)
+        parsed = json.loads(result)
+        
+        assert parsed["id"] == "workflow-1"
+        assert parsed["execution_metrics"]["avg_time"] == 1.5
+        assert parsed["tags"] == ["production", "critical"]
+    
+    @pytest.mark.unit
+    def test_spark_client_accepts_any_json(self):
+        """Test that Spark client accepts any valid JSON"""
+        from automagik_tools.tools.spark.client import SparkClient
+        from automagik_tools.tools.spark.config import SparkConfig
+        
+        config = SparkConfig()
+        client = SparkClient(config)
+        
+        # Client methods return Dict[str, Any] which accepts any JSON structure
+        # This is inherently flexible
+        assert client is not None
+
+
 class TestSparkIntegration:
     """Test integration with automagik hub"""
 

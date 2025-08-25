@@ -533,6 +533,146 @@ class TestManageProfiles:
             mock_client.update_profile_picture.assert_called_once()
 
 
+class TestFlexibleSchemaSupport:
+    """Test flexible schema support for future API updates"""
+    
+    @pytest.fixture
+    def mock_config(self):
+        """Create a mock configuration"""
+        from automagik_tools.tools.omni.config import OmniConfig
+        return OmniConfig(
+            api_key="test-api-key",
+            base_url="http://test.omni.api",
+            timeout=10,
+            max_retries=3,
+        )
+    
+    @pytest.fixture
+    def tool_instance(self, mock_config):
+        """Create a tool instance with mock config"""
+        return create_server(mock_config)
+    
+    @pytest.mark.unit
+    def test_instance_config_accepts_discord_fields(self):
+        """Test that InstanceConfig accepts Discord-specific fields"""
+        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
+        
+        # Create config with Discord fields
+        config = InstanceConfig(
+            name="test-discord",
+            channel_type=ChannelType.DISCORD,
+            discord_bot_token="test-token",
+            discord_client_id="test-client-id",
+            discord_public_key="test-public-key",
+            discord_voice_enabled=True,
+            discord_slash_commands_enabled=True,
+            agent_api_url="http://localhost:8886",
+            agent_api_key="test-key",
+            default_agent="test-agent"
+        )
+        
+        assert config.name == "test-discord"
+        assert config.channel_type == ChannelType.DISCORD
+        assert config.discord_bot_token == "test-token"
+        assert config.discord_client_id == "test-client-id"
+        assert config.discord_public_key == "test-public-key"
+    
+    @pytest.mark.unit
+    def test_instance_config_accepts_slack_fields(self):
+        """Test that InstanceConfig accepts Slack-specific fields"""
+        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
+        
+        # Create config with Slack fields
+        config = InstanceConfig(
+            name="test-slack",
+            channel_type=ChannelType.SLACK,
+            slack_bot_token="xoxb-test-token",
+            slack_app_token="xapp-test-token",
+            slack_signing_secret="test-secret",
+            slack_workspace_id="T12345",
+            agent_api_url="http://localhost:8886"
+        )
+        
+        assert config.name == "test-slack"
+        assert config.channel_type == ChannelType.SLACK
+        assert config.slack_bot_token == "xoxb-test-token"
+        assert config.slack_app_token == "xapp-test-token"
+    
+    @pytest.mark.unit
+    def test_instance_config_accepts_arbitrary_fields(self):
+        """Test that InstanceConfig accepts any future fields"""
+        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
+        
+        # Create config with arbitrary future fields
+        config = InstanceConfig(
+            name="test-future",
+            channel_type=ChannelType.WHATSAPP,
+            future_field_1="value1",
+            future_nested_config={"key": "value"},
+            future_list_field=[1, 2, 3],
+            completely_unknown_field=True
+        )
+        
+        assert config.name == "test-future"
+        assert config.future_field_1 == "value1"
+        assert config.future_nested_config == {"key": "value"}
+        assert config.future_list_field == [1, 2, 3]
+        assert config.completely_unknown_field is True
+    
+    @pytest.mark.unit
+    def test_all_models_accept_extra_fields(self):
+        """Test that all Omni models accept extra fields"""
+        from automagik_tools.tools.omni.models import (
+            InstanceResponse, ConnectionStatus, QRCodeResponse,
+            SendTextRequest, SendMediaRequest, MessageResponse
+        )
+        
+        # Test each model accepts extra fields (with required fields included)
+        models_to_test = [
+            (InstanceResponse, {"name": "test", "extra_field": "value"}),
+            (ConnectionStatus, {"instance_name": "test", "channel_type": "whatsapp", "status": "connected", "new_status_field": True}),
+            (QRCodeResponse, {"instance_name": "test", "connection_type": "qr", "status": "pending", "qr_code": "data", "qr_metadata": {"size": 256}}),
+            (SendTextRequest, {"phone": "123", "text": "hi", "delivery_receipt": True}),
+            (SendMediaRequest, {"phone": "123", "media_url": "http://test", "media_metadata": {}}),
+            (MessageResponse, {"message_id": "123", "success": True, "extra_response_data": "test"})
+        ]
+        
+        for model_class, data in models_to_test:
+            instance = model_class(**data)
+            # Should not raise validation errors
+            assert instance is not None
+            # Check that model was created without errors
+            # Note: Extra fields might not be directly accessible as attributes 
+            # but are stored in the model's __pydantic_extra__ if ConfigDict(extra="allow")
+    
+    @pytest.mark.unit
+    def test_json_string_parsing(self):
+        """Test that JSON string config parsing works correctly"""
+        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
+        import json
+        
+        # Test JSON string parsing (simulating MCP input)
+        config_json = json.dumps({
+            "name": "test-discord",
+            "channel_type": "discord",
+            "discord_bot_token": "test-token",
+            "discord_client_id": "test-client",
+            "discord_public_key": "test-key",
+            "is_active": True
+        })
+        
+        # Parse JSON string back to dict
+        config_dict = json.loads(config_json)
+        
+        # Create model from parsed dict
+        config = InstanceConfig(**config_dict)
+        
+        assert config.name == "test-discord"
+        assert config.channel_type == ChannelType.DISCORD
+        assert config.discord_bot_token == "test-token"
+        assert config.is_active is True
+
+
 class TestOmniIntegration:
     """Test integration with automagik hub"""
     
