@@ -21,7 +21,7 @@ class OmniClient:
         self.config = config
         self.base_url = config.base_url.rstrip('/')
         self.headers = {
-            "Authorization": f"Bearer {config.api_key}",
+            "x-api-key": config.api_key,
             "Content-Type": "application/json"
         }
         self.timeout = httpx.Timeout(config.timeout)
