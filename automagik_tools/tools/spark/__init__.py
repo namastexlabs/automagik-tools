@@ -12,7 +12,11 @@ from typing import Dict, Any, Optional
 from fastmcp import FastMCP, Context
 from .config import SparkConfig
 from .client import SparkClient
-from .models import ScheduleType as ScheduleType, TaskStatus as TaskStatus, SourceType as SourceType
+from .models import (
+    ScheduleType as ScheduleType,
+    TaskStatus as TaskStatus,
+    SourceType as SourceType,
+)
 import json
 
 # Global config and client instances
