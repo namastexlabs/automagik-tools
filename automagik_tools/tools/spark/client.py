@@ -51,7 +51,7 @@ class SparkClient:
                 try:
                     error_json = e.response.json()
                     error_detail = error_json.get("detail", error_detail)
-                except:
+                except Exception:
                     pass
                 raise ValueError(f"HTTP {e.response.status_code}: {error_detail}")
             except httpx.RequestError as e:

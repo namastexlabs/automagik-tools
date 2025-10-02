@@ -1002,7 +1002,7 @@ class TestMCPProtocolCompliance:
         # Clean up the coroutine
         try:
             await coro
-        except:
+        except Exception:
             pass  # Expected to fail without proper setup
 
 

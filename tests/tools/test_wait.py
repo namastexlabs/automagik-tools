@@ -14,10 +14,10 @@ from automagik_tools.tools.wait import (
     get_config_class,
     wait_minutes,
 )
+from automagik_tools.tools.wait.config import WaitConfig
 
 # Extract actual function from FunctionTool wrapper
 wait_minutes_fn = wait_minutes.fn if hasattr(wait_minutes, "fn") else wait_minutes
-from automagik_tools.tools.wait.config import WaitConfig
 
 
 @pytest.fixture

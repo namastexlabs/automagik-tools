@@ -333,7 +333,7 @@ class DocumentProcessor:
                     if os.path.exists(temp_file):
                         try:
                             os.unlink(temp_file)
-                        except:
+                        except Exception:
                             pass
 
         except Exception as e:
