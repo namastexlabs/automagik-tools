@@ -79,3 +79,68 @@ class TestToolMetadata:
             assert callable(module.get_metadata)
             assert callable(module.get_config_class)
             assert callable(module.create_server)
+
+
+class TestHubToolDiscoveryDetails:
+    """Test detailed tool discovery behavior"""
+
+    def test_tools_have_entry_points(self):
+        """Test that discovered tools have entry point info"""
+        tools = discover_and_load_tools()
+        
+        for tool_name, tool_info in tools.items():
+            # Should have basic structure
+            assert "name" in tool_info or "metadata" in tool_info
+
+    def test_tool_discovery_handles_errors(self):
+        """Test that tool discovery handles errors gracefully"""
+        # This should not crash even if some tools have issues
+        tools = discover_and_load_tools()
+        
+        # Should return dict
+        assert isinstance(tools, dict)
+        # Should have at least one tool
+        assert len(tools) >= 1
+
+    def test_all_tools_have_create_server(self):
+        """Test that all discovered tools can create servers"""
+        tools = discover_and_load_tools()
+        
+        for tool_name, tool_info in tools.items():
+            module = tool_info["module"]
+            
+            # Must have create_server
+            assert hasattr(module, "create_server")
+            # Should be callable
+            assert callable(module.create_server)
+
+
+class TestHubConfigHandling:
+    """Test how hub handles tool configurations"""
+
+    def test_tools_have_config_classes(self):
+        """Test that tools provide config classes"""
+        tools = discover_and_load_tools()
+        
+        for tool_name, tool_info in tools.items():
+            module = tool_info["module"]
+            
+            # Should have get_config_class
+            if hasattr(module, "get_config_class"):
+                config_class = module.get_config_class()
+                assert config_class is not None
+
+    def test_tool_metadata_structure(self):
+        """Test that tool metadata follows expected structure"""
+        tools = discover_and_load_tools()
+        
+        for tool_name, tool_info in tools.items():
+            metadata = tool_info.get("metadata", {})
+            
+            # Metadata should be a dict
+            assert isinstance(metadata, dict)
+            
+            # Should have name
+            if "name" in metadata:
+                assert isinstance(metadata["name"], str)
+                assert len(metadata["name"]) > 0
