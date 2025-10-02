@@ -140,7 +140,7 @@ def discover_tools() -> Dict[str, Any]:
                         ),
                         "metadata": metadata,
                         "type": "Auto-discovered",
-                        "status": "⚪ Available",
+                        "status": "Available",
                         "description": metadata.get("description", f"{tool_name} tool"),
                     }
                 except Exception as e:
@@ -615,7 +615,7 @@ def mcp_config(
             }
         }
         console.print(
-            "[yellow]⚠️  Hub serves all tools - configure environment variables as needed[/yellow]"
+            "[yellow][!] Hub serves all tools - configure environment variables as needed[/yellow]"
         )
         console.print("\n[green]MCP Configuration for Cursor:[/green]")
         console.print(json.dumps(config, indent=2))
@@ -635,7 +635,7 @@ def mcp_config(
             }
         }
         console.print(
-            "[yellow]⚠️  Discord API tool uses dynamic OpenAPI - requires latest automagik-tools[/yellow]"
+            "[yellow][!]  Discord API tool uses dynamic OpenAPI - requires latest automagik-tools[/yellow]"
         )
         console.print(
             "[yellow]   Replace YOUR_DISCORD_TOKEN_HERE with your actual Discord token[/yellow]"
@@ -700,7 +700,7 @@ def mcp_config(
 
                 if required:
                     console.print(
-                        f"[yellow]⚠️  {env_var} is required - replace {value} with actual value[/yellow]"
+                        f"[yellow][!]  {env_var} is required - replace {value} with actual value[/yellow]"
                     )
 
             if env_vars:
@@ -718,7 +718,7 @@ def mcp_config(
             "AUTOMAGIK_AGENTS_TIMEOUT": "1000",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Automagik Agents instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Automagik Agents instance[/yellow]"
         )
     elif tool_name == "evolution-api":
         config[tool_name]["env"] = {
@@ -726,7 +726,7 @@ def mcp_config(
             "EVOLUTION_API_API_KEY": "YOUR_API_KEY_HERE",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Evolution API instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Evolution API instance[/yellow]"
         )
     elif tool_name == "evolution-api-v2":
         config[tool_name]["env"] = {
@@ -734,7 +734,7 @@ def mcp_config(
             "EVOLUTION_API_V2_API_KEY": "YOUR_API_KEY_HERE",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Evolution API v2 instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Evolution API v2 instance[/yellow]"
         )
 
     # Output the configuration
