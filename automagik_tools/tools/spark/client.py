@@ -40,7 +40,9 @@ class SparkClient:
                 response.raise_for_status()
 
                 # Handle different response types
-                if response.headers.get("content-type", "").startswith("application/json"):
+                if response.headers.get("content-type", "").startswith(
+                    "application/json"
+                ):
                     return response.json()
                 else:
                     return {"result": response.text}
@@ -75,18 +77,17 @@ class SparkClient:
         """Get specific workflow details"""
         return await self.request("GET", f"/api/v1/workflows/{workflow_id}")
 
-    async def run_workflow(
-        self, workflow_id: str, input_data: str
-    ) -> Dict[str, Any]:
+    async def run_workflow(self, workflow_id: str, input_data: str) -> Dict[str, Any]:
         """Execute a workflow with input data"""
         # The API expects a raw JSON string, so we need special handling
         url = f"{self.config.base_url}/api/v1/workflows/{workflow_id}/run"
         headers = {**self.headers, "Content-Type": "application/json"}
-        
+
         # Wrap the input string in quotes to make it valid JSON
         import json
+
         json_input = json.dumps(input_data)
-        
+
         async with httpx.AsyncClient(timeout=self.config.timeout) as client:
             try:
                 response = await client.post(
@@ -259,9 +260,7 @@ class SparkClient:
             data["url"] = url
         if api_key:
             data["api_key"] = api_key
-        return await self.request(
-            "PUT", f"/api/v1/sources/{source_id}", json_data=data
-        )
+        return await self.request("PUT", f"/api/v1/sources/{source_id}", json_data=data)
 
     async def delete_source(self, source_id: str) -> Dict[str, Any]:
         """Delete a source"""

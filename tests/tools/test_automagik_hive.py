@@ -22,12 +22,10 @@ class TestAutomagikHiveConfig:
         monkeypatch.setenv("HIVE_API_BASE_URL", "https://api.example.com")
         monkeypatch.setenv("HIVE_API_KEY", "test-key")
         monkeypatch.setenv("HIVE_TIMEOUT", "60")
-        
+
         # Clear any existing configuration before creating new one
         config = AutomagikHiveConfig(
-            api_base_url="https://api.example.com",
-            api_key="test-key",
-            timeout=60
+            api_base_url="https://api.example.com", api_key="test-key", timeout=60
         )
         assert config.api_base_url == "https://api.example.com"
         assert config.api_key == "test-key"
@@ -41,9 +39,7 @@ class TestAutomagikHiveClient:
     def config(self):
         """Create a test configuration."""
         return AutomagikHiveConfig(
-            api_base_url="https://api.example.com",
-            api_key="test-key",
-            timeout=30
+            api_base_url="https://api.example.com", api_key="test-key", timeout=30
         )
 
     @pytest.fixture
@@ -70,10 +66,10 @@ class TestAutomagikHiveClient:
         mock_client = AsyncMock()
         mock_client.request.return_value = mock_response
         mock_client_class.return_value = mock_client
-        
+
         async with AutomagikHiveClient(config) as client:
             result = await client.request("GET", "/test")
-            
+
         assert result == {"status": "success"}
         mock_client.request.assert_called_once_with("GET", "/test")
 
@@ -83,10 +79,10 @@ class TestAutomagikHiveClient:
         """Test request with authentication header."""
         mock_client = AsyncMock()
         mock_client_class.return_value = mock_client
-        
+
         async with AutomagikHiveClient(config) as client:
             pass
-            
+
         # Check that the client was initialized with auth headers
         args, kwargs = mock_client_class.call_args
         assert kwargs["headers"]["x-api-key"] == "test-key"
@@ -99,9 +95,7 @@ class TestAutomagikHiveServer:
     def mock_config(self):
         """Create a mock configuration."""
         return AutomagikHiveConfig(
-            api_base_url="https://api.example.com",
-            api_key="test-key",
-            timeout=30
+            api_base_url="https://api.example.com", api_key="test-key", timeout=30
         )
 
     @pytest.fixture
@@ -117,8 +111,8 @@ class TestAutomagikHiveServer:
     def test_server_has_playground_tools(self, server):
         """Test that server has playground tools defined."""
         # This is a basic test to ensure the server was created correctly
-        assert hasattr(server, 'get_tools')
+        assert hasattr(server, "get_tools")
         assert server.name == "Automagik Hive"
-        
+
         # Test that we can create the server without errors
         # The actual tool functionality will be tested when the API is available

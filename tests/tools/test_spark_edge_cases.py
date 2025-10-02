@@ -153,7 +153,7 @@ class TestSparkEdgeCases:
     @pytest.mark.asyncio
     async def test_special_characters_in_input(self, tool_instance):
         """Test handling of special characters in input"""
-        special_input = 'Test with "quotes" and \'apostrophes\' and \n newlines'
+        special_input = "Test with \"quotes\" and 'apostrophes' and \n newlines"
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -210,7 +210,9 @@ class TestSparkEdgeCases:
 
             # Execute workflows concurrently
             tasks = [
-                tools["run_workflow"](workflow_id=f"workflow-{i}", input_text=f"Input {i}")
+                tools["run_workflow"](
+                    workflow_id=f"workflow-{i}", input_text=f"Input {i}"
+                )
                 for i in range(3)
             ]
 

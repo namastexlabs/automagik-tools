@@ -147,7 +147,7 @@ def discover_tools() -> Dict[str, Any]:
                     error_msg = str(e)
                     # Track failed tools for summary
                     failed_tools.append((tool_name, error_msg))
-                    
+
                     # Use stderr for stdio transport to avoid polluting JSON-RPC
                     if os.environ.get("MCP_TRANSPORT") == "stdio":
                         stderr_console.print(
@@ -157,8 +157,14 @@ def discover_tools() -> Dict[str, Any]:
                         # Show concise message during discovery
                         if "No module named" in error_msg:
                             # Extract the missing module name
-                            missing_module = error_msg.split("'")[1] if "'" in error_msg else "unknown"
-                            console.print(f"[yellow]Warning: Failed to load {tool_name}: Missing dependency '{missing_module}'[/yellow]")
+                            missing_module = (
+                                error_msg.split("'")[1]
+                                if "'" in error_msg
+                                else "unknown"
+                            )
+                            console.print(
+                                f"[yellow]Warning: Failed to load {tool_name}: Missing dependency '{missing_module}'[/yellow]"
+                            )
                         else:
                             console.print(
                                 f"[yellow]Warning: Failed to load {tool_name}: {error_msg}[/yellow]"
@@ -321,12 +327,16 @@ def hub(
             console.print(
                 f"[green]🚀 Starting HTTP hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            hub_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            hub_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -394,12 +404,16 @@ def tool(
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -454,12 +468,16 @@ def openapi(
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)

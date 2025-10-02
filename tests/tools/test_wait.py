@@ -95,7 +95,7 @@ class TestWaitConfig:
         # Clear any env vars that might affect defaults
         monkeypatch.delenv("WAIT_MAX_DURATION", raising=False)
         monkeypatch.delenv("WAIT_DEFAULT_PROGRESS_INTERVAL", raising=False)
-        
+
         config = WaitConfig()
         assert config.max_duration == 3600  # 60 minutes default
         assert config.default_progress_interval == 1.0
@@ -124,9 +124,7 @@ class TestWaitServer:
         tools = await server.get_tools()
         tool_names = list(tools.keys())
 
-        expected_tools = {
-            "wait_minutes"
-        }
+        expected_tools = {"wait_minutes"}
         assert expected_tools.issubset(set(tool_names))
 
     def test_server_configuration(self, mock_config):

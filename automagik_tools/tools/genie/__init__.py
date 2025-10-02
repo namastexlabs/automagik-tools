@@ -46,6 +46,7 @@ mcp = FastMCP("Genie")
 # Lazy config initialization - defer until actually needed
 _module_config = None
 
+
 def _ensure_config():
     """Ensure config is loaded, initializing only when needed"""
     global _module_config

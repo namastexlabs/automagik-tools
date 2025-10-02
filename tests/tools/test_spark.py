@@ -239,9 +239,9 @@ class TestWorkflowManagement:
             mock_client.request.return_value = mock_response
 
             tools = await tool_instance.get_tools()
-            result = await tools["run_workflow"].run({
-                "workflow_id": "workflow-1", "input_text": "Test input"
-            })
+            result = await tools["run_workflow"].run(
+                {"workflow_id": "workflow-1", "input_text": "Test input"}
+            )
 
             task = json.loads(result)
             assert task["status"] == "completed"
@@ -275,12 +275,14 @@ class TestScheduleManagement:
             mock_client.request.return_value = mock_response
 
             tools = await tool_instance.get_tools()
-            result = await tools["create_schedule"].run({
-                "workflow_id": "workflow-1",
-                "schedule_type": "interval",
-                "schedule_expr": "30m",
-                "input_value": "Test input",
-            })
+            result = await tools["create_schedule"].run(
+                {
+                    "workflow_id": "workflow-1",
+                    "schedule_type": "interval",
+                    "schedule_expr": "30m",
+                    "input_value": "Test input",
+                }
+            )
 
             schedule = json.loads(result)
             assert schedule["id"] == "schedule-123"
@@ -344,12 +346,14 @@ class TestSourceManagement:
             mock_client.request.return_value = mock_response
 
             tools = await tool_instance.get_tools()
-            result = await tools["add_source"].run({
-                "name": "Test Source",
-                "source_type": "automagik-agents",
-                "url": "http://localhost:8881",
-                "api_key": "test-key",
-            })
+            result = await tools["add_source"].run(
+                {
+                    "name": "Test Source",
+                    "source_type": "automagik-agents",
+                    "url": "http://localhost:8881",
+                    "api_key": "test-key",
+                }
+            )
 
             source = json.loads(result)
             assert source["name"] == "Test Source"
@@ -404,31 +408,36 @@ class TestSparkClient:
 
 class TestSparkFlexibleSchema:
     """Test flexible schema support for Spark API responses"""
-    
+
     @pytest.mark.unit
     def test_spark_enums_work(self):
         """Test that Spark enums are properly defined"""
-        from automagik_tools.tools.spark.models import WorkflowType, TaskStatus, ScheduleType, SourceType
-        
+        from automagik_tools.tools.spark.models import (
+            WorkflowType,
+            TaskStatus,
+            ScheduleType,
+            SourceType,
+        )
+
         # Test enum values
         assert WorkflowType.AGENT == "hive_agent"
         assert WorkflowType.TEAM == "hive_team"
         assert WorkflowType.WORKFLOW == "hive_workflow"
-        
+
         assert TaskStatus.COMPLETED == "completed"
         assert TaskStatus.FAILED == "failed"
-        
+
         assert ScheduleType.INTERVAL == "interval"
         assert ScheduleType.CRON == "cron"
-        
+
         assert SourceType.AUTOMAGIK_AGENTS == "automagik-agents"
-    
+
     @pytest.mark.unit
     def test_spark_api_flexible_responses(self):
         """Test that Spark API can handle flexible responses"""
-        # Spark doesn't use Pydantic models for responses, 
+        # Spark doesn't use Pydantic models for responses,
         # it returns raw dicts which are flexible by nature
-        
+
         # Simulate API response with extra fields
         workflow_response = {
             "id": "workflow-1",
@@ -438,27 +447,28 @@ class TestSparkFlexibleSchema:
             # Extra fields that might be added
             "execution_metrics": {"avg_time": 1.5},
             "tags": ["production", "critical"],
-            "owner": "admin"
+            "owner": "admin",
         }
-        
+
         # These would be returned as JSON strings
         import json
+
         result = json.dumps(workflow_response, indent=2)
         parsed = json.loads(result)
-        
+
         assert parsed["id"] == "workflow-1"
         assert parsed["execution_metrics"]["avg_time"] == 1.5
         assert parsed["tags"] == ["production", "critical"]
-    
+
     @pytest.mark.unit
     def test_spark_client_accepts_any_json(self):
         """Test that Spark client accepts any valid JSON"""
         from automagik_tools.tools.spark.client import SparkClient
         from automagik_tools.tools.spark.config import SparkConfig
-        
+
         config = SparkConfig()
         client = SparkClient(config)
-        
+
         # Client methods return Dict[str, Any] which accepts any JSON structure
         # This is inherently flexible
         assert client is not None
@@ -487,8 +497,10 @@ class TestSparkIntegration:
         # Test each tool has required properties
         for tool_name, tool_func in tools_dict.items():
             assert tool_name is not None
-            assert hasattr(tool_func, 'run'), f"Tool {tool_name} should have run method"
-            assert tool_func.description is not None, f"Tool {tool_name} should have documentation"
+            assert hasattr(tool_func, "run"), f"Tool {tool_name} should have run method"
+            assert (
+                tool_func.description is not None
+            ), f"Tool {tool_name} should have documentation"
 
         # Test resources (Spark doesn't define resources, but method should exist)
         resources = await tool_instance._list_resources()
@@ -506,7 +518,9 @@ class TestSparkErrorHandling:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
-            mock_client.request.side_effect = httpx.TimeoutException("Request timed out")
+            mock_client.request.side_effect = httpx.TimeoutException(
+                "Request timed out"
+            )
 
             tools = await tool_instance.get_tools()
 

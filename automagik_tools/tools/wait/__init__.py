@@ -29,7 +29,9 @@ def _validate_duration(duration_minutes: float, config: WaitConfig) -> None:
         raise ValueError("Duration must be positive")
     duration_seconds = duration_minutes * 60
     if duration_seconds > config.max_duration:
-        raise ValueError(f"Duration {duration_seconds}s exceeds max {config.max_duration}s")
+        raise ValueError(
+            f"Duration {duration_seconds}s exceeds max {config.max_duration}s"
+        )
 
 
 def _get_iso_timestamp(timestamp: Optional[float] = None) -> str:
@@ -39,14 +41,16 @@ def _get_iso_timestamp(timestamp: Optional[float] = None) -> str:
 
 
 @mcp.tool()
-async def wait_minutes(duration: float, ctx: Optional[Context] = None) -> Dict[str, Any]:
+async def wait_minutes(
+    duration: float, ctx: Optional[Context] = None
+) -> Dict[str, Any]:
     """Wait for specified minutes"""
     global config
     if not config:
         raise ValueError("Tool not configured")
-    
+
     _validate_duration(duration, config)
-    
+
     duration_seconds = duration * 60
     start_time = time.time()
     start_iso = _get_iso_timestamp(start_time)
@@ -62,7 +66,7 @@ async def wait_minutes(duration: float, ctx: Optional[Context] = None) -> Dict[s
             "start_time": start_time,
             "start_iso": start_iso,
             "end_time": end_time,
-            "end_iso": _get_iso_timestamp(end_time)
+            "end_iso": _get_iso_timestamp(end_time),
         }
     except asyncio.CancelledError:
         end_time = time.time()
@@ -74,7 +78,7 @@ async def wait_minutes(duration: float, ctx: Optional[Context] = None) -> Dict[s
             "start_time": start_time,
             "start_iso": start_iso,
             "end_time": end_time,
-            "end_iso": _get_iso_timestamp(end_time)
+            "end_iso": _get_iso_timestamp(end_time),
         }
 
 

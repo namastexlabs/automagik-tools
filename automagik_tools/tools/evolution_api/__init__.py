@@ -29,13 +29,17 @@ All tools support optional fixed recipient mode for security-controlled access.
 """,
 )
 
+
 def _get_target_number(provided_number: Optional[str] = None) -> str:
     """Get target number based on fixed recipient configuration or provided number"""
     if config and config.fixed_recipient:
         return config.fixed_recipient
     if provided_number:
         return provided_number
-    raise ValueError("No recipient number provided and EVOLUTION_API_FIXED_RECIPIENT not set")
+    raise ValueError(
+        "No recipient number provided and EVOLUTION_API_FIXED_RECIPIENT not set"
+    )
+
 
 @mcp.tool()
 async def send_text_message(
@@ -44,11 +48,11 @@ async def send_text_message(
     number: Optional[str] = None,
     delay: int = 0,
     linkPreview: bool = True,
-    mentions: Optional[List[str]] = None
+    mentions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Send a text message via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         message: Text message to send
@@ -56,14 +60,14 @@ async def send_text_message(
         delay: Optional delay in milliseconds before sending
         linkPreview: Whether to show link preview for URLs
         mentions: Optional list of numbers to mention in the message
-    
+
     Returns:
         Dictionary with message status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     global config, client
-    
+
     # Ensure client is initialized (in case MCP hasn't called create_server yet)
     if not client:
         if not config:
@@ -72,28 +76,29 @@ async def send_text_message(
             client = EvolutionAPIClient(config)
         else:
             return {"error": "Evolution API client not configured - missing API key"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
+
         result = await client.send_text_message(
             instance, target_number, message, delay, linkPreview, mentions
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
-            "message_preview": message[:50] + "..." if len(message) > 50 else message
+            "message_preview": message[:50] + "..." if len(message) > 50 else message,
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def send_media(
@@ -106,11 +111,11 @@ async def send_media(
     fileName: str = "",
     delay: int = 0,
     linkPreview: bool = True,
-    mentions: Optional[List[str]] = None
+    mentions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Send media (image, video, document) via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         media: Base64 encoded media data or URL
@@ -122,38 +127,47 @@ async def send_media(
         delay: Optional delay in milliseconds before sending
         linkPreview: Whether to show link preview for URLs in caption
         mentions: Optional list of numbers to mention in the caption
-    
+
     Returns:
         Dictionary with message status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
+
         result = await client.send_media(
-            instance, target_number, media, mediatype, mimetype, 
-            caption, fileName, delay, linkPreview, mentions
+            instance,
+            target_number,
+            media,
+            mediatype,
+            mimetype,
+            caption,
+            fileName,
+            delay,
+            linkPreview,
+            mentions,
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
             "mediatype": mediatype,
-            "caption": caption[:50] + "..." if len(caption) > 50 else caption
+            "caption": caption[:50] + "..." if len(caption) > 50 else caption,
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def send_audio(
@@ -163,11 +177,11 @@ async def send_audio(
     delay: int = 0,
     linkPreview: bool = True,
     mentions: Optional[List[str]] = None,
-    quoted: Optional[Dict[str, Any]] = None
+    quoted: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Send audio message via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         audio: Base64 encoded audio data or URL
@@ -176,83 +190,81 @@ async def send_audio(
         linkPreview: Whether to show link preview for URLs
         mentions: Optional list of numbers to mention
         quoted: Optional quoted message data
-    
+
     Returns:
         Dictionary with message status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
+
         # Auto-send typing indicator 3 seconds before audio
         await client.send_presence(instance, target_number, "composing", 3000)
-        
+
         result = await client.send_audio(
             instance, target_number, audio, delay, linkPreview, mentions, quoted
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
-            "audio_type": "voice_message"
+            "audio_type": "voice_message",
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def send_reaction(
-    instance: str,
-    remote_jid: str,
-    from_me: bool,
-    message_id: str,
-    reaction: str
+    instance: str, remote_jid: str, from_me: bool, message_id: str, reaction: str
 ) -> Dict[str, Any]:
     """
     Send emoji reaction to a message via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         remote_jid: Remote JID of the message
         from_me: Whether the message is from the current user
         message_id: ID of the message to react to
         reaction: Emoji reaction (e.g., "👍", "❤️")
-    
+
     Returns:
         Dictionary with reaction status and details
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         result = await client.send_reaction(
             instance, remote_jid, from_me, message_id, reaction
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "message_id": message_id,
-            "reaction": reaction
+            "reaction": reaction,
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "message_id": message_id
+            "message_id": message_id,
         }
+
 
 @mcp.tool()
 async def send_location(
@@ -263,11 +275,11 @@ async def send_location(
     name: str = "",
     address: str = "",
     delay: int = 0,
-    mentions: Optional[List[str]] = None
+    mentions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Send location via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         latitude: Latitude coordinate
@@ -277,37 +289,38 @@ async def send_location(
         address: Optional location address
         delay: Optional delay in milliseconds before sending
         mentions: Optional list of numbers to mention
-    
+
     Returns:
         Dictionary with message status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
+
         result = await client.send_location(
             instance, target_number, latitude, longitude, name, address, delay, mentions
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
             "coordinates": f"{latitude}, {longitude}",
-            "name": name
+            "name": name,
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def send_contact(
@@ -315,94 +328,94 @@ async def send_contact(
     contact: List[Dict[str, str]],
     number: Optional[str] = None,
     delay: int = 0,
-    mentions: Optional[List[str]] = None
+    mentions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Send contact information via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         contact: List of contact dictionaries with fullName, wuid, phoneNumber, organization, email, url
         number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         delay: Optional delay in milliseconds before sending
         mentions: Optional list of numbers to mention
-    
+
     Returns:
         Dictionary with message status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
+
         result = await client.send_contact(
             instance, target_number, contact, delay, mentions
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
-            "contacts_count": len(contact)
+            "contacts_count": len(contact),
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def send_presence(
     instance: str,
     number: Optional[str] = None,
     presence: str = "composing",
-    delay: int = 3000
+    delay: int = 3000,
 ) -> Dict[str, Any]:
     """
     Send presence indicator (typing, recording) via WhatsApp using Evolution API v2
-    
+
     Args:
         instance: Evolution API instance name
         number: WhatsApp number with country code (optional if EVOLUTION_API_FIXED_RECIPIENT is set)
         presence: Presence type (composing, recording, paused)
         delay: Duration in milliseconds to show presence
-    
+
     Returns:
         Dictionary with presence status and details
-    
+
     Note: If EVOLUTION_API_FIXED_RECIPIENT is set, the number parameter is ignored.
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         target_number = _get_target_number(number)
-        
-        result = await client.send_presence(
-            instance, target_number, presence, delay
-        )
-        
+
+        result = await client.send_presence(instance, target_number, presence, delay)
+
         return {
             "status": "success",
             "result": result,
             "instance": instance,
             "number": target_number,
             "presence": presence,
-            "delay": delay
+            "delay": delay,
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "instance": instance,
-            "number": number
+            "number": number,
         }
+
 
 @mcp.tool()
 async def create_instance(
@@ -411,11 +424,11 @@ async def create_instance(
     webhook: Optional[str] = None,
     webhookByEvents: bool = False,
     webhookBase64: bool = True,
-    events: Optional[List[str]] = None
+    events: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new Evolution API instance
-    
+
     Args:
         instance_name: Name for the new instance
         token: Optional authentication token for the instance
@@ -423,68 +436,56 @@ async def create_instance(
         webhookByEvents: Whether to send events to webhook
         webhookBase64: Whether to encode webhook data in base64
         events: List of events to subscribe to
-    
+
     Returns:
         Dictionary with instance creation status and details
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         result = await client.create_instance(
             instance_name, token, webhook, webhookByEvents, webhookBase64, events
         )
-        
+
         return {
             "status": "success",
             "result": result,
             "instance_name": instance_name,
-            "webhook_configured": bool(webhook)
+            "webhook_configured": bool(webhook),
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "instance_name": instance_name
-        }
+        return {"status": "error", "error": str(e), "instance_name": instance_name}
+
 
 @mcp.tool()
-async def get_instance_info(
-    instance_name: str
-) -> Dict[str, Any]:
+async def get_instance_info(instance_name: str) -> Dict[str, Any]:
     """
     Get information about an Evolution API instance
-    
+
     Args:
         instance_name: Name of the instance to get info for
-    
+
     Returns:
         Dictionary with instance information and status
     """
     if not client:
         return {"error": "Evolution API client not configured"}
-    
+
     try:
         result = await client.get_instance_info(instance_name)
-        
-        return {
-            "status": "success",
-            "result": result,
-            "instance_name": instance_name
-        }
+
+        return {"status": "success", "result": result, "instance_name": instance_name}
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "instance_name": instance_name
-        }
+        return {"status": "error", "error": str(e), "instance_name": instance_name}
+
 
 @mcp.resource("evolution://config")
 def get_config_info() -> str:
     """Get Evolution API configuration information"""
     if not config:
         return "Evolution API not configured - missing environment variables"
-    
+
     return f"""Evolution API Configuration:
 - Base URL: {config.base_url}
 - Instance: {config.instance}
@@ -504,12 +505,13 @@ Security Settings:
 - Target Number: {config.fixed_recipient if config.fixed_recipient else 'Dynamic'}
 """
 
+
 @mcp.resource("evolution://status")
 def get_instance_info_resource() -> str:
     """Get Evolution API instance information"""
     if not config:
         return "Evolution API not configured - missing environment variables"
-    
+
     return f"""Evolution API Instance Status:
 - Base URL: {config.base_url}
 - Current Instance: {config.instance}
@@ -528,20 +530,19 @@ Available messaging functions:
 - get_instance_info: Get instance information and status
 """
 
+
 @mcp.prompt()
 def whatsapp_message_template(
-    message_type: str = "text",
-    recipient: str = "",
-    urgency: str = "normal"
+    message_type: str = "text", recipient: str = "", urgency: str = "normal"
 ) -> str:
     """
     Generate a WhatsApp message template for Evolution API
-    
+
     Args:
         message_type: Type of message (text, media, audio, contact, location)
         recipient: Recipient identifier or description
         urgency: Message urgency level (low, normal, high)
-    
+
     Returns:
         Formatted message template
     """
@@ -617,23 +618,23 @@ Tips:
 - Use complete contact information
 - Verify phone number format
 - Include professional context
-"""
+""",
     }
-    
+
     return templates.get(message_type, templates["text"])
+
 
 @mcp.prompt()
 def evolution_api_setup_guide(
-    instance_name: str = "my-whatsapp",
-    deployment_type: str = "local"
+    instance_name: str = "my-whatsapp", deployment_type: str = "local"
 ) -> str:
     """
     Generate setup guide for Evolution API integration
-    
+
     Args:
         instance_name: Name for the Evolution API instance
         deployment_type: Deployment type (local, cloud, docker)
-    
+
     Returns:
         Step-by-step setup guide
     """
@@ -684,21 +685,25 @@ Message: "Hello from Evolution API! 👋"
 Ready to start messaging! 📱
 """
 
+
 def create_server(server_config: Optional[EvolutionAPIConfig] = None):
     """Create Evolution API MCP server"""
     global config, client
-    
+
     # Always create fresh config to pick up environment variables
     config = server_config or EvolutionAPIConfig()
-    
+
     # Initialize client if we have an API key
     if config and config.api_key:
         client = EvolutionAPIClient(config)
     else:
         # Log for debugging
-        print(f"Warning: Evolution API key not found. Base URL: {config.base_url if config else 'No config'}")
-    
+        print(
+            f"Warning: Evolution API key not found. Base URL: {config.base_url if config else 'No config'}"
+        )
+
     return mcp
+
 
 def get_metadata() -> Dict[str, Any]:
     """Get tool metadata for discovery"""
@@ -708,8 +713,9 @@ def get_metadata() -> Dict[str, Any]:
         "description": "Complete WhatsApp messaging suite for Evolution API v2",
         "author": "Namastex Labs",
         "category": "communication",
-        "tags": ["whatsapp", "messaging", "evolution-api", "chat", "automation"]
+        "tags": ["whatsapp", "messaging", "evolution-api", "chat", "automation"],
     }
+
 
 def get_config_class():
     """Get configuration class for this tool"""

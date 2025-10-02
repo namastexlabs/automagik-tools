@@ -10,19 +10,18 @@ from .config import EvolutionAPIConfig
 
 class EvolutionAPIClient:
     """HTTP client for Evolution API v2"""
-    
+
     def __init__(self, config: EvolutionAPIConfig):
         self.config = config
-        self.base_url = config.base_url.rstrip('/')
-        self.headers = {
-            "Content-Type": "application/json",
-            "apikey": config.api_key
-        }
-    
-    async def _make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict[str, Any]:
+        self.base_url = config.base_url.rstrip("/")
+        self.headers = {"Content-Type": "application/json", "apikey": config.api_key}
+
+    async def _make_request(
+        self, method: str, endpoint: str, data: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """Make HTTP request with retry logic"""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        
+
         for attempt in range(self.config.max_retries):
             try:
                 async with httpx.AsyncClient(timeout=self.config.timeout) as client:
@@ -30,61 +29,66 @@ class EvolutionAPIClient:
                         method=method,
                         url=url,
                         headers=self.headers,
-                        json=data if data else None
+                        json=data if data else None,
                     )
-                    
+
                     if response.status_code in [200, 201]:
                         return response.json()
                     elif response.status_code == 401:
-                        raise ValueError("Evolution API authentication failed - check API key")
+                        raise ValueError(
+                            "Evolution API authentication failed - check API key"
+                        )
                     elif response.status_code == 403:
-                        raise ValueError("Evolution API access forbidden - check permissions")
+                        raise ValueError(
+                            "Evolution API access forbidden - check permissions"
+                        )
                     elif response.status_code == 404:
                         raise ValueError("Evolution API endpoint not found")
                     elif response.status_code >= 500:
                         if attempt < self.config.max_retries - 1:
-                            await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                            await asyncio.sleep(2**attempt)  # Exponential backoff
                             continue
-                        raise ValueError(f"Evolution API server error {response.status_code}")
+                        raise ValueError(
+                            f"Evolution API server error {response.status_code}"
+                        )
                     else:
-                        raise ValueError(f"Evolution API error {response.status_code}: {response.text}")
-                        
+                        raise ValueError(
+                            f"Evolution API error {response.status_code}: {response.text}"
+                        )
+
             except httpx.TimeoutException:
                 if attempt < self.config.max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
-                raise TimeoutError(f"Request timeout after {self.config.max_retries} retries")
+                raise TimeoutError(
+                    f"Request timeout after {self.config.max_retries} retries"
+                )
             except httpx.ConnectError:
                 if attempt < self.config.max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
-                raise ConnectionError(f"Connection failed after {self.config.max_retries} retries")
-    
+                raise ConnectionError(
+                    f"Connection failed after {self.config.max_retries} retries"
+                )
+
     async def send_text_message(
-        self, 
-        instance: str, 
-        number: str, 
+        self,
+        instance: str,
+        number: str,
         message: str,
         delay: int = 0,
         linkPreview: bool = True,
-        mentions: Optional[List[str]] = None
+        mentions: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Send text message via Evolution API v2"""
         data = {
             "number": number,
             "text": message,
-            "options": {
-                "delay": delay,
-                "presence": "composing"
-            }
+            "options": {"delay": delay, "presence": "composing"},
         }
-        
-        return await self._make_request(
-            "POST", 
-            f"/message/sendText/{instance}",
-            data
-        )
-    
+
+        return await self._make_request("POST", f"/message/sendText/{instance}", data)
+
     async def send_media(
         self,
         instance: str,
@@ -96,7 +100,7 @@ class EvolutionAPIClient:
         fileName: str = "",
         delay: int = 0,
         linkPreview: bool = True,
-        mentions: Optional[List[str]] = None
+        mentions: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Send media via Evolution API v2"""
         data = {
@@ -107,18 +111,14 @@ class EvolutionAPIClient:
             "caption": caption,
             "fileName": fileName,
             "delay": delay,
-            "linkPreview": linkPreview
+            "linkPreview": linkPreview,
         }
-        
+
         if mentions:
             data["mentions"] = mentions
-        
-        return await self._make_request(
-            "POST",
-            f"/message/sendMedia/{instance}",
-            data
-        )
-    
+
+        return await self._make_request("POST", f"/message/sendMedia/{instance}", data)
+
     async def send_audio(
         self,
         instance: str,
@@ -127,51 +127,43 @@ class EvolutionAPIClient:
         delay: int = 0,
         linkPreview: bool = True,
         mentions: Optional[List[str]] = None,
-        quoted: Optional[Dict[str, Any]] = None
+        quoted: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Send audio message via Evolution API v2"""
         data = {
             "number": number,
             "audio": audio,
             "delay": delay,
-            "linkPreview": linkPreview
+            "linkPreview": linkPreview,
         }
-        
+
         if mentions:
             data["mentions"] = mentions
         if quoted:
             data["quoted"] = quoted
-        
+
         return await self._make_request(
-            "POST",
-            f"/message/sendWhatsAppAudio/{instance}",
-            data
+            "POST", f"/message/sendWhatsAppAudio/{instance}", data
         )
-    
+
     async def send_reaction(
         self,
         instance: str,
         remote_jid: str,
         from_me: bool,
         message_id: str,
-        reaction: str
+        reaction: str,
     ) -> Dict[str, Any]:
         """Send reaction via Evolution API v2"""
         data = {
-            "key": {
-                "remoteJid": remote_jid,
-                "fromMe": from_me,
-                "id": message_id
-            },
-            "reaction": reaction
+            "key": {"remoteJid": remote_jid, "fromMe": from_me, "id": message_id},
+            "reaction": reaction,
         }
-        
+
         return await self._make_request(
-            "POST",
-            f"/message/sendReaction/{instance}",
-            data
+            "POST", f"/message/sendReaction/{instance}", data
         )
-    
+
     async def send_location(
         self,
         instance: str,
@@ -181,7 +173,7 @@ class EvolutionAPIClient:
         name: str = "",
         address: str = "",
         delay: int = 0,
-        mentions: Optional[List[str]] = None
+        mentions: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Send location via Evolution API v2"""
         data = {
@@ -190,62 +182,42 @@ class EvolutionAPIClient:
             "longitude": longitude,
             "name": name,
             "address": address,
-            "delay": delay
+            "delay": delay,
         }
-        
+
         if mentions:
             data["mentions"] = mentions
-        
+
         return await self._make_request(
-            "POST",
-            f"/message/sendLocation/{instance}",
-            data
+            "POST", f"/message/sendLocation/{instance}", data
         )
-    
+
     async def send_contact(
         self,
         instance: str,
         number: str,
         contact: List[Dict[str, str]],
         delay: int = 0,
-        mentions: Optional[List[str]] = None
+        mentions: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Send contact via Evolution API v2"""
-        data = {
-            "number": number,
-            "contact": contact,
-            "delay": delay
-        }
-        
+        data = {"number": number, "contact": contact, "delay": delay}
+
         if mentions:
             data["mentions"] = mentions
-        
+
         return await self._make_request(
-            "POST",
-            f"/message/sendContact/{instance}",
-            data
+            "POST", f"/message/sendContact/{instance}", data
         )
-    
+
     async def send_presence(
-        self,
-        instance: str,
-        number: str,
-        presence: str = "composing",
-        delay: int = 3000
+        self, instance: str, number: str, presence: str = "composing", delay: int = 3000
     ) -> Dict[str, Any]:
         """Send presence indicator via Evolution API v2"""
-        data = {
-            "number": number,
-            "presence": presence,
-            "delay": delay
-        }
-        
-        return await self._make_request(
-            "POST",
-            f"/chat/sendPresence/{instance}",
-            data
-        )
-    
+        data = {"number": number, "presence": presence, "delay": delay}
+
+        return await self._make_request("POST", f"/chat/sendPresence/{instance}", data)
+
     async def create_instance(
         self,
         instance_name: str,
@@ -253,7 +225,7 @@ class EvolutionAPIClient:
         webhook: Optional[str] = None,
         webhookByEvents: bool = False,
         webhookBase64: bool = True,
-        events: Optional[List[str]] = None
+        events: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Create a new Evolution API instance"""
         data = {
@@ -263,22 +235,13 @@ class EvolutionAPIClient:
             "webhook": webhook or "",
             "webhookByEvents": webhookByEvents,
             "webhookBase64": webhookBase64,
-            "events": events or []
+            "events": events or [],
         }
-        
-        return await self._make_request(
-            "POST",
-            f"/instance/create",
-            data
-        )
-    
-    async def get_instance_info(
-        self,
-        instance_name: str
-    ) -> Dict[str, Any]:
+
+        return await self._make_request("POST", f"/instance/create", data)
+
+    async def get_instance_info(self, instance_name: str) -> Dict[str, Any]:
         """Get information about an Evolution API instance"""
         return await self._make_request(
-            "GET",
-            f"/instance/fetchInstances/{instance_name}",
-            None
+            "GET", f"/instance/fetchInstances/{instance_name}", None
         )

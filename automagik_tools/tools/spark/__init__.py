@@ -69,7 +69,7 @@ def create_server(tool_config: Optional[SparkConfig] = None):
 async def get_health(ctx: Optional[Context] = None) -> str:
     """
     Get health status of Spark API and its services.
-    
+
     Returns the status of API, worker, and Redis services.
     """
     global client
@@ -94,11 +94,11 @@ async def list_workflows(
 ) -> str:
     """
     List all synchronized workflows (agents, teams, structured workflows).
-    
+
     Args:
         source: Filter by source URL (optional)
         limit: Maximum number of workflows to return (default: 100)
-    
+
     Returns a list of workflows with their details including type, status, and run statistics.
     """
     global client
@@ -118,10 +118,10 @@ async def list_workflows(
 async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific workflow.
-    
+
     Args:
         workflow_id: The UUID of the workflow
-    
+
     Returns workflow details including configuration, components, and execution history.
     """
     global client
@@ -143,13 +143,13 @@ async def run_workflow(
 ) -> str:
     """
     Execute a workflow with the provided input.
-    
+
     Args:
         workflow_id: The UUID of the workflow to execute
         input_text: Input text for the workflow (e.g., question, task description)
-    
+
     Returns task execution details including output and status.
-    
+
     Examples:
         - For agents: "What is the capital of France?"
         - For teams: "Create a REST API with authentication"
@@ -172,10 +172,10 @@ async def run_workflow(
 async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a synchronized workflow.
-    
+
     Args:
         workflow_id: The UUID of the workflow to delete
-    
+
     Returns confirmation of deletion.
     """
     global client
@@ -193,15 +193,13 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
 
 # Remote Workflow Discovery Tools
 @mcp.tool()
-async def list_remote_workflows(
-    source_url: str, ctx: Optional[Context] = None
-) -> str:
+async def list_remote_workflows(source_url: str, ctx: Optional[Context] = None) -> str:
     """
     List available workflows from a remote AutoMagik instance.
-    
+
     Args:
         source_url: The URL of the remote AutoMagik instance (e.g., http://localhost:8881)
-    
+
     Returns a list of available workflows that can be synced.
     """
     global client
@@ -226,12 +224,12 @@ async def sync_workflow(
 ) -> str:
     """
     Sync a workflow from a remote source to local Spark instance.
-    
+
     Args:
         workflow_id: The ID of the workflow to sync
         input_component: Input component name (default: "input")
         output_component: Output component name (default: "output")
-    
+
     Returns the synced workflow details.
     """
     global client
@@ -239,7 +237,9 @@ async def sync_workflow(
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.sync_workflow(workflow_id, input_component, output_component)
+        result = await client.sync_workflow(
+            workflow_id, input_component, output_component
+        )
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -257,12 +257,12 @@ async def list_tasks(
 ) -> str:
     """
     List task executions with optional filtering.
-    
+
     Args:
         workflow_id: Filter by specific workflow (optional)
         status: Filter by status - pending, running, completed, failed (optional)
         limit: Maximum number of tasks to return (default: 50)
-    
+
     Returns a list of task executions with their details.
     """
     global client
@@ -282,10 +282,10 @@ async def list_tasks(
 async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific task execution.
-    
+
     Args:
         task_id: The UUID of the task
-    
+
     Returns task details including input, output, status, and timing.
     """
     global client
@@ -308,10 +308,10 @@ async def list_schedules(
 ) -> str:
     """
     List all active schedules.
-    
+
     Args:
         workflow_id: Filter by specific workflow (optional)
-    
+
     Returns a list of schedules with their configuration and next run times.
     """
     global client
@@ -337,7 +337,7 @@ async def create_schedule(
 ) -> str:
     """
     Create a new schedule for automated workflow execution.
-    
+
     Args:
         workflow_id: The UUID of the workflow to schedule
         schedule_type: Type of schedule - "interval" or "cron"
@@ -345,7 +345,7 @@ async def create_schedule(
             - For interval: "5m", "1h", "30s", "2d"
             - For cron: "0 9 * * *" (daily at 9 AM), "*/15 * * * *" (every 15 minutes)
         input_value: Optional default input for scheduled runs
-    
+
     Returns the created schedule details.
     """
     global client
@@ -367,10 +367,10 @@ async def create_schedule(
 async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a schedule.
-    
+
     Args:
         schedule_id: The UUID of the schedule to delete
-    
+
     Returns confirmation of deletion.
     """
     global client
@@ -390,10 +390,10 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
 async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Enable a disabled schedule.
-    
+
     Args:
         schedule_id: The UUID of the schedule to enable
-    
+
     Returns the updated schedule details.
     """
     global client
@@ -413,10 +413,10 @@ async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
 async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Disable an active schedule.
-    
+
     Args:
         schedule_id: The UUID of the schedule to disable
-    
+
     Returns the updated schedule details.
     """
     global client
@@ -437,7 +437,7 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
 async def list_sources(ctx: Optional[Context] = None) -> str:
     """
     List all configured workflow sources.
-    
+
     Returns a list of sources (AutoMagik Agents, AutoMagik Hive instances).
     """
     global client
@@ -463,15 +463,15 @@ async def add_source(
 ) -> str:
     """
     Add a new workflow source.
-    
+
     Args:
         name: Display name for the source
         source_type: Type of source - "automagik-agents", "automagik-hive", or "langflow"
         url: Base URL of the source (e.g., http://localhost:8881)
         api_key: Optional API key for authentication
-    
+
     Returns the created source details.
-    
+
     Example:
         add_source("Local Agents", "automagik-agents", "http://localhost:8881", "namastex888")
     """
@@ -492,10 +492,10 @@ async def add_source(
 async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a workflow source.
-    
+
     Args:
         source_id: The UUID of the source to delete
-    
+
     Returns confirmation of deletion.
     """
     global client

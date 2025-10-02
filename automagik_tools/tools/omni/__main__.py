@@ -15,28 +15,23 @@ def main():
         prog="python -m automagik_tools.tools.omni",
     )
     parser.add_argument(
-        "--transport", 
-        default="stdio", 
+        "--transport",
+        default="stdio",
         choices=["stdio", "sse"],
-        help="Transport type (stdio for Claude/Cursor, sse for web)"
+        help="Transport type (stdio for Claude/Cursor, sse for web)",
     )
     parser.add_argument(
-        "--host", 
-        default="0.0.0.0", 
-        help="Host to bind to (for sse transport)"
+        "--host", default="0.0.0.0", help="Host to bind to (for sse transport)"
     )
     parser.add_argument(
-        "--port", 
-        type=int, 
-        default=8000, 
-        help="Port to bind to (for sse transport)"
+        "--port", type=int, default=8000, help="Port to bind to (for sse transport)"
     )
 
     args = parser.parse_args()
-    
+
     # Create server
     server = create_server()
-    
+
     # Run with appropriate transport
     if args.transport == "stdio":
         print(
