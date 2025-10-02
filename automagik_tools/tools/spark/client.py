@@ -4,7 +4,6 @@ from typing import Optional, Dict, Any, List
 import httpx
 import json
 from .config import SparkConfig
-from .models import TaskStatus
 
 
 class SparkClient:
@@ -84,7 +83,6 @@ class SparkClient:
         headers = {**self.headers, "Content-Type": "application/json"}
 
         # Wrap the input string in quotes to make it valid JSON
-        import json
 
         json_input = json.dumps(input_data)
 

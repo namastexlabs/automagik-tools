@@ -6,7 +6,6 @@ import pytest
 import asyncio
 import subprocess
 from unittest.mock import Mock, patch, AsyncMock
-from datetime import datetime, timezone, timedelta
 from fastmcp import Context
 
 from automagik_tools.tools.wait import (

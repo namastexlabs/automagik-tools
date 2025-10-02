@@ -5,16 +5,13 @@ import os
 import sys
 import time
 import mimetypes
-from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from google import genai
 from google.genai import types
 from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent
-import json
 
 from .config import GeminiAssistantConfig
 
@@ -642,14 +639,14 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
         result_parts = [f"**Session {session_id} Requests:**"]
 
         if session.requested_files:
-            result_parts.append(f"\n\n**Files Requested:**")
+            result_parts.append("\n\n**Files Requested:**")
             for file in session.requested_files:
                 result_parts.append(f"- {file}")
         else:
             result_parts.append("\n\nNo files requested")
 
         if session.search_queries:
-            result_parts.append(f"\n\n**Searches Requested:**")
+            result_parts.append("\n\n**Searches Requested:**")
             for query in session.search_queries:
                 result_parts.append(f"- {query}")
         else:

@@ -3,7 +3,6 @@
 
 import argparse
 import sys
-import asyncio
 from . import create_server, get_metadata
 
 

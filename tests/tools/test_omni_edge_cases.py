@@ -8,16 +8,12 @@ import time
 from unittest.mock import Mock, patch, AsyncMock
 from automagik_tools.tools.omni import (
     create_server,
-    manage_instances,
-    send_message,
-    manage_traces,
 )
 from automagik_tools.tools.omni.config import OmniConfig
 from automagik_tools.tools.omni.models import (
     InstanceOperation,
     MessageType,
     TraceOperation,
-    ProfileOperation,
 )
 
 

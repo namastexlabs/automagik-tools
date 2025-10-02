@@ -4,7 +4,7 @@ Tests for OMNI MCP tool
 
 import pytest
 import json
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 
 from automagik_tools.tools.omni import create_server, get_metadata, get_config_class
@@ -17,12 +17,6 @@ from automagik_tools.tools.omni.models import (
     InstanceConfig,
     SendTextRequest,
     SendMediaRequest,
-    SendAudioRequest,
-    SendStickerRequest,
-    SendContactRequest,
-    SendReactionRequest,
-    TraceFilter,
-    ContactInfo,
     ChannelType,
 )
 
@@ -143,7 +137,7 @@ class TestManageInstances:
     @pytest.mark.asyncio
     async def test_list_instances(self, mock_client):
         """Test listing instances"""
-        from automagik_tools.tools.omni import manage_instances, _ensure_client
+        from automagik_tools.tools.omni import manage_instances
 
         manage_instances_fn = (
             manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
@@ -382,7 +376,7 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_send_message_with_default_instance(self, mock_client, mock_config):
         """Test sending message with default instance"""
-        from automagik_tools.tools.omni import send_message, _config
+        from automagik_tools.tools.omni import send_message
 
         send_message_fn = (
             send_message.fn if hasattr(send_message, "fn") else send_message
@@ -622,7 +616,6 @@ class TestFlexibleSchemaSupport:
     @pytest.mark.unit
     def test_instance_config_accepts_discord_fields(self):
         """Test that InstanceConfig accepts Discord-specific fields"""
-        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
 
         # Create config with Discord fields
         config = InstanceConfig(
@@ -647,7 +640,6 @@ class TestFlexibleSchemaSupport:
     @pytest.mark.unit
     def test_instance_config_accepts_slack_fields(self):
         """Test that InstanceConfig accepts Slack-specific fields"""
-        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
 
         # Create config with Slack fields
         config = InstanceConfig(
@@ -668,7 +660,6 @@ class TestFlexibleSchemaSupport:
     @pytest.mark.unit
     def test_instance_config_accepts_arbitrary_fields(self):
         """Test that InstanceConfig accepts any future fields"""
-        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
 
         # Create config with arbitrary future fields
         config = InstanceConfig(
@@ -693,8 +684,6 @@ class TestFlexibleSchemaSupport:
             InstanceResponse,
             ConnectionStatus,
             QRCodeResponse,
-            SendTextRequest,
-            SendMediaRequest,
             MessageResponse,
         )
 
@@ -742,7 +731,6 @@ class TestFlexibleSchemaSupport:
     @pytest.mark.unit
     def test_json_string_parsing(self):
         """Test that JSON string config parsing works correctly"""
-        from automagik_tools.tools.omni.models import InstanceConfig, ChannelType
         import json
 
         # Test JSON string parsing (simulating MCP input)

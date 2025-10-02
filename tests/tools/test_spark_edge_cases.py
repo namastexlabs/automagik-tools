@@ -7,7 +7,6 @@ import httpx
 
 from automagik_tools.tools.spark import create_server
 from automagik_tools.tools.spark.config import SparkConfig
-from automagik_tools.tools.spark.client import SparkClient
 
 
 @pytest.fixture

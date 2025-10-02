@@ -161,7 +161,7 @@ class TestDynamicOpenAPITool:
         with patch("automagik_tools.cli.FastMCP.from_openapi") as mock_from_openapi:
             mock_from_openapi.return_value = MagicMock()
 
-            result = create_dynamic_openapi_tool(
+            create_dynamic_openapi_tool(
                 openapi_url="https://api.test.com/openapi.json", transport="sse"
             )
 

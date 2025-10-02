@@ -1,11 +1,8 @@
-import asyncio
 import json
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import httpx
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
 
 from .config import AutomagikHiveConfig
 
@@ -46,7 +43,6 @@ class AutomagikHiveClient:
         response.raise_for_status()
 
         # Get the raw text and parse it with standard json module
-        import json
 
         try:
             return json.loads(response.text)
@@ -77,7 +73,6 @@ class AutomagikHiveClient:
         response.raise_for_status()
 
         # Get the raw text and parse it with standard json module
-        import json
 
         try:
             return json.loads(response.text)
@@ -143,7 +138,6 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     ) -> Dict[str, Any]:
         """Continue an ongoing conversation with an agent. Send your next message to keep the conversation going."""
         # API expects form-urlencoded data with "tools" field containing JSON array
-        import json
 
         tools_json = json.dumps([{"type": "message", "content": message}])
         data = {"tools": tools_json, "stream": False}

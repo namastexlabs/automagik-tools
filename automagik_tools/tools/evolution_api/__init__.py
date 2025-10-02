@@ -3,7 +3,7 @@ Evolution API MCP Tool - Complete WhatsApp messaging suite for Evolution API v2
 """
 
 from typing import Dict, Any, Optional, List
-from fastmcp import FastMCP, Context
+from fastmcp import FastMCP
 from .config import EvolutionAPIConfig
 from .client import EvolutionAPIClient
 

@@ -414,9 +414,6 @@ class TestSparkFlexibleSchema:
         """Test that Spark enums are properly defined"""
         from automagik_tools.tools.spark.models import (
             WorkflowType,
-            TaskStatus,
-            ScheduleType,
-            SourceType,
         )
 
         # Test enum values

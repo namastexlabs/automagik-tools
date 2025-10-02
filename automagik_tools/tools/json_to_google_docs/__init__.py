@@ -3,15 +3,12 @@ JSON to Google Docs MCP Tool
 Converts JSON data to DOCX files using Google Docs templates with placeholder substitution and markdown support
 """
 
-import asyncio
-import json
 import tempfile
 import os
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
 
 from .config import JsonToGoogleDocsConfig
 

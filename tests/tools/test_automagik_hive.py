@@ -80,7 +80,7 @@ class TestAutomagikHiveClient:
         mock_client = AsyncMock()
         mock_client_class.return_value = mock_client
 
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(config):
             pass
 
         # Check that the client was initialized with auth headers

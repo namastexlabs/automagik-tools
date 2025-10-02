@@ -238,7 +238,7 @@ class EvolutionAPIClient:
             "events": events or [],
         }
 
-        return await self._make_request("POST", f"/instance/create", data)
+        return await self._make_request("POST", "/instance/create", data)
 
     async def get_instance_info(self, instance_name: str) -> Dict[str, Any]:
         """Get information about an Evolution API instance"""

@@ -5,13 +5,10 @@ import os
 import re
 import tempfile
 from typing import Dict, Any, List, Optional, Union
-from io import BytesIO
 
 from docx import Document
-from docx.shared import Pt
-from docx.enum.text import WD_BREAK
 import markdown
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 
 from .config import JsonToGoogleDocsConfig
 

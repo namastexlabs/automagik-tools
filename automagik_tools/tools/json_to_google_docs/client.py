@@ -1,12 +1,9 @@
 """Google API Client for JSON to Google Docs tool"""
 
-import asyncio
-import json
+import os
 from typing import Dict, Any, List, Optional
-from io import BytesIO
 
 try:
-    import google.auth
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
@@ -121,7 +118,7 @@ class GoogleAPIClient:
             file_size = 0
             try:
                 file_size = os.path.getsize(output_path)
-            except:
+            except Exception:
                 pass
 
             return {

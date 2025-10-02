@@ -183,7 +183,7 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.delete_workflow(workflow_id)
+        await client.delete_workflow(workflow_id)
         return json.dumps({"success": True, "deleted": workflow_id})
     except Exception as e:
         if ctx:
@@ -378,7 +378,7 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.delete_schedule(schedule_id)
+        await client.delete_schedule(schedule_id)
         return json.dumps({"success": True, "deleted": schedule_id})
     except Exception as e:
         if ctx:
@@ -503,7 +503,7 @@ async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.delete_source(source_id)
+        await client.delete_source(source_id)
         return json.dumps({"success": True, "deleted": source_id})
     except Exception as e:
         if ctx:
