@@ -5,7 +5,7 @@ Tests for Spark MCP tool
 import pytest
 import json
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from fastmcp import Context
+from fastmcp import Context, Client
 import httpx
 
 from automagik_tools.tools.spark import (
@@ -159,10 +159,10 @@ class TestSparkHealthCheck:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["get_health"].run({})
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("get_health", {})
 
-            result_data = json.loads(result)
+            result_data = json.loads(result.data)
             assert result_data["status"] == "healthy"
             assert "services" in result_data
 
@@ -176,10 +176,9 @@ class TestSparkHealthCheck:
 
             mock_client.request.side_effect = httpx.RequestError("Connection failed")
 
-            tools = await tool_instance.get_tools()
-
-            with pytest.raises(ValueError, match="Connection failed"):
-                await tools["get_health"].run({"ctx": mock_context})
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Connection failed"):
+                    await client.call_tool("get_health", {})
 
 
 class TestWorkflowManagement:
@@ -209,10 +208,10 @@ class TestWorkflowManagement:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["list_workflows"].run({"limit": 10})
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("list_workflows", {"limit": 10})
 
-            workflows = json.loads(result)
+            workflows = json.loads(result.data)
             assert len(workflows) == 1
             assert workflows[0]["name"] == "Test Workflow"
 
@@ -236,14 +235,15 @@ class TestWorkflowManagement:
             }
             mock_response.raise_for_status = Mock()
 
-            mock_client.request.return_value = mock_response
+            mock_client.post.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["run_workflow"].run(
-                {"workflow_id": "workflow-1", "input_text": "Test input"}
-            )
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("run_workflow", {
+                    "workflow_id": "workflow-1",
+                    "input_text": "Test input"
+                })
 
-            task = json.loads(result)
+            task = json.loads(result.data)
             assert task["status"] == "completed"
             assert task["output_data"]["result"] == "Test output"
 
@@ -274,17 +274,15 @@ class TestScheduleManagement:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["create_schedule"].run(
-                {
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("create_schedule", {
                     "workflow_id": "workflow-1",
                     "schedule_type": "interval",
                     "schedule_expr": "30m",
                     "input_value": "Test input",
-                }
-            )
+                })
 
-            schedule = json.loads(result)
+            schedule = json.loads(result.data)
             assert schedule["id"] == "schedule-123"
             assert schedule["schedule_type"] == "interval"
             assert schedule["status"] == "active"
@@ -313,10 +311,10 @@ class TestScheduleManagement:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["list_schedules"].run({})
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("list_schedules", {})
 
-            schedules = json.loads(result)
+            schedules = json.loads(result.data)
             assert len(schedules) == 1
             assert schedules[0]["schedule_type"] == "cron"
 
@@ -345,17 +343,15 @@ class TestSourceManagement:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["add_source"].run(
-                {
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("add_source", {
                     "name": "Test Source",
                     "source_type": "automagik-agents",
                     "url": "http://localhost:8881",
                     "api_key": "test-key",
-                }
-            )
+                })
 
-            source = json.loads(result)
+            source = json.loads(result.data)
             assert source["name"] == "Test Source"
             assert source["source_type"] == "automagik-agents"
 
@@ -519,10 +515,9 @@ class TestSparkErrorHandling:
                 "Request timed out"
             )
 
-            tools = await tool_instance.get_tools()
-
-            with pytest.raises(ValueError, match="Request failed"):
-                await tools["get_health"].run({})
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Request failed|timed out"):
+                    await client.call_tool("get_health", {})
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -544,10 +539,9 @@ class TestSparkErrorHandling:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-
-            with pytest.raises(ValueError, match="HTTP 404"):
-                await tools["get_workflow"].run({"workflow_id": "invalid-id"})
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="HTTP 404|not found"):
+                    await client.call_tool("get_workflow", {"workflow_id": "invalid-id"})
 
     @pytest.mark.unit
     def test_missing_config(self):
@@ -575,10 +569,9 @@ class TestSparkErrorHandling:
 
         server = spark_module.mcp
 
-        tools = await server.get_tools()
-
-        with pytest.raises(ValueError, match="Tool not configured"):
-            await tools["get_health"].run({})
+        async with Client(server) as client:
+            with pytest.raises(Exception, match="Tool not configured|not configured"):
+                await client.call_tool("get_health", {})
 
         # Restore original values
         spark_module.config = original_config

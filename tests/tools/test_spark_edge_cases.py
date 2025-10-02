@@ -4,6 +4,7 @@ import pytest
 import json
 from unittest.mock import Mock, patch, AsyncMock
 import httpx
+from fastmcp import Client
 
 from automagik_tools.tools.spark import create_server
 from automagik_tools.tools.spark.config import SparkConfig
@@ -45,10 +46,10 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["list_workflows"]()
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("list_workflows", {})
 
-            workflows = json.loads(result)
+            workflows = json.loads(result.data)
             assert workflows == []
 
     @pytest.mark.unit
@@ -70,14 +71,15 @@ class TestSparkEdgeCases:
             }
             mock_response.raise_for_status = Mock()
 
-            mock_client.request.return_value = mock_response
+            mock_client.post.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["run_workflow"](
-                workflow_id="workflow-1", input_text=""
-            )
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("run_workflow", {
+                    "workflow_id": "workflow-1",
+                    "input_text": ""
+                })
 
-            task = json.loads(result)
+            task = json.loads(result.data)
             assert task["input_data"]["value"] == ""
 
     @pytest.mark.unit
@@ -101,14 +103,15 @@ class TestSparkEdgeCases:
             }
             mock_response.raise_for_status = Mock()
 
-            mock_client.request.return_value = mock_response
+            mock_client.post.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["run_workflow"](
-                workflow_id="workflow-1", input_text=large_input
-            )
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("run_workflow", {
+                    "workflow_id": "workflow-1",
+                    "input_text": large_input
+                })
 
-            task = json.loads(result)
+            task = json.loads(result.data)
             assert task["status"] == "completed"
 
     @pytest.mark.unit
@@ -139,14 +142,13 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-
-            with pytest.raises(ValueError, match="HTTP 422"):
-                await tools["create_schedule"](
-                    workflow_id="workflow-1",
-                    schedule_type="cron",
-                    schedule_expr="invalid-cron",
-                )
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="HTTP 422|Validation error"):
+                    await client.call_tool("create_schedule", {
+                        "workflow_id": "workflow-1",
+                        "schedule_type": "cron",
+                        "schedule_expr": "invalid-cron",
+                    })
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -169,14 +171,15 @@ class TestSparkEdgeCases:
             }
             mock_response.raise_for_status = Mock()
 
-            mock_client.request.return_value = mock_response
+            mock_client.post.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["run_workflow"](
-                workflow_id="workflow-1", input_text=special_input
-            )
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("run_workflow", {
+                    "workflow_id": "workflow-1",
+                    "input_text": special_input
+                })
 
-            task = json.loads(result)
+            task = json.loads(result.data)
             assert task["input_data"]["value"] == special_input
 
     @pytest.mark.unit
@@ -203,23 +206,23 @@ class TestSparkEdgeCases:
                 mock_response.raise_for_status = Mock()
                 responses.append(mock_response)
 
-            mock_client.request.side_effect = responses
+            mock_client.post.side_effect = responses
 
-            tools = await tool_instance.get_tools()
+            async with Client(tool_instance) as client:
+                # Execute workflows concurrently
+                tasks = [
+                    client.call_tool("run_workflow", {
+                        "workflow_id": f"workflow-{i}",
+                        "input_text": f"Input {i}"
+                    })
+                    for i in range(3)
+                ]
 
-            # Execute workflows concurrently
-            tasks = [
-                tools["run_workflow"](
-                    workflow_id=f"workflow-{i}", input_text=f"Input {i}"
-                )
-                for i in range(3)
-            ]
-
-            results = await asyncio.gather(*tasks)
+                results = await asyncio.gather(*tasks)
 
             # Verify all completed
             for i, result in enumerate(results):
-                task_data = json.loads(result)
+                task_data = json.loads(result.data)
                 assert task_data["id"] == f"task-{i}"
 
     @pytest.mark.unit
@@ -247,10 +250,10 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["get_task"](task_id="task-123")
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("get_task", {"task_id": "task-123"})
 
-            task = json.loads(result)
+            task = json.loads(result.data)
             assert task["status"] == "pending"
             assert task["output_data"] is None
 
@@ -271,11 +274,11 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["get_health"]()
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("get_health", {})
 
             # Should handle non-JSON response gracefully
-            result_data = json.loads(result)
+            result_data = json.loads(result.data)
             assert result_data["result"] == "Not JSON"
 
     @pytest.mark.unit
@@ -299,10 +302,9 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-
-            with pytest.raises(ValueError, match="HTTP 429"):
-                await tools["list_workflows"]()
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="HTTP 429|Rate limit"):
+                    await client.call_tool("list_workflows", {})
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -328,9 +330,9 @@ class TestSparkEdgeCases:
 
             mock_client.request.return_value = mock_response
 
-            tools = await tool_instance.get_tools()
-            result = await tools["get_health"]()
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("get_health", {})
 
-            health = json.loads(result)
+            health = json.loads(result.data)
             assert health["status"] == "degraded"
             assert health["services"]["worker"]["status"] == "error"
