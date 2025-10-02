@@ -1,7 +1,6 @@
 """Tests that actually execute code to improve coverage"""
 
 
-
 class TestActualServerCreation:
     """Test actual server creation with configs"""
 
