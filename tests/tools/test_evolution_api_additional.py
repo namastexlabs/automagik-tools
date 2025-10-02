@@ -83,12 +83,11 @@ class TestEvolutionAPIConfig:
     def test_config_validates_base_url(self):
         """Test that config validates base URL"""
         from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
-        
+
         config = EvolutionAPIConfig(
-            base_url="http://api.example.com",
-            api_key="test_key"
+            base_url="http://api.example.com", api_key="test_key"
         )
-        
+
         assert config.base_url == "http://api.example.com"
         assert not config.base_url.endswith("/")
 
@@ -96,16 +95,16 @@ class TestEvolutionAPIConfig:
         """Test that config has sensible defaults"""
         from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
         import os
-        
+
         # Set minimal required env vars
         os.environ["EVOLUTION_API_BASE_URL"] = "http://test.com"
         os.environ["EVOLUTION_API_KEY"] = "key"
-        
+
         config = EvolutionAPIConfig()
-        
+
         assert config.base_url is not None
         assert config.api_key is not None
-        
+
         # Cleanup
         del os.environ["EVOLUTION_API_BASE_URL"]
         del os.environ["EVOLUTION_API_KEY"]
@@ -117,9 +116,9 @@ class TestEvolutionAPIIntegration:
     def test_module_exports_all_required_functions(self):
         """Test that module exports all required functions"""
         import automagik_tools.tools.evolution_api as evo_module
-        
+
         required_functions = ["create_server", "get_metadata", "get_config_class"]
-        
+
         for func_name in required_functions:
             assert hasattr(evo_module, func_name), f"Missing {func_name}"
             assert callable(getattr(evo_module, func_name))
@@ -127,9 +126,9 @@ class TestEvolutionAPIIntegration:
     def test_metadata_has_required_fields(self):
         """Test that metadata has all required fields"""
         from automagik_tools.tools.evolution_api import get_metadata
-        
+
         metadata = get_metadata()
-        
+
         required_fields = ["name", "description", "version"]
         for field in required_fields:
             assert field in metadata, f"Missing {field} in metadata"

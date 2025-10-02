@@ -1,6 +1,5 @@
 """Final comprehensive tests to push coverage over 30%"""
 
-import os
 import pytest
 
 

@@ -81,20 +81,20 @@ class TestCLIToolLoading:
     def test_load_tool_function_exists(self):
         """Test that load_tool function is available"""
         from automagik_tools.cli import load_tool
-        
+
         assert callable(load_tool)
 
     def test_load_tool_with_evolution_api(self):
         """Test loading evolution-api tool"""
         import os
         from automagik_tools.cli import load_tool
-        
+
         # Set required env vars
         os.environ["EVOLUTION_API_BASE_URL"] = "http://test.example.com"
         os.environ["EVOLUTION_API_KEY"] = "test_key"
-        
+
         tools = discover_tools()
-        
+
         if "evolution-api" in tools:
             try:
                 server = load_tool("evolution-api", tools)
@@ -102,7 +102,7 @@ class TestCLIToolLoading:
             except Exception:
                 # May fail due to missing dependencies, that's ok
                 pass
-        
+
         # Cleanup
         if "EVOLUTION_API_BASE_URL" in os.environ:
             del os.environ["EVOLUTION_API_BASE_URL"]
@@ -116,13 +116,13 @@ class TestCLIVersionInfo:
     def test_version_function_exists(self):
         """Test that version function exists"""
         from automagik_tools.cli import version
-        
+
         assert callable(version)
 
     def test_package_has_version(self):
         """Test that package has version metadata"""
         import automagik_tools
-        
+
         # Package should have version
         assert hasattr(automagik_tools, "__version__")
         assert isinstance(automagik_tools.__version__, str)
