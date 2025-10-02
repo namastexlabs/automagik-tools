@@ -55,7 +55,7 @@ jobs:
       shell: bash
       run: |
         source .venv/bin/activate || .venv/Scripts/activate
-        pytest tests/test_cli_simple.py tests/tools/test_evolution_api.py -v --tb=short
+        pytest tests/test_cli_simple.py tests/tools/test_evolution_api.py tests/test_hub.py -v --tb=short
 
     - name: Run MCP protocol tests
       shell: bash
