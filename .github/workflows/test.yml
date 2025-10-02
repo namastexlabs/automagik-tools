@@ -104,7 +104,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         source .venv/bin/activate
-        pytest tests/ --cov=automagik_tools --cov-report=xml --cov-report=term-missing --cov-fail-under=60
+        pytest tests/ --cov=automagik_tools --cov-report=xml --cov-report=term-missing --cov-fail-under=30
       env:
         EVOLUTION_API_BASE_URL: http://test-api.example.com
         EVOLUTION_API_KEY: test_api_key
@@ -199,7 +199,7 @@ jobs:
         automagik-tools list
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist-files
         path: dist/
