@@ -37,7 +37,10 @@ class TestCLIQuick:
         assert hasattr(config, "base_url")
         assert hasattr(config, "api_key")
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="subprocess python -c doesn't use venv on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="subprocess python -c doesn't use venv on Windows",
+    )
     def test_basic_cli_commands(self):
         """Test basic CLI commands that should be fast"""
         # Test help
@@ -50,7 +53,10 @@ class TestCLIQuick:
         # Note: help typically exits with code 0 in some CLI frameworks
         assert "MCP Tools Framework" in result.stdout or "Usage:" in result.stdout
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="subprocess python -c doesn't use venv on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="subprocess python -c doesn't use venv on Windows",
+    )
     def test_version_command_direct(self):
         """Test version command directly"""
         result = subprocess.run(
@@ -62,7 +68,10 @@ class TestCLIQuick:
         assert result.returncode == 0
         assert "automagik-tools v" in result.stdout
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="subprocess python -c doesn't use venv on Windows")
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="subprocess python -c doesn't use venv on Windows",
+    )
     def test_list_command_direct(self):
         """Test list command directly"""
         result = subprocess.run(
