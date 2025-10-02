@@ -177,7 +177,7 @@ class TestPackageBuildAndInstall:
     def test_package_builds_successfully(self, project_root):
         """Test that the package builds without errors"""
         result = subprocess.run(
-            ["python", "-m", "build", "--no-isolation"],
+            ["python", "-m", "build"],
             cwd=project_root,
             capture_output=True,
             text=True,
