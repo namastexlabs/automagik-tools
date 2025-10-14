@@ -238,10 +238,10 @@ class TestWorkflowManagement:
             mock_client.post.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("run_workflow", {
-                    "workflow_id": "workflow-1",
-                    "input_text": "Test input"
-                })
+                result = await client.call_tool(
+                    "run_workflow",
+                    {"workflow_id": "workflow-1", "input_text": "Test input"},
+                )
 
             task = json.loads(result.data)
             assert task["status"] == "completed"
@@ -275,12 +275,15 @@ class TestScheduleManagement:
             mock_client.request.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("create_schedule", {
-                    "workflow_id": "workflow-1",
-                    "schedule_type": "interval",
-                    "schedule_expr": "30m",
-                    "input_value": "Test input",
-                })
+                result = await client.call_tool(
+                    "create_schedule",
+                    {
+                        "workflow_id": "workflow-1",
+                        "schedule_type": "interval",
+                        "schedule_expr": "30m",
+                        "input_value": "Test input",
+                    },
+                )
 
             schedule = json.loads(result.data)
             assert schedule["id"] == "schedule-123"
@@ -344,12 +347,15 @@ class TestSourceManagement:
             mock_client.request.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("add_source", {
-                    "name": "Test Source",
-                    "source_type": "automagik-agents",
-                    "url": "http://localhost:8881",
-                    "api_key": "test-key",
-                })
+                result = await client.call_tool(
+                    "add_source",
+                    {
+                        "name": "Test Source",
+                        "source_type": "automagik-agents",
+                        "url": "http://localhost:8881",
+                        "api_key": "test-key",
+                    },
+                )
 
             source = json.loads(result.data)
             assert source["name"] == "Test Source"
@@ -541,7 +547,9 @@ class TestSparkErrorHandling:
 
             async with Client(tool_instance) as client:
                 with pytest.raises(Exception, match="HTTP 404|not found"):
-                    await client.call_tool("get_workflow", {"workflow_id": "invalid-id"})
+                    await client.call_tool(
+                        "get_workflow", {"workflow_id": "invalid-id"}
+                    )
 
     @pytest.mark.unit
     def test_missing_config(self):

@@ -74,10 +74,9 @@ class TestSparkEdgeCases:
             mock_client.post.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("run_workflow", {
-                    "workflow_id": "workflow-1",
-                    "input_text": ""
-                })
+                result = await client.call_tool(
+                    "run_workflow", {"workflow_id": "workflow-1", "input_text": ""}
+                )
 
             task = json.loads(result.data)
             assert task["input_data"]["value"] == ""
@@ -106,10 +105,10 @@ class TestSparkEdgeCases:
             mock_client.post.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("run_workflow", {
-                    "workflow_id": "workflow-1",
-                    "input_text": large_input
-                })
+                result = await client.call_tool(
+                    "run_workflow",
+                    {"workflow_id": "workflow-1", "input_text": large_input},
+                )
 
             task = json.loads(result.data)
             assert task["status"] == "completed"
@@ -144,11 +143,14 @@ class TestSparkEdgeCases:
 
             async with Client(tool_instance) as client:
                 with pytest.raises(Exception, match="HTTP 422|Validation error"):
-                    await client.call_tool("create_schedule", {
-                        "workflow_id": "workflow-1",
-                        "schedule_type": "cron",
-                        "schedule_expr": "invalid-cron",
-                    })
+                    await client.call_tool(
+                        "create_schedule",
+                        {
+                            "workflow_id": "workflow-1",
+                            "schedule_type": "cron",
+                            "schedule_expr": "invalid-cron",
+                        },
+                    )
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -174,10 +176,10 @@ class TestSparkEdgeCases:
             mock_client.post.return_value = mock_response
 
             async with Client(tool_instance) as client:
-                result = await client.call_tool("run_workflow", {
-                    "workflow_id": "workflow-1",
-                    "input_text": special_input
-                })
+                result = await client.call_tool(
+                    "run_workflow",
+                    {"workflow_id": "workflow-1", "input_text": special_input},
+                )
 
             task = json.loads(result.data)
             assert task["input_data"]["value"] == special_input
@@ -211,10 +213,10 @@ class TestSparkEdgeCases:
             async with Client(tool_instance) as client:
                 # Execute workflows concurrently
                 tasks = [
-                    client.call_tool("run_workflow", {
-                        "workflow_id": f"workflow-{i}",
-                        "input_text": f"Input {i}"
-                    })
+                    client.call_tool(
+                        "run_workflow",
+                        {"workflow_id": f"workflow-{i}", "input_text": f"Input {i}"},
+                    )
                     for i in range(3)
                 ]
 

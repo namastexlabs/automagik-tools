@@ -268,6 +268,25 @@ format: ## 🎨 Auto-format code
 	@$(UV) run ruff check --fix automagik_tools tests
 	$(call print_success,Code formatted!)
 
+.PHONY: install-hooks
+install-hooks: ## 🔗 Install git pre-commit hooks
+	$(call print_status,Installing git hooks...)
+	@mkdir -p .githooks
+	@if [ -f .githooks/pre-commit ]; then \
+		cp .githooks/pre-commit .git/hooks/pre-commit; \
+		chmod +x .git/hooks/pre-commit; \
+		$(call print_success,Git hooks installed! Pre-commit checks enabled.); \
+	else \
+		$(call print_error,.githooks/pre-commit not found!); \
+		exit 1; \
+	fi
+
+.PHONY: uninstall-hooks
+uninstall-hooks: ## ❌ Remove git pre-commit hooks
+	$(call print_status,Removing git hooks...)
+	@rm -f .git/hooks/pre-commit
+	$(call print_success,Git hooks removed.)
+
 # ===========================================
 # 📦 Build & Publish
 # ===========================================
