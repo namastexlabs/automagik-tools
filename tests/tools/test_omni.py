@@ -1170,6 +1170,627 @@ class TestListAllChannels:
             assert "Connection timeout" in result_data["partial_errors"][0]["error"]
 
 
+class TestManageInstancesExtended:
+    """Extended tests for manage_instances operations"""
+
+    @pytest.fixture
+    def mock_client(self):
+        """Create mock OMNI client"""
+        with patch("automagik_tools.tools.omni.OmniClient") as MockClient:
+            client = AsyncMock()
+            MockClient.return_value = client
+            yield client
+
+    @pytest.mark.asyncio
+    async def test_update_instance(self, mock_client):
+        """Test update instance operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_instance = Mock()
+        mock_instance.model_dump.return_value = {
+            "name": "test-instance",
+            "is_active": False,
+        }
+        mock_client.update_instance.return_value = mock_instance
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.UPDATE,
+                instance_name="test-instance",
+                config={"is_active": False},
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert "updated" in result_data["message"]
+            mock_client.update_instance.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_instance(self, mock_client):
+        """Test delete instance operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_client.delete_instance.return_value = True
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.DELETE, instance_name="test-instance"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert "deleted" in result_data["message"]
+            mock_client.delete_instance.assert_called_once_with("test-instance")
+
+    @pytest.mark.asyncio
+    async def test_set_default_instance(self, mock_client):
+        """Test set default instance operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_instance = Mock()
+        mock_instance.model_dump.return_value = {
+            "name": "test-instance",
+            "is_default": True,
+        }
+        mock_client.set_default_instance.return_value = mock_instance
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.SET_DEFAULT, instance_name="test-instance"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert "set as default" in result_data["message"]
+
+    @pytest.mark.asyncio
+    async def test_get_instance_status(self, mock_client):
+        """Test get instance status operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_status = Mock()
+        mock_status.model_dump.return_value = {
+            "instance_name": "test-instance",
+            "status": "connected",
+        }
+        mock_client.get_instance_status.return_value = mock_status
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.STATUS, instance_name="test-instance"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["status"]["status"] == "connected"
+
+    @pytest.mark.asyncio
+    async def test_restart_instance(self, mock_client):
+        """Test restart instance operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_client.restart_instance.return_value = {"status": "restarting"}
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.RESTART, instance_name="test-instance"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert "restarted" in result_data["message"]
+
+    @pytest.mark.asyncio
+    async def test_logout_instance(self, mock_client):
+        """Test logout instance operation"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_client.logout_instance.return_value = {"status": "logged_out"}
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.LOGOUT, instance_name="test-instance"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert "logged out" in result_data["message"]
+
+    @pytest.mark.asyncio
+    async def test_create_instance_with_json_string(self, mock_client):
+        """Test create instance with JSON string config"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_instance = Mock()
+        mock_instance.name = "new-instance"
+        mock_instance.model_dump.return_value = {"name": "new-instance"}
+        mock_client.create_instance.return_value = mock_instance
+
+        config_json = '{"name": "new-instance", "channel_type": "whatsapp"}'
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.CREATE, config=config_json
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_instance_invalid_json(self, mock_client):
+        """Test create instance with invalid JSON"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        result = await manage_instances_fn(
+            operation=InstanceOperation.CREATE, config="{invalid json"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "Invalid JSON" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_update_instance_with_json_string(self, mock_client):
+        """Test update instance with JSON string config"""
+        from automagik_tools.tools.omni import manage_instances
+
+        manage_instances_fn = (
+            manage_instances.fn if hasattr(manage_instances, "fn") else manage_instances
+        )
+
+        mock_instance = Mock()
+        mock_instance.model_dump.return_value = {"name": "test-instance"}
+        mock_client.update_instance.return_value = mock_instance
+
+        config_json = '{"is_active": false}'
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_instances_fn(
+                operation=InstanceOperation.UPDATE,
+                instance_name="test-instance",
+                config=config_json,
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+
+
+class TestSendMessageExtended:
+    """Extended tests for send_message operations"""
+
+    @pytest.fixture
+    def mock_client(self):
+        """Create mock OMNI client"""
+        with patch("automagik_tools.tools.omni.OmniClient") as MockClient:
+            client = AsyncMock()
+            MockClient.return_value = client
+            yield client
+
+    @pytest.mark.asyncio
+    async def test_send_audio_message(self, mock_client):
+        """Test sending audio message"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        mock_response = Mock()
+        mock_response.success = True
+        mock_response.message_id = "audio_123"
+        mock_response.status = "sent"
+        mock_client.send_audio.return_value = mock_response
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await send_message_fn(
+                message_type=MessageType.AUDIO,
+                instance_name="test-instance",
+                phone="+1234567890",
+                audio_url="https://example.com/audio.mp3",
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["message_id"] == "audio_123"
+            assert result_data["type"] == "audio"
+            mock_client.send_audio.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_sticker_message(self, mock_client):
+        """Test sending sticker message"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        mock_response = Mock()
+        mock_response.success = True
+        mock_response.message_id = "sticker_123"
+        mock_response.status = "sent"
+        mock_client.send_sticker.return_value = mock_response
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await send_message_fn(
+                message_type=MessageType.STICKER,
+                instance_name="test-instance",
+                phone="+1234567890",
+                sticker_url="https://example.com/sticker.webp",
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["message_id"] == "sticker_123"
+            assert result_data["type"] == "sticker"
+            mock_client.send_sticker.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_message_missing_media_url(self, mock_client):
+        """Test error when media_url is missing"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        result = await send_message_fn(
+            message_type=MessageType.MEDIA, instance_name="test", phone="+1234567890"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "media_url required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_send_message_missing_audio_url(self, mock_client):
+        """Test error when audio_url is missing"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        result = await send_message_fn(
+            message_type=MessageType.AUDIO, instance_name="test", phone="+1234567890"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "audio_url required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_send_message_missing_sticker_url(self, mock_client):
+        """Test error when sticker_url is missing"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        result = await send_message_fn(
+            message_type=MessageType.STICKER, instance_name="test", phone="+1234567890"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "sticker_url required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_send_message_missing_contacts(self, mock_client):
+        """Test error when contacts are missing"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        result = await send_message_fn(
+            message_type=MessageType.CONTACT, instance_name="test", phone="+1234567890"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "contacts required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_send_message_missing_reaction_params(self, mock_client):
+        """Test error when reaction params are missing"""
+        from automagik_tools.tools.omni import send_message
+
+        send_message_fn = (
+            send_message.fn if hasattr(send_message, "fn") else send_message
+        )
+
+        result = await send_message_fn(
+            message_type=MessageType.REACTION, instance_name="test", phone="+1234567890"
+        )
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "message_id and emoji required" in result_data["error"]
+
+
+class TestManageTracesExtended:
+    """Extended tests for manage_traces operations"""
+
+    @pytest.fixture
+    def mock_client(self):
+        """Create mock OMNI client"""
+        with patch("automagik_tools.tools.omni.OmniClient") as MockClient:
+            client = AsyncMock()
+            MockClient.return_value = client
+            yield client
+
+    @pytest.mark.asyncio
+    async def test_get_trace(self, mock_client):
+        """Test get specific trace"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        mock_trace = Mock()
+        mock_trace.model_dump.return_value = {
+            "trace_id": "trace_123",
+            "status": "completed",
+        }
+        mock_client.get_trace.return_value = mock_trace
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_traces_fn(
+                operation=TraceOperation.GET, trace_id="trace_123"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["trace"]["trace_id"] == "trace_123"
+            mock_client.get_trace.assert_called_once_with("trace_123")
+
+    @pytest.mark.asyncio
+    async def test_get_trace_payloads(self, mock_client):
+        """Test get trace payloads"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        mock_payload = Mock()
+        mock_payload.model_dump.return_value = {
+            "id": "payload_123",
+            "trace_id": "trace_123",
+        }
+        mock_client.get_trace_payloads.return_value = [mock_payload]
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_traces_fn(
+                operation=TraceOperation.GET_PAYLOADS,
+                trace_id="trace_123",
+                include_payload=True,
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["count"] == 1
+            mock_client.get_trace_payloads.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_traces_by_phone(self, mock_client):
+        """Test get traces by phone number"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        mock_trace = Mock()
+        mock_trace.model_dump.return_value = {
+            "trace_id": "trace_123",
+            "sender_phone": "+1234567890",
+        }
+        mock_client.get_traces_by_phone.return_value = [mock_trace]
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_traces_fn(
+                operation=TraceOperation.BY_PHONE, phone="+1234567890", limit=10
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is True
+            assert result_data["phone"] == "+1234567890"
+            assert result_data["count"] == 1
+            mock_client.get_traces_by_phone.assert_called_once_with("+1234567890", 10)
+
+    @pytest.mark.asyncio
+    async def test_get_trace_missing_id(self, mock_client):
+        """Test error when trace_id is missing"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        result = await manage_traces_fn(operation=TraceOperation.GET)
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "trace_id required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_payloads_missing_id(self, mock_client):
+        """Test error when trace_id is missing for get_payloads"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        result = await manage_traces_fn(operation=TraceOperation.GET_PAYLOADS)
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "trace_id required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_get_traces_by_phone_missing_phone(self, mock_client):
+        """Test error when phone is missing"""
+        from automagik_tools.tools.omni import manage_traces
+
+        manage_traces_fn = (
+            manage_traces.fn if hasattr(manage_traces, "fn") else manage_traces
+        )
+
+        result = await manage_traces_fn(operation=TraceOperation.BY_PHONE)
+        result_data = json.loads(result)
+
+        assert result_data["success"] is False
+        assert "phone required" in result_data["error"]
+
+
+class TestManageProfilesExtended:
+    """Extended tests for manage_profiles operations"""
+
+    @pytest.fixture
+    def mock_client(self):
+        """Create mock OMNI client"""
+        with patch("automagik_tools.tools.omni.OmniClient") as MockClient:
+            client = AsyncMock()
+            MockClient.return_value = client
+            yield client
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create mock config"""
+        config = Mock()
+        config.default_instance = "test-instance"
+        return config
+
+    @pytest.mark.asyncio
+    async def test_fetch_profile_with_default_instance(self, mock_client, mock_config):
+        """Test fetching profile using default instance"""
+        from automagik_tools.tools.omni import manage_profiles
+
+        manage_profiles_fn = (
+            manage_profiles.fn if hasattr(manage_profiles, "fn") else manage_profiles
+        )
+
+        mock_client.fetch_profile.return_value = {
+            "name": "John Doe",
+            "phone": "+1234567890",
+        }
+
+        with patch("automagik_tools.tools.omni._config", mock_config):
+            with patch(
+                "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+            ):
+                result = await manage_profiles_fn(
+                    operation=ProfileOperation.FETCH, phone_number="+1234567890"
+                )
+                result_data = json.loads(result)
+
+                assert result_data["success"] is True
+                assert result_data["instance"] == "test-instance"
+
+    @pytest.mark.asyncio
+    async def test_fetch_profile_missing_params(self, mock_client):
+        """Test error when fetch profile params are missing"""
+        from automagik_tools.tools.omni import manage_profiles
+
+        manage_profiles_fn = (
+            manage_profiles.fn if hasattr(manage_profiles, "fn") else manage_profiles
+        )
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_profiles_fn(
+                operation=ProfileOperation.FETCH, instance_name="test"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is False
+            assert "user_id or phone_number required" in result_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_update_picture_missing_url(self, mock_client):
+        """Test error when picture_url is missing"""
+        from automagik_tools.tools.omni import manage_profiles
+
+        manage_profiles_fn = (
+            manage_profiles.fn if hasattr(manage_profiles, "fn") else manage_profiles
+        )
+
+        with patch(
+            "automagik_tools.tools.omni._ensure_client", return_value=mock_client
+        ):
+            result = await manage_profiles_fn(
+                operation=ProfileOperation.UPDATE_PICTURE, instance_name="test"
+            )
+            result_data = json.loads(result)
+
+            assert result_data["success"] is False
+            assert "picture_url required" in result_data["error"]
+
+
 class TestOmniIntegration:
     """Test integration with automagik hub"""
 
