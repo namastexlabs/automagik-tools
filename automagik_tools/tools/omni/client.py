@@ -22,6 +22,11 @@ from .models import (
     TraceAnalytics,
     FetchProfileRequest,
     UpdateProfilePictureRequest,
+    ChatResponse,
+    ChatListResponse,
+    ContactResponse,
+    ContactListResponse,
+    ChannelListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -289,3 +294,77 @@ class OmniClient:
             json=request.model_dump(exclude_none=True),
         )
         return MessageResponse(**data)
+
+    # Chat Operations
+    async def list_chats(
+        self,
+        instance_name: str,
+        page: int = 1,
+        page_size: int = 50,
+        chat_type_filter: Optional[str] = None,
+        archived: Optional[bool] = None,
+        channel_type: Optional[str] = None,
+    ) -> ChatListResponse:
+        """List chats for an instance"""
+        params: Dict[str, Any] = {"page": page, "page_size": page_size}
+        if chat_type_filter:
+            params["chat_type_filter"] = chat_type_filter
+        if archived is not None:
+            params["archived"] = archived
+        if channel_type:
+            params["channel_type"] = channel_type
+
+        data = await self._request(
+            "GET", f"/api/v1/instances/{instance_name}/chats", params=params
+        )
+        return ChatListResponse(**data)
+
+    async def get_chat(self, instance_name: str, chat_id: str) -> ChatResponse:
+        """Get specific chat"""
+        data = await self._request(
+            "GET", f"/api/v1/instances/{instance_name}/chats/{chat_id}"
+        )
+        return ChatResponse(**data)
+
+    # Contact Operations
+    async def list_contacts(
+        self,
+        instance_name: str,
+        page: int = 1,
+        page_size: int = 50,
+        search_query: Optional[str] = None,
+        status_filter: Optional[str] = None,
+        channel_type: Optional[str] = None,
+    ) -> ContactListResponse:
+        """List contacts for an instance"""
+        params: Dict[str, Any] = {"page": page, "page_size": page_size}
+        if search_query:
+            params["search_query"] = search_query
+        if status_filter:
+            params["status_filter"] = status_filter
+        if channel_type:
+            params["channel_type"] = channel_type
+
+        data = await self._request(
+            "GET", f"/api/v1/instances/{instance_name}/contacts", params=params
+        )
+        return ContactListResponse(**data)
+
+    async def get_contact(self, instance_name: str, contact_id: str) -> ContactResponse:
+        """Get specific contact"""
+        data = await self._request(
+            "GET", f"/api/v1/instances/{instance_name}/contacts/{contact_id}"
+        )
+        return ContactResponse(**data)
+
+    # Channel Operations
+    async def list_channels(
+        self, channel_type: Optional[str] = None
+    ) -> ChannelListResponse:
+        """List all channels/instances in Omni format"""
+        params = {}
+        if channel_type:
+            params["channel_type"] = channel_type
+
+        data = await self._request("GET", "/api/v1/instances/", params=params)
+        return ChannelListResponse(**data)

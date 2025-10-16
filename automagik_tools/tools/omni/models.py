@@ -250,18 +250,26 @@ class TraceResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    trace_id: str
     instance_name: str
+    whatsapp_message_id: Optional[str] = None
     sender_phone: str
+    sender_name: Optional[str] = None
     message_type: Optional[str] = None
     status: str
     session_name: Optional[str] = None
     agent_session_id: Optional[str] = None
     has_media: bool = False
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    has_quoted_message: bool = False
+    error_message: Optional[str] = None
+    error_stage: Optional[str] = None
+    received_at: datetime
+    completed_at: Optional[datetime] = None
+    agent_processing_time_ms: Optional[float] = None
+    total_processing_time_ms: Optional[float] = None
+    agent_response_success: Optional[bool] = None
+    evolution_success: Optional[bool] = None
     payload_count: int = 0
-    error: Optional[str] = None
 
 
 class TracePayloadResponse(BaseModel):
@@ -282,13 +290,15 @@ class TraceAnalytics(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    total_traces: int
-    by_status: Dict[str, int]
-    by_instance: Dict[str, int]
-    by_message_type: Dict[str, int]
-    avg_processing_time: Optional[float] = None
-    error_rate: Optional[float] = None
-    time_range: Dict[str, Any]
+    total_messages: int
+    successful_messages: int
+    failed_messages: int
+    success_rate: float
+    avg_processing_time_ms: Optional[float] = None
+    avg_agent_time_ms: Optional[float] = None
+    message_types: Dict[str, int]
+    error_stages: Dict[str, int]
+    instances: Dict[str, int]
 
 
 # Profile Models
@@ -318,3 +328,110 @@ MessageRequestType = Union[
     SendContactRequest,
     SendReactionRequest,
 ]
+
+
+# Chat Models
+class ChatResponse(BaseModel):
+    """Chat response model"""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    name: str
+    chat_type: str  # direct, group, channel, thread
+    channel_type: str  # whatsapp, discord
+    instance_name: str
+    participant_count: Optional[int] = None
+    is_muted: bool = False
+    is_archived: bool = False
+    is_pinned: bool = False
+    description: Optional[str] = None
+    avatar_url: Optional[str] = None
+    unread_count: int = 0
+    channel_data: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+    last_message_at: Optional[datetime] = None
+
+
+class ChatListResponse(BaseModel):
+    """Chat list response with pagination"""
+
+    model_config = ConfigDict(extra="allow")
+
+    chats: List[ChatResponse]
+    total_count: int
+    page: int
+    page_size: int
+    has_more: bool
+    instance_name: str
+    channel_type: Optional[str] = None
+    partial_errors: List[Dict[str, Any]] = []
+
+
+# Contact Models
+class ContactResponse(BaseModel):
+    """Contact response model"""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    name: str
+    channel_type: str  # whatsapp, discord
+    instance_name: str
+    avatar_url: Optional[str] = None
+    status: Optional[str] = None
+    is_verified: Optional[bool] = None
+    is_business: Optional[bool] = None
+    channel_data: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
+
+
+class ContactListResponse(BaseModel):
+    """Contact list response with pagination"""
+
+    model_config = ConfigDict(extra="allow")
+
+    contacts: List[ContactResponse]
+    total_count: int
+    page: int
+    page_size: int
+    has_more: bool
+    instance_name: str
+    channel_type: Optional[str] = None
+    partial_errors: List[Dict[str, Any]] = []
+
+
+# Channel Models
+class ChannelResponse(BaseModel):
+    """Channel/Instance response in Omni format"""
+
+    model_config = ConfigDict(extra="allow")
+
+    instance_name: str
+    channel_type: str  # whatsapp, discord
+    display_name: str
+    status: str
+    is_healthy: bool
+    supports_contacts: bool
+    supports_groups: bool
+    supports_media: bool
+    supports_voice: bool
+    avatar_url: Optional[str] = None
+    description: Optional[str] = None
+    total_contacts: Optional[int] = None
+    total_chats: Optional[int] = None
+    channel_data: Optional[Dict[str, Any]] = None
+    connected_at: Optional[datetime] = None
+    last_activity_at: Optional[datetime] = None
+
+
+class ChannelListResponse(BaseModel):
+    """Channel list response"""
+
+    model_config = ConfigDict(extra="allow")
+
+    channels: List[ChannelResponse]
+    total_count: int
+    healthy_count: int
+    partial_errors: List[Dict[str, Any]] = []
