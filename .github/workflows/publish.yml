@@ -75,7 +75,7 @@ jobs:
 
       - name: Check package quality
         run: |
-          uv pip install twine
+          uv pip install --system twine
           uv run twine check dist/*
           echo "✅ Package quality check passed"
 
