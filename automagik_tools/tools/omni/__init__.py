@@ -710,6 +710,211 @@ async def manage_profiles(
         return json.dumps({"success": False, "error": str(e)})
 
 
+@mcp.tool()
+async def manage_chats(
+    operation: str,  # "list" or "get"
+    instance_name: str,
+    chat_id: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    chat_type_filter: Optional[str] = None,
+    archived: Optional[bool] = None,
+    channel_type: Optional[str] = None,
+) -> str:
+    """
+    Manage chats for an instance
+
+    Operations:
+    - list: List all chats with pagination and filters
+    - get: Get specific chat details
+
+    Args:
+        operation: Operation to perform (list, get)
+        instance_name: Instance name to query chats for
+        chat_id: Specific chat ID (required for get operation)
+        page: Page number for pagination (default: 1)
+        page_size: Items per page (default: 50, max: 500)
+        chat_type_filter: Filter by chat type (direct, group, channel, thread)
+        archived: Filter by archived status (true/false)
+        channel_type: Filter by channel type (whatsapp, discord)
+
+    Returns:
+        JSON formatted chat data with pagination info
+
+    Examples:
+        manage_chats(operation="list", instance_name="ember", page_size=10)
+        manage_chats(operation="list", instance_name="ember", chat_type_filter="group")
+        manage_chats(operation="get", instance_name="ember", chat_id="cmfrcz7ag00yr29akeheeiozu")
+    """
+    client = _ensure_client()
+
+    try:
+        if operation == "list":
+            response = await client.list_chats(
+                instance_name=instance_name,
+                page=page,
+                page_size=page_size,
+                chat_type_filter=chat_type_filter,
+                archived=archived,
+                channel_type=channel_type,
+            )
+            return json.dumps(
+                {
+                    "success": True,
+                    "chats": [chat.model_dump() for chat in response.chats],
+                    "total_count": response.total_count,
+                    "page": response.page,
+                    "page_size": response.page_size,
+                    "has_more": response.has_more,
+                    "instance_name": response.instance_name,
+                },
+                default=str,
+                indent=2,
+            )
+
+        elif operation == "get":
+            if not chat_id:
+                return json.dumps(
+                    {"success": False, "error": "chat_id required for get operation"}
+                )
+            chat = await client.get_chat(instance_name, chat_id)
+            return json.dumps(
+                {"success": True, "chat": chat.model_dump()}, default=str, indent=2
+            )
+
+        else:
+            return json.dumps(
+                {"success": False, "error": f"Unknown operation: {operation}"}
+            )
+
+    except Exception as e:
+        logger.error(f"Chat operation failed: {str(e)}")
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool()
+async def manage_contacts(
+    operation: str,  # "list" or "get"
+    instance_name: str,
+    contact_id: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    search_query: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    channel_type: Optional[str] = None,
+) -> str:
+    """
+    Manage contacts for an instance
+
+    Operations:
+    - list: List all contacts with pagination and search
+    - get: Get specific contact details
+
+    Args:
+        operation: Operation to perform (list, get)
+        instance_name: Instance name to query contacts for
+        contact_id: Specific contact ID (required for get operation)
+        page: Page number for pagination (default: 1)
+        page_size: Items per page (default: 50, max: 500)
+        search_query: Search contacts by name
+        status_filter: Filter by contact status
+        channel_type: Filter by channel type (whatsapp, discord)
+
+    Returns:
+        JSON formatted contact data with pagination info
+
+    Examples:
+        manage_contacts(operation="list", instance_name="ember", page_size=10)
+        manage_contacts(operation="list", instance_name="ember", search_query="John")
+        manage_contacts(operation="get", instance_name="ember", contact_id="555196644761@s.whatsapp.net")
+    """
+    client = _ensure_client()
+
+    try:
+        if operation == "list":
+            response = await client.list_contacts(
+                instance_name=instance_name,
+                page=page,
+                page_size=page_size,
+                search_query=search_query,
+                status_filter=status_filter,
+                channel_type=channel_type,
+            )
+            return json.dumps(
+                {
+                    "success": True,
+                    "contacts": [contact.model_dump() for contact in response.contacts],
+                    "total_count": response.total_count,
+                    "page": response.page,
+                    "page_size": response.page_size,
+                    "has_more": response.has_more,
+                    "instance_name": response.instance_name,
+                },
+                default=str,
+                indent=2,
+            )
+
+        elif operation == "get":
+            if not contact_id:
+                return json.dumps(
+                    {"success": False, "error": "contact_id required for get operation"}
+                )
+            contact = await client.get_contact(instance_name, contact_id)
+            return json.dumps(
+                {"success": True, "contact": contact.model_dump()},
+                default=str,
+                indent=2,
+            )
+
+        else:
+            return json.dumps(
+                {"success": False, "error": f"Unknown operation: {operation}"}
+            )
+
+    except Exception as e:
+        logger.error(f"Contact operation failed: {str(e)}")
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool()
+async def list_all_channels(channel_type: Optional[str] = None) -> str:
+    """
+    List all channels/instances with health status and capabilities
+
+    This endpoint provides comprehensive information about all configured instances,
+    including their connection status, supported features, and statistics.
+
+    Args:
+        channel_type: Filter by channel type (whatsapp, discord)
+
+    Returns:
+        JSON formatted list of all channels with health status, capabilities, and statistics
+
+    Examples:
+        list_all_channels()
+        list_all_channels(channel_type="whatsapp")
+    """
+    client = _ensure_client()
+
+    try:
+        response = await client.list_channels(channel_type=channel_type)
+        return json.dumps(
+            {
+                "success": True,
+                "channels": [channel.model_dump() for channel in response.channels],
+                "total_count": response.total_count,
+                "healthy_count": response.healthy_count,
+                "partial_errors": response.partial_errors,
+            },
+            default=str,
+            indent=2,
+        )
+
+    except Exception as e:
+        logger.error(f"List channels failed: {str(e)}")
+        return json.dumps({"success": False, "error": str(e)})
+
+
 def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
