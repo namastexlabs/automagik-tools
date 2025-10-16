@@ -154,14 +154,12 @@ help: ## 🛠️ Show this help message
 	@echo ""
 	@echo -e "$(FONT_CYAN)📦 Build & Publish:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)build$(FONT_RESET)           Build package"
+	@echo -e "  $(FONT_PURPLE)patch$(FONT_RESET)           Bump patch, commit, tag, push (auto-publish)"
+	@echo -e "  $(FONT_PURPLE)minor$(FONT_RESET)           Bump minor, commit, tag, push (auto-publish)"
+	@echo -e "  $(FONT_PURPLE)major$(FONT_RESET)           Bump major, commit, tag, push (auto-publish)"
 	@echo -e "  $(FONT_PURPLE)bump-dev$(FONT_RESET)        Create dev version (0.1.2pre1)"
 	@echo -e "  $(FONT_PURPLE)publish-dev$(FONT_RESET)     Publish dev version to PyPI"
-	@echo -e "  $(FONT_PURPLE)finalize-version$(FONT_RESET) Remove 'pre' suffix (0.1.2pre3 -> 0.1.2)"
 	@echo -e "  $(FONT_PURPLE)publish-test$(FONT_RESET)    Upload current version to TestPyPI"
-	@echo -e "  $(FONT_PURPLE)publish$(FONT_RESET)         Upload to PyPI + GitHub release"
-	@echo -e "  $(FONT_PURPLE)bump-patch$(FONT_RESET)      Bump patch version (x.x.1)"
-	@echo -e "  $(FONT_PURPLE)bump-minor$(FONT_RESET)      Bump minor version (x.1.0)"
-	@echo -e "  $(FONT_PURPLE)bump-major$(FONT_RESET)      Bump major version (1.0.0)"
 	@echo -e "  $(FONT_PURPLE)clean$(FONT_RESET)           Clean build artifacts"
 	@echo ""
 	@echo -e "$(FONT_CYAN)🐳 Docker Commands:$(FONT_RESET)"
@@ -508,6 +506,55 @@ finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
 	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$FINAL_VERSION\"/" pyproject.toml; \
 	echo -e "$(FONT_GREEN)✅ Version finalized: $$CURRENT_VERSION → $$FINAL_VERSION$(FONT_RESET)"; \
 	echo -e "$(FONT_CYAN)💡 Ready for: make publish$(FONT_RESET)"
+
+# ===========================================
+# 🚀 Automated Release Commands
+# ===========================================
+.PHONY: patch minor major
+patch: ## 🚀 Bump patch version, commit, tag, and push (triggers auto-publish)
+	$(call print_status,Creating patch release...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g'); \
+	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$NEW_VERSION\"/" pyproject.toml; \
+	echo -e "$(FONT_GREEN)✅ Version bumped: $$CURRENT_VERSION → $$NEW_VERSION$(FONT_RESET)"; \
+	git add pyproject.toml; \
+	git commit -m "chore: bump version to $$NEW_VERSION" -m "Co-authored-by: Automagik Genie 🧞 <genie@namastex.ai>"; \
+	git tag -a "v$$NEW_VERSION" -m "Release v$$NEW_VERSION"; \
+	echo -e "$(FONT_CYAN)📦 Pushing to GitHub...$(FONT_RESET)"; \
+	git push origin $$(git rev-parse --abbrev-ref HEAD); \
+	git push origin "v$$NEW_VERSION"; \
+	echo -e "$(FONT_GREEN)$(ROCKET) Release v$$NEW_VERSION pushed!$(FONT_RESET)"; \
+	echo -e "$(FONT_CYAN)💡 GitHub Actions will auto-publish to PyPI$(FONT_RESET)"
+
+minor: ## 🚀 Bump minor version, commit, tag, and push (triggers auto-publish)
+	$(call print_status,Creating minor release...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{$$2 = $$2 + 1; $$3 = 0;} 1' | sed 's/ /./g'); \
+	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$NEW_VERSION\"/" pyproject.toml; \
+	echo -e "$(FONT_GREEN)✅ Version bumped: $$CURRENT_VERSION → $$NEW_VERSION$(FONT_RESET)"; \
+	git add pyproject.toml; \
+	git commit -m "chore: bump version to $$NEW_VERSION" -m "Co-authored-by: Automagik Genie 🧞 <genie@namastex.ai>"; \
+	git tag -a "v$$NEW_VERSION" -m "Release v$$NEW_VERSION"; \
+	echo -e "$(FONT_CYAN)📦 Pushing to GitHub...$(FONT_RESET)"; \
+	git push origin $$(git rev-parse --abbrev-ref HEAD); \
+	git push origin "v$$NEW_VERSION"; \
+	echo -e "$(FONT_GREEN)$(ROCKET) Release v$$NEW_VERSION pushed!$(FONT_RESET)"; \
+	echo -e "$(FONT_CYAN)💡 GitHub Actions will auto-publish to PyPI$(FONT_RESET)"
+
+major: ## 🚀 Bump major version, commit, tag, and push (triggers auto-publish)
+	$(call print_status,Creating major release...)
+	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
+	NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{$$1 = $$1 + 1; $$2 = 0; $$3 = 0;} 1' | sed 's/ /./g'); \
+	sed -i "s/version = \"$$CURRENT_VERSION\"/version = \"$$NEW_VERSION\"/" pyproject.toml; \
+	echo -e "$(FONT_GREEN)✅ Version bumped: $$CURRENT_VERSION → $$NEW_VERSION$(FONT_RESET)"; \
+	git add pyproject.toml; \
+	git commit -m "chore: bump version to $$NEW_VERSION" -m "Co-authored-by: Automagik Genie 🧞 <genie@namastex.ai>"; \
+	git tag -a "v$$NEW_VERSION" -m "Release v$$NEW_VERSION"; \
+	echo -e "$(FONT_CYAN)📦 Pushing to GitHub...$(FONT_RESET)"; \
+	git push origin $$(git rev-parse --abbrev-ref HEAD); \
+	git push origin "v$$NEW_VERSION"; \
+	echo -e "$(FONT_GREEN)$(ROCKET) Release v$$NEW_VERSION pushed!$(FONT_RESET)"; \
+	echo -e "$(FONT_CYAN)💡 GitHub Actions will auto-publish to PyPI$(FONT_RESET)"
 
 # ===========================================
 # 🔧 System Service Management
