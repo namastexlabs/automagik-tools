@@ -107,9 +107,11 @@ class SparkClient:
         return await self.request("DELETE", f"/api/v1/workflows/{workflow_id}")
 
     # Remote workflow endpoints
-    async def list_remote_workflows(self, source_url: str) -> List[Dict[str, Any]]:
+    async def list_remote_workflows(
+        self, source_url: str, simplified: bool = True
+    ) -> List[Dict[str, Any]]:
         """List available workflows from remote source"""
-        params = {"source_url": source_url}
+        params = {"source_url": source_url, "simplified": simplified}
         return await self.request("GET", "/api/v1/workflows/remote", params=params)
 
     async def get_remote_workflow(
@@ -124,11 +126,13 @@ class SparkClient:
     async def sync_workflow(
         self,
         workflow_id: str,
+        source_url: str,
         input_component: str = "input",
         output_component: str = "output",
     ) -> Dict[str, Any]:
         """Sync workflow from remote source"""
         params = {
+            "source_url": source_url,
             "input_component": input_component,
             "output_component": output_component,
         }
@@ -222,9 +226,12 @@ class SparkClient:
         return await self.request("POST", f"/api/v1/schedules/{schedule_id}/disable")
 
     # Source endpoints
-    async def list_sources(self) -> List[Dict[str, Any]]:
+    async def list_sources(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """List all configured sources"""
-        return await self.request("GET", "/api/v1/sources/")
+        params = {}
+        if status:
+            params["status"] = status
+        return await self.request("GET", "/api/v1/sources/", params=params)
 
     async def add_source(
         self, name: str, source_type: str, url: str, api_key: Optional[str] = None
