@@ -58,7 +58,7 @@ class TestSparkMetadata:
         """Test that metadata has required fields"""
         metadata = get_metadata()
         assert metadata["name"] == "spark"
-        assert metadata["version"] == "1.0.0"
+        assert metadata["version"] == "1.1.0"  # Updated version
         assert "description" in metadata
         assert metadata["author"] == "Namastex Labs"
         assert metadata["category"] == "workflow"
@@ -112,21 +112,41 @@ class TestSparkServer:
         tools_dict = await tool_instance.get_tools()
         tool_names = list(tools_dict.keys())
 
-        # Check core tools are registered
+        # Check ALL 23 tools are registered (100% API coverage)
         expected_tools = [
+            # Health
             "get_health",
+            # Workflows
             "list_workflows",
             "get_workflow",
             "run_workflow",
             "delete_workflow",
+            # Remote Workflows
+            "list_remote_workflows",
+            "get_remote_workflow",  # NEW
+            "sync_workflow",
+            # Tasks
             "list_tasks",
             "get_task",
+            "delete_task",  # NEW
+            # Schedules
             "list_schedules",
             "create_schedule",
+            "get_schedule",  # NEW
+            "update_schedule",  # NEW
             "delete_schedule",
+            "enable_schedule",
+            "disable_schedule",
+            # Sources
             "list_sources",
+            "get_source",  # NEW
             "add_source",
+            "update_source",  # NEW
+            "delete_source",
         ]
+
+        # Verify we have exactly 23 tools
+        assert len(tools_dict) == 23, f"Expected 23 tools, got {len(tools_dict)}"
 
         for tool in expected_tools:
             assert tool in tool_names, f"Tool '{tool}' should be registered"
@@ -584,3 +604,324 @@ class TestSparkErrorHandling:
         # Restore original values
         spark_module.config = original_config
         spark_module.client = original_client
+
+
+class TestNewRemoteWorkflowTools:
+    """Test new remote workflow tools added in v1.1.0"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_remote_workflow(self, tool_instance):
+        """Test getting remote workflow details"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "workflow-123",
+                "name": "Remote Test Workflow",
+                "description": "A remote workflow",
+                "flow_type": "hive_agent",
+                "components": ["input", "output"],
+                "inputs": {"input": {"type": "string"}},
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "get_remote_workflow",
+                    {
+                        "workflow_id": "workflow-123",
+                        "source_url": "http://localhost:8881",
+                    },
+                )
+
+            workflow = json.loads(result.data)
+            assert workflow["id"] == "workflow-123"
+            assert workflow["name"] == "Remote Test Workflow"
+            assert "components" in workflow
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_remote_workflows_with_simplified(self, tool_instance):
+        """Test listing remote workflows with simplified parameter"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = [
+                {"id": "flow-1", "name": "Simple Flow"},
+                {"id": "flow-2", "name": "Another Flow"},
+            ]
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "list_remote_workflows",
+                    {"source_url": "http://localhost:8881", "simplified": True},
+                )
+
+            flows = json.loads(result.data)
+            assert len(flows) == 2
+            assert flows[0]["name"] == "Simple Flow"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_sync_workflow_with_source_url(self, tool_instance):
+        """Test syncing workflow with required source_url parameter (bug fix)"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "synced-workflow-123",
+                "name": "Synced Workflow",
+                "source": "http://localhost:8881",
+                "status": "active",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "sync_workflow",
+                    {
+                        "workflow_id": "workflow-123",
+                        "source_url": "http://localhost:8881",  # CRITICAL: now required
+                        "input_component": "input",
+                        "output_component": "output",
+                    },
+                )
+
+            workflow = json.loads(result.data)
+            assert workflow["id"] == "synced-workflow-123"
+            assert workflow["status"] == "active"
+
+
+class TestNewTaskTools:
+    """Test new task management tools added in v1.1.0"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_delete_task(self, tool_instance):
+        """Test deleting a task execution"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "success": True,
+                "deleted": "task-123",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool("delete_task", {"task_id": "task-123"})
+
+            response = json.loads(result.data)
+            assert response["success"] is True
+            assert response["deleted"] == "task-123"
+
+
+class TestNewScheduleTools:
+    """Test new schedule management tools added in v1.1.0"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_schedule(self, tool_instance):
+        """Test getting schedule details"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "schedule-123",
+                "workflow_id": "workflow-1",
+                "schedule_type": "interval",
+                "schedule_expr": "30m",
+                "status": "active",
+                "next_run_at": "2025-10-17T22:00:00Z",
+                "last_run_at": "2025-10-17T21:30:00Z",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "get_schedule", {"schedule_id": "schedule-123"}
+                )
+
+            schedule = json.loads(result.data)
+            assert schedule["id"] == "schedule-123"
+            assert schedule["schedule_type"] == "interval"
+            assert "next_run_at" in schedule
+            assert "last_run_at" in schedule
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_schedule(self, tool_instance):
+        """Test updating an existing schedule"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "schedule-123",
+                "workflow_id": "workflow-1",
+                "schedule_type": "cron",  # Changed from interval
+                "schedule_expr": "0 */2 * * *",  # Changed expression
+                "status": "active",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "update_schedule",
+                    {
+                        "schedule_id": "schedule-123",
+                        "schedule_type": "cron",
+                        "schedule_expr": "0 */2 * * *",
+                    },
+                )
+
+            schedule = json.loads(result.data)
+            assert schedule["id"] == "schedule-123"
+            assert schedule["schedule_type"] == "cron"
+            assert schedule["schedule_expr"] == "0 */2 * * *"
+
+
+class TestNewSourceTools:
+    """Test new source management tools added in v1.1.0"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_source(self, tool_instance):
+        """Test getting source details"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "source-123",
+                "name": "Production Agents",
+                "source_type": "automagik-agents",
+                "url": "https://prod.agents.com",
+                "status": "active",
+                "last_sync": "2025-10-17T21:00:00Z",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "get_source", {"source_id": "source-123"}
+                )
+
+            source = json.loads(result.data)
+            assert source["id"] == "source-123"
+            assert source["name"] == "Production Agents"
+            assert source["source_type"] == "automagik-agents"
+            assert "last_sync" in source
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_source(self, tool_instance):
+        """Test updating source configuration"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "source-123",
+                "name": "Updated Source Name",  # Updated
+                "source_type": "automagik-agents",
+                "url": "https://new-url.com",  # Updated
+                "status": "active",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "update_source",
+                    {
+                        "source_id": "source-123",
+                        "name": "Updated Source Name",
+                        "url": "https://new-url.com",
+                        "api_key": "new-api-key",
+                    },
+                )
+
+            source = json.loads(result.data)
+            assert source["id"] == "source-123"
+            assert source["name"] == "Updated Source Name"
+            assert source["url"] == "https://new-url.com"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_sources_with_status_filter(self, tool_instance):
+        """Test listing sources with status filter parameter"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = [
+                {
+                    "id": "source-1",
+                    "name": "Active Source",
+                    "source_type": "automagik-agents",
+                    "url": "http://localhost:8881",
+                    "status": "active",
+                }
+            ]
+            mock_response.raise_for_status = Mock()
+
+            mock_client.request.return_value = mock_response
+
+            async with Client(tool_instance) as client:
+                result = await client.call_tool(
+                    "list_sources", {"status": "active"}  # NEW parameter
+                )
+
+            sources = json.loads(result.data)
+            assert len(sources) == 1
+            assert sources[0]["status"] == "active"
