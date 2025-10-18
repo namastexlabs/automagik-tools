@@ -925,3 +925,535 @@ class TestNewSourceTools:
             sources = json.loads(result.data)
             assert len(sources) == 1
             assert sources[0]["status"] == "active"
+
+
+class TestComprehensiveErrorCoverage:
+    """Test all error handling paths for 100% coverage"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_workflows_error(self, tool_instance):
+        """Test list_workflows error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("API Error")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="API Error"):
+                    await client.call_tool("list_workflows", {})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_workflow_error(self, tool_instance):
+        """Test get_workflow error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Workflow not found")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Workflow not found"):
+                    await client.call_tool("get_workflow", {"workflow_id": "invalid"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_run_workflow_error(self, tool_instance):
+        """Test run_workflow error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.post.side_effect = Exception("Execution failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(
+                    Exception, match="Execution failed|not JSON serializable"
+                ):
+                    await client.call_tool(
+                        "run_workflow",
+                        {"workflow_id": "wf-1", "input_text": "test"},
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_delete_workflow_error(self, tool_instance):
+        """Test delete_workflow error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Delete failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Delete failed"):
+                    await client.call_tool("delete_workflow", {"workflow_id": "wf-1"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_remote_workflows_error(self, tool_instance):
+        """Test list_remote_workflows error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Remote connection failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Remote connection failed"):
+                    await client.call_tool(
+                        "list_remote_workflows",
+                        {"source_url": "http://localhost:8881"},
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_remote_workflow_error(self, tool_instance):
+        """Test get_remote_workflow error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Remote fetch failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Remote fetch failed"):
+                    await client.call_tool(
+                        "get_remote_workflow",
+                        {
+                            "workflow_id": "wf-1",
+                            "source_url": "http://localhost:8881",
+                        },
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_sync_workflow_error(self, tool_instance):
+        """Test sync_workflow error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Sync failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Sync failed"):
+                    await client.call_tool(
+                        "sync_workflow",
+                        {
+                            "workflow_id": "wf-1",
+                            "source_url": "http://localhost:8881",
+                        },
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_tasks_error(self, tool_instance):
+        """Test list_tasks error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Task list failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Task list failed"):
+                    await client.call_tool("list_tasks", {})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_task_error(self, tool_instance):
+        """Test get_task error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Task not found")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Task not found"):
+                    await client.call_tool("get_task", {"task_id": "task-1"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_delete_task_error(self, tool_instance):
+        """Test delete_task error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Delete failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Delete failed"):
+                    await client.call_tool("delete_task", {"task_id": "task-1"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_schedules_error(self, tool_instance):
+        """Test list_schedules error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Schedule list failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Schedule list failed"):
+                    await client.call_tool("list_schedules", {})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_create_schedule_error(self, tool_instance):
+        """Test create_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Create failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Create failed"):
+                    await client.call_tool(
+                        "create_schedule",
+                        {
+                            "workflow_id": "wf-1",
+                            "schedule_type": "interval",
+                            "schedule_expr": "30m",
+                        },
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_schedule_error(self, tool_instance):
+        """Test get_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Schedule not found")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Schedule not found"):
+                    await client.call_tool("get_schedule", {"schedule_id": "sched-1"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_schedule_error(self, tool_instance):
+        """Test update_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Update failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Update failed"):
+                    await client.call_tool(
+                        "update_schedule",
+                        {"schedule_id": "sched-1", "schedule_type": "cron"},
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_delete_schedule_error(self, tool_instance):
+        """Test delete_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Delete failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Delete failed"):
+                    await client.call_tool(
+                        "delete_schedule", {"schedule_id": "sched-1"}
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_enable_schedule_error(self, tool_instance):
+        """Test enable_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Enable failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Enable failed"):
+                    await client.call_tool(
+                        "enable_schedule", {"schedule_id": "sched-1"}
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_disable_schedule_error(self, tool_instance):
+        """Test disable_schedule error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Disable failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Disable failed"):
+                    await client.call_tool(
+                        "disable_schedule", {"schedule_id": "sched-1"}
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_sources_error(self, tool_instance):
+        """Test list_sources error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Source list failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Source list failed"):
+                    await client.call_tool("list_sources", {})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_source_error(self, tool_instance):
+        """Test get_source error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Source not found")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Source not found"):
+                    await client.call_tool("get_source", {"source_id": "src-1"})
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_add_source_error(self, tool_instance):
+        """Test add_source error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Add failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Add failed"):
+                    await client.call_tool(
+                        "add_source",
+                        {
+                            "name": "Test",
+                            "source_type": "automagik-agents",
+                            "url": "http://test.com",
+                        },
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_source_error(self, tool_instance):
+        """Test update_source error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Update failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Update failed"):
+                    await client.call_tool(
+                        "update_source", {"source_id": "src-1", "name": "Updated"}
+                    )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_delete_source_error(self, tool_instance):
+        """Test delete_source error handling"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.request.side_effect = Exception("Delete failed")
+
+            async with Client(tool_instance) as client:
+                with pytest.raises(Exception, match="Delete failed"):
+                    await client.call_tool("delete_source", {"source_id": "src-1"})
+
+
+class TestClientMethodsCoverage:
+    """Test uncovered client methods for 100% client coverage"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_workflow_deletion(self, mock_client):
+        """Test client delete_workflow method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"success": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.delete_workflow("wf-123")
+            assert result["success"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_task_deletion(self, mock_client):
+        """Test client delete_task method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"deleted": "task-123"}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.delete_task("task-123")
+            assert result["deleted"] == "task-123"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_get_schedule(self, mock_client):
+        """Test client get_schedule method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "id": "sched-123",
+                "workflow_id": "wf-1",
+            }
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.get_schedule("sched-123")
+            assert result["id"] == "sched-123"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_update_schedule(self, mock_client):
+        """Test client update_schedule method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"id": "sched-123", "updated": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.update_schedule("sched-123", "cron", "0 9 * * *")
+            assert result["updated"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_delete_schedule(self, mock_client):
+        """Test client delete_schedule method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"deleted": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.delete_schedule("sched-123")
+            assert result["deleted"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_enable_schedule(self, mock_client):
+        """Test client enable_schedule method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"enabled": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.enable_schedule("sched-123")
+            assert result["enabled"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_disable_schedule(self, mock_client):
+        """Test client disable_schedule method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"disabled": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.disable_schedule("sched-123")
+            assert result["disabled"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_get_source(self, mock_client):
+        """Test client get_source method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"id": "src-123", "name": "Source"}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.get_source("src-123")
+            assert result["id"] == "src-123"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_update_source(self, mock_client):
+        """Test client update_source method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"id": "src-123", "updated": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.update_source("src-123", "New Name")
+            assert result["updated"] is True
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_client_delete_source(self, mock_client):
+        """Test client delete_source method"""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_async_client = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_async_client
+
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {"deleted": True}
+            mock_response.raise_for_status = Mock()
+
+            mock_async_client.request.return_value = mock_response
+
+            result = await mock_client.delete_source("src-123")
+            assert result["deleted"] is True
