@@ -58,7 +58,7 @@ class TestSparkMetadata:
         """Test that metadata has required fields"""
         metadata = get_metadata()
         assert metadata["name"] == "spark"
-        assert metadata["version"] == "1.1.0"  # Updated version
+        assert metadata["version"] == "0.9.7"
         assert "description" in metadata
         assert metadata["author"] == "Namastex Labs"
         assert metadata["category"] == "workflow"
