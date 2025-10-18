@@ -47,7 +47,7 @@ def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
         "name": "spark",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "description": "AutoMagik Spark workflow orchestration and AI agent management",
         "author": "Namastex Labs",
         "category": "workflow",
@@ -197,12 +197,15 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
 
 # Remote Workflow Discovery Tools
 @mcp.tool()
-async def list_remote_workflows(source_url: str, ctx: Optional[Context] = None) -> str:
+async def list_remote_workflows(
+    source_url: str, simplified: bool = True, ctx: Optional[Context] = None
+) -> str:
     """
     List available workflows from a remote AutoMagik instance.
 
     Args:
         source_url: The URL of the remote AutoMagik instance (e.g., http://localhost:8881)
+        simplified: Return only essential flow information (default: True)
 
     Returns a list of available workflows that can be synced.
     """
@@ -211,7 +214,7 @@ async def list_remote_workflows(source_url: str, ctx: Optional[Context] = None) 
         raise ValueError("Tool not configured")
 
     try:
-        workflows = await client.list_remote_workflows(source_url)
+        workflows = await client.list_remote_workflows(source_url, simplified)
         return json.dumps(workflows, indent=2)
     except Exception as e:
         if ctx:
@@ -220,8 +223,35 @@ async def list_remote_workflows(source_url: str, ctx: Optional[Context] = None) 
 
 
 @mcp.tool()
+async def get_remote_workflow(
+    workflow_id: str, source_url: str, ctx: Optional[Context] = None
+) -> str:
+    """
+    Get detailed information about a specific remote workflow.
+
+    Args:
+        workflow_id: The ID of the remote workflow
+        source_url: The URL of the remote AutoMagik instance (e.g., http://localhost:8881)
+
+    Returns detailed remote workflow information.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        workflow = await client.get_remote_workflow(workflow_id, source_url)
+        return json.dumps(workflow, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to get remote workflow: {str(e)}")
+        raise
+
+
+@mcp.tool()
 async def sync_workflow(
     workflow_id: str,
+    source_url: str,
     input_component: str = "input",
     output_component: str = "output",
     ctx: Optional[Context] = None,
@@ -231,6 +261,7 @@ async def sync_workflow(
 
     Args:
         workflow_id: The ID of the workflow to sync
+        source_url: The URL of the remote source (e.g., http://localhost:8881)
         input_component: Input component name (default: "input")
         output_component: Output component name (default: "output")
 
@@ -242,7 +273,7 @@ async def sync_workflow(
 
     try:
         result = await client.sync_workflow(
-            workflow_id, input_component, output_component
+            workflow_id, source_url, input_component, output_component
         )
         return json.dumps(result, indent=2)
     except Exception as e:
@@ -305,6 +336,29 @@ async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
         raise
 
 
+@mcp.tool()
+async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
+    """
+    Delete a task execution.
+
+    Args:
+        task_id: The UUID of the task to delete
+
+    Returns confirmation of deletion.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        result = await client.delete_task(task_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to delete task: {str(e)}")
+        raise
+
+
 # Schedule Management Tools
 @mcp.tool()
 async def list_schedules(
@@ -364,6 +418,63 @@ async def create_schedule(
     except Exception as e:
         if ctx:
             ctx.error(f"Failed to create schedule: {str(e)}")
+        raise
+
+
+@mcp.tool()
+async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
+    """
+    Get detailed information about a specific schedule.
+
+    Args:
+        schedule_id: The UUID of the schedule
+
+    Returns schedule details including configuration and next run time.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        schedule = await client.get_schedule(schedule_id)
+        return json.dumps(schedule, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to get schedule: {str(e)}")
+        raise
+
+
+@mcp.tool()
+async def update_schedule(
+    schedule_id: str,
+    schedule_type: Optional[str] = None,
+    schedule_expr: Optional[str] = None,
+    input_value: Optional[str] = None,
+    ctx: Optional[Context] = None,
+) -> str:
+    """
+    Update an existing schedule.
+
+    Args:
+        schedule_id: The UUID of the schedule to update
+        schedule_type: Type of schedule - "interval" or "cron" (optional)
+        schedule_expr: Schedule expression (optional)
+        input_value: Default input for scheduled runs (optional)
+
+    Returns the updated schedule details.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        result = await client.update_schedule(
+            schedule_id, schedule_type, schedule_expr, input_value
+        )
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to update schedule: {str(e)}")
         raise
 
 
@@ -438,9 +549,14 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
 
 # Source Management Tools
 @mcp.tool()
-async def list_sources(ctx: Optional[Context] = None) -> str:
+async def list_sources(
+    status: Optional[str] = None, ctx: Optional[Context] = None
+) -> str:
     """
     List all configured workflow sources.
+
+    Args:
+        status: Filter by status - "active" or "inactive" (optional)
 
     Returns a list of sources (AutoMagik Agents, AutoMagik Hive instances).
     """
@@ -449,11 +565,34 @@ async def list_sources(ctx: Optional[Context] = None) -> str:
         raise ValueError("Tool not configured")
 
     try:
-        sources = await client.list_sources()
+        sources = await client.list_sources(status)
         return json.dumps(sources, indent=2)
     except Exception as e:
         if ctx:
             ctx.error(f"Failed to list sources: {str(e)}")
+        raise
+
+
+@mcp.tool()
+async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
+    """
+    Get detailed information about a specific workflow source.
+
+    Args:
+        source_id: The UUID of the source
+
+    Returns source details including configuration and status.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        source = await client.get_source(source_id)
+        return json.dumps(source, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to get source: {str(e)}")
         raise
 
 
@@ -489,6 +628,38 @@ async def add_source(
     except Exception as e:
         if ctx:
             ctx.error(f"Failed to add source: {str(e)}")
+        raise
+
+
+@mcp.tool()
+async def update_source(
+    source_id: str,
+    name: Optional[str] = None,
+    url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    ctx: Optional[Context] = None,
+) -> str:
+    """
+    Update a workflow source configuration.
+
+    Args:
+        source_id: The UUID of the source to update
+        name: New display name (optional)
+        url: New base URL (optional)
+        api_key: New API key (optional)
+
+    Returns the updated source details.
+    """
+    global client
+    if not client:
+        raise ValueError("Tool not configured")
+
+    try:
+        source = await client.update_source(source_id, name, url, api_key)
+        return json.dumps(source, indent=2)
+    except Exception as e:
+        if ctx:
+            ctx.error(f"Failed to update source: {str(e)}")
         raise
 
 
