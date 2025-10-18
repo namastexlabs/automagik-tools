@@ -1,5 +1,3 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/namastexlabs-automagik-tools-badge.png)](https://mseep.ai/app/namastexlabs-automagik-tools)
-
 <p align="center">
   <img src=".github/images/automagik-tools-logo.svg" alt="Automagik Tools Logo" width="400">
 </p>
@@ -642,4 +640,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
   Made with ❤️ by <a href="https://namastex.ai">Namastex Labs</a><br>
   <em>AI that elevates human potential, not replaces it</em>
 </p>
-<a href="https://deepwiki.com/namastexlabs/automagik-tools"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+
+<p align="center">
+  <a href="https://mseep.ai/app/namastexlabs-automagik-tools"><img src="https://mseep.net/pr/namastexlabs-automagik-tools-badge.png" alt="MseeP.ai Security Assessment Badge"></a><br>
+  <a href="https://deepwiki.com/namastexlabs/automagik-tools"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
