@@ -47,7 +47,7 @@ def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
         "name": "spark",
-        "version": "1.1.0",
+        "version": "0.9.7",
         "description": "AutoMagik Spark workflow orchestration and AI agent management",
         "author": "Namastex Labs",
         "category": "workflow",
