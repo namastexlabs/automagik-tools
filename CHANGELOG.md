@@ -8,14 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive test suite for Spark MCP tool (65 tests, 89% coverage)
-- 6 new Spark MCP tools for complete API coverage:
-  - `get_remote_workflow` - Inspect remote workflow details
-  - `delete_task` - Delete task executions
-  - `get_schedule` - View schedule details
-  - `update_schedule` - Modify existing schedules
-  - `get_source` - View source configuration
-  - `update_source` - Update source settings
+- Comprehensive test suite for Evolution API MCP tool (tests/tools/test_evolution_api.py)
+
 
 ### Fixed
 - **CRITICAL**: Spark `sync_workflow` now includes required `source_url` parameter
