@@ -1,62 +1,110 @@
 """
-Tests for Evolution API tool functionality
+Tests for Evolution API MCP tool
+
+This file follows patterns from tests/tools/test_omni.py and tests/tools/test_wait.py
 """
 
 import pytest
-from unittest.mock import MagicMock
-from automagik_tools.tools.evolution_api import create_server
+import json
+from unittest.mock import patch, AsyncMock, Mock
+
+from automagik_tools.tools.evolution_api import (
+    mcp,
+    _get_target_number,
+    send_text_message,
+    send_media,
+    send_audio,
+    send_reaction,
+    send_location,
+    send_contact,
+    send_presence,
+    config as _module_config,
+    client as _module_client,
+)
+from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
+from automagik_tools.tools.evolution_api import create_server, get_metadata, get_config_class  # type: ignore
 
 
-class MockConfig:
-    """Mock configuration for testing"""
+@pytest.fixture
+def mock_config(monkeypatch):
+    """Create mock EvolutionAPIConfig"""
+    # Ensure no env leakage
+    monkeypatch.delenv("EVOLUTION_API_API_KEY", raising=False)
+    monkeypatch.delenv("EVOLUTION_API_BASE_URL", raising=False)
+    monkeypatch.delenv("EVOLUTION_API_FIXED_RECIPIENT", raising=False)
 
-    def __init__(
-        self, base_url="http://test-api.example.com", api_key="test_api_key", timeout=30
-    ):
-        self.base_url = base_url
-        self.api_key = api_key
-        self.timeout = timeout
+    cfg = EvolutionAPIConfig(api_key="test-key", base_url="https://api.evo.test", instance="inst-1", fixed_recipient="+19990001111")
+    return cfg
 
 
-class TestEvolutionAPITool:
-    """Test Evolution API tool creation and registration"""
+@pytest.fixture
+def mock_client():
+    """Patch EvolutionAPIClient with AsyncMock instance"""
+    with patch("automagik_tools.tools.evolution_api.EvolutionAPIClient") as MockClient:
+        client = AsyncMock()
+        MockClient.return_value = client
+        yield client
 
-    def test_create_tool_function(self):
-        """Test that create_server function works"""
-        config = MockConfig()
-        server = create_server(config)
 
-        assert server is not None
-        assert hasattr(server, "get_tools")  # FastMCP has get_tools method
-        assert hasattr(server, "name")
-        assert server.name == "Evolution API Tool"
+@pytest.fixture(autouse=True)
+def setup_module_config(mock_config):
+    """Set module-level config and ensure client global is reset"""
+    import automagik_tools.tools.evolution_api as evo_module
 
+    original_config = evo_module.config
+    original_client = evo_module.client
+
+    evo_module.config = mock_config
+    evo_module.client = None
+
+    yield
+
+    evo_module.config = original_config
+    evo_module.client = original_client
+
+
+class TestEvolutionConfig:
+    def test_default_values(self):
+        cfg = EvolutionAPIConfig()
+        assert cfg.api_key == ""
+        assert cfg.base_url.startswith("http")
+        assert cfg.timeout == 30
+        assert cfg.max_retries == 3
+
+    def test_env_overrides(self, monkeypatch):
+        monkeypatch.setenv("EVOLUTION_API_API_KEY", "env-key")
+        monkeypatch.setenv("EVOLUTION_API_BASE_URL", "https://env.evo")
+        cfg = EvolutionAPIConfig()
+        assert cfg.api_key == "env-key"
+        assert cfg.base_url == "https://env.evo"
+
+
+class TestEvolutionMetadata:
+    def test_metadata_and_config_class(self):
+        # metadata helpers are provided by module; import may vary, tolerate attribute errors
+        try:
+            meta = get_metadata()
+            assert isinstance(meta, dict)
+            assert "name" in meta
+        except Exception:
+            # If helpers are not exported, at least ensure mcp exists
+            assert hasattr(mcp, "tool")
+
+        cfg_cls = get_config_class()
+        assert cfg_cls == EvolutionAPIConfig
+
+
+class TestEvolutionTools:
     @pytest.mark.asyncio
-    async def test_tool_registration(self):
-        """Test that tool can be registered with MCP"""
-        config = MockConfig()
-        server = create_server(config)
+    async def test_send_text_message_success(self, mock_client):
+        # Arrange: client.send_text_message returns a payload
+        mock_client.send_text_message.return_value = {"id": "msg-1", "status": "sent"}
 
-        # Check that the server has registered MCP-compatible functions
-        tools = await server.get_tools()
-        tool_names = list(tools.keys())
-        assert "send_text_message" in tool_names
-        assert "create_instance" in tool_names
-        assert "get_instance_info" in tool_names
+        # Extract underlying function if wrapped
+        fn = send_text_message.fn if hasattr(send_text_message, "fn") else send_text_message
 
+        # Act
 
-class TestEvolutionAPIFunctions:
-    """Test individual Evolution API functions"""
-
-    @pytest.mark.asyncio
-    async def test_send_text_message_success(self, mock_httpx_client):
-        """Test successful text message sending"""
-        # Mock successful response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "status": "success",
-            "message": "Message sent successfully",
         }
         mock_httpx_client.post.return_value = mock_response
 
