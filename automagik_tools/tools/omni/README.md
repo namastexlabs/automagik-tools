@@ -89,27 +89,19 @@ Comprehensive instance management for all messaging channels.
 - `restart` - Restart instance connection
 - `logout` - Logout/disconnect instance
 
-**Examples:**
-```python
-# List all instances
-manage_instances(operation="list")
+**Usage (Natural Language):**
 
-# Get instance details
-manage_instances(operation="get", instance_name="my-whatsapp")
+Once the MCP server is running, interact with Claude in natural language:
 
-# Create new WhatsApp instance
-manage_instances(
-    operation="create",
-    config={
-        "name": "business-whatsapp",
-        "channel_type": "whatsapp",
-        "auto_qr": True
-    }
-)
+> "List all my messaging instances"
 
-# Get QR code for connection
-manage_instances(operation="qr", instance_name="my-whatsapp")
-```
+> "Show me details for the my-whatsapp instance"
+
+> "Create a new WhatsApp instance called business-whatsapp with auto QR code generation"
+
+> "Get the QR code for my-whatsapp instance so I can connect"
+
+Claude will use the `manage_instances` MCP tool to execute these requests and return the results.
 
 ### 2. `send_message`
 
@@ -123,52 +115,21 @@ Unified interface for sending all message types.
 - `contact` - Send contact cards
 - `reaction` - Send emoji reactions
 
-**Examples:**
-```python
-# Send text message
-send_message(
-    message_type="text",
-    phone="+1234567890",
-    message="Hello from OMNI!"
-)
+**Usage (Natural Language):**
 
-# Send image with caption
-send_message(
-    message_type="media",
-    phone="+1234567890",
-    media_url="https://example.com/image.jpg",
-    media_type="image",
-    caption="Check out this image!"
-)
+Talk to Claude naturally to send any type of message:
 
-# Send voice note
-send_message(
-    message_type="audio",
-    phone="+1234567890",
-    audio_url="https://example.com/voice.mp3"
-)
+> "Send a text message to +1234567890: 'Hello from OMNI!'"
 
-# Send reaction
-send_message(
-    message_type="reaction",
-    phone="+1234567890",
-    message_id="msg_123",
-    emoji="👍"
-)
+> "Send this image to +1234567890 with caption 'Check out this image!': https://example.com/image.jpg"
 
-# Send contact
-send_message(
-    message_type="contact",
-    phone="+1234567890",
-    contacts=[
-        {
-            "full_name": "John Doe",
-            "phone_number": "+0987654321",
-            "email": "john@example.com"
-        }
-    ]
-)
-```
+> "Send a voice note to +1234567890: https://example.com/voice.mp3"
+
+> "React with a thumbs up 👍 to message msg_123 for +1234567890"
+
+> "Send contact card for John Doe (+0987654321, john@example.com) to +1234567890"
+
+Claude will automatically choose the correct message type and use the `send_message` MCP tool.
 
 ### 3. `manage_traces`
 
@@ -182,35 +143,17 @@ Comprehensive trace management for debugging and analytics.
 - `by_phone` - Get traces for specific phone
 - `cleanup` - Clean up old traces
 
-**Examples:**
-```python
-# List recent traces
-manage_traces(
-    operation="list",
-    instance_name="my-whatsapp",
-    limit=20
-)
+**Usage (Natural Language):**
 
-# Get analytics
-manage_traces(
-    operation="analytics",
-    start_date="2024-01-01",
-    instance_name="my-whatsapp"
-)
+> "List the 20 most recent message traces for my-whatsapp instance"
 
-# Get traces for phone
-manage_traces(
-    operation="by_phone",
-    phone="+1234567890"
-)
+> "Show me analytics for my-whatsapp instance starting from January 1st, 2024"
 
-# Preview cleanup (dry run)
-manage_traces(
-    operation="cleanup",
-    days_old=30,
-    dry_run=True
-)
-```
+> "Get all message traces for phone number +1234567890"
+
+> "Preview cleaning up traces older than 30 days (dry run first)"
+
+Claude will use the `manage_traces` MCP tool to provide debugging and analytics information.
 
 ### 4. `manage_profiles`
 
@@ -220,20 +163,13 @@ Profile management operations.
 - `fetch` - Fetch user profile information
 - `update_picture` - Update instance profile picture
 
-**Examples:**
-```python
-# Fetch user profile
-manage_profiles(
-    operation="fetch",
-    phone_number="+1234567890"
-)
+**Usage (Natural Language):**
 
-# Update profile picture
-manage_profiles(
-    operation="update_picture",
-    picture_url="https://example.com/profile.jpg"
-)
-```
+> "Fetch the profile information for +1234567890"
+
+> "Update my profile picture to this image: https://example.com/profile.jpg"
+
+Claude will use the `manage_profiles` MCP tool to handle profile operations.
 
 ## Advanced Usage
 
@@ -245,43 +181,27 @@ Set a default instance to avoid specifying it for every operation:
 export OMNI_DEFAULT_INSTANCE=my-whatsapp
 ```
 
-Then you can omit `instance_name` in operations:
-```python
-# Will use default instance
-send_message(message_type="text", phone="+1234567890", message="Hello!")
-```
+Then Claude can automatically use the default instance:
+
+> "Send a message to +1234567890: 'Hello!'"
+
+(Claude will automatically use the default instance without you needing to specify it)
 
 ### Filtering Traces
 
-The trace management supports comprehensive filtering:
+The trace management supports comprehensive filtering. Just ask Claude naturally:
 
-```python
-manage_traces(
-    operation="list",
-    instance_name="my-whatsapp",
-    trace_status="failed",          # Filter by status
-    message_type="media",            # Filter by type
-    has_media=True,                  # Only media messages
-    start_date="2024-01-01",        # Date range
-    end_date="2024-01-31",
-    limit=100
-)
-```
+> "List failed message traces for my-whatsapp instance from January 1-31, 2024, only show media messages, limit to 100 results"
+
+Claude will apply all the appropriate filters when calling the `manage_traces` MCP tool.
 
 ### Bulk Operations
 
-While the tool doesn't explicitly support bulk operations, you can easily script them:
+Claude can help coordinate sending to multiple recipients:
 
-```python
-# Send message to multiple recipients
-recipients = ["+1234567890", "+0987654321", "+1111111111"]
-for phone in recipients:
-    send_message(
-        message_type="text",
-        phone=phone,
-        message="Bulk message to all!"
-    )
-```
+> "Send the message 'Bulk message to all!' to these numbers: +1234567890, +0987654321, +1111111111"
+
+Claude will iterate through the recipients and use the `send_message` MCP tool for each one.
 
 ## Error Handling
 

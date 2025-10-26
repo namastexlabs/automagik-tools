@@ -147,84 +147,40 @@ Also available via the client are management helpers:
 
 See the function docstrings in `__init__.py` for more detail on each parameter and the example return shapes.
 
-## Usage examples (Python, async)
+## Usage examples (Natural Language with Claude)
 
-These examples use `EvolutionAPIClient` directly (async). They are runnable once `EVOLUTION_API_API_KEY` and `EVOLUTION_API_BASE_URL` are set.
+Once the MCP server is running, interact with Claude in natural language. Claude will use the Evolution API MCP tools to execute your requests.
 
-1) Send a text message
+### 1) Send a text message
 
-```python
-import asyncio
-from automagik_tools.tools.evolution_api.client import EvolutionAPIClient
-from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
+> "Send a WhatsApp message to +15551234567 using my-instance: 'Hello from Evolution API!'"
 
-async def send_text():
-    cfg = EvolutionAPIConfig()  # will read env vars
-    client = EvolutionAPIClient(cfg)
+Claude will use the `send_text_message` tool and return the message status.
 
-    res = await client.send_text_message(
-        instance="my-instance",
-        number="+15551234567",
-        message="Hello from Evolution API!",
-        delay=0,
-        linkPreview=True,
-    )
-    print(res)
+### 2) Send an image with caption
 
-asyncio.run(send_text())
-```
+> "Send this photo to +15551234567 on my-instance with caption 'Here is a photo': https://example.com/photo.jpg"
 
-2) Send an image (media) by URL
+Claude will automatically detect this is a media message and use the `send_media` tool.
 
-```python
-import asyncio
-from automagik_tools.tools.evolution_api.client import EvolutionAPIClient
-from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
+### 3) Send an audio message
 
-async def send_image():
-    cfg = EvolutionAPIConfig()
-    client = EvolutionAPIClient(cfg)
+> "Send this voice message to +15551234567 on my-instance: https://example.com/voice.mp3"
 
-    res = await client.send_media(
-        instance="my-instance",
-        number="+15551234567",
-        media="https://example.com/photo.jpg",
-        mediatype="image",
-        mimetype="image/jpeg",
-        caption="Here is a photo",
-        fileName="photo.jpg",
-    )
-    print(res)
+Claude will use the `send_audio` tool to send the audio file.
 
-asyncio.run(send_image())
-```
+### 4) Send other message types
 
-3) Send an audio message (base64 or URL)
+> "Send my store location to +15551234567 on my-instance: latitude 37.7749, longitude -122.4194, name 'My Store', address '123 Main St'"
 
-```python
-import asyncio
-from automagik_tools.tools.evolution_api.client import EvolutionAPIClient
-from automagik_tools.tools.evolution_api.config import EvolutionAPIConfig
+> "Send a thumbs up reaction 👍 to message 3EB0XXXXX for user 1234567890@s.whatsapp.net on my-instance"
 
-async def send_audio():
-    cfg = EvolutionAPIConfig()
-    client = EvolutionAPIClient(cfg)
+> "Show a typing indicator to +15551234567 on my-instance"
 
-    # audio can be a base64 string or a direct URL
-    res = await client.send_audio(
-        instance="my-instance",
-        number="+15551234567",
-        audio="https://example.com/voice.mp3",
-        delay=0,
-    )
-    print(res)
-
-asyncio.run(send_audio())
-```
-
-Notes on examples:
-- When `EVOLUTION_API_FIXED_RECIPIENT` is set, the `number` values above will be ignored and the fixed recipient will be used instead.
-- If you prefer MCP-level examples, run the tool with `uvx automagik-tools tool evolution_api` and then call the MCP function from your agent or an MCP client.
+### Notes
+- When `EVOLUTION_API_FIXED_RECIPIENT` is set, all messages go to that number regardless of what you specify
+- Claude automatically selects the appropriate tool (send_text_message, send_media, send_audio, etc.) based on your request
+- You can ask Claude for confirmation before sending: "Draft a WhatsApp message to... but don't send it yet"
 
 ## Fixed-recipient security feature
 
