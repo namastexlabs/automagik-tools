@@ -138,15 +138,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. Simple Query with Tool Orchestration
 
-**Command:**
-```python
-ask_genie(
-    query="List all Python files in my project and check their Git status",
-    user_id="developer-123"
-)
+**What to say to Claude:**
+```
+List all Python files in my project and check their Git status
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```markdown
 I'll help you find all Python files and check their Git status.
 
@@ -168,15 +165,12 @@ Would you like me to help you commit these changes or review the modifications?
 
 ### 2. Multi-Tool Workflow
 
-**Command:**
-```python
-ask_genie(
-    query="Create a new feature branch, add a README file explaining the project, and commit it",
-    user_id="developer-123"
-)
+**What to say to Claude:**
+```
+Create a new feature branch, add a README file explaining the project, and commit it
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```markdown
 I've completed the workflow for you:
 
@@ -202,15 +196,12 @@ Would you like me to push this branch to the remote repository?
 
 ### 3. Memory-Based Personalization
 
-**Command:**
-```python
-ask_genie(
-    query="Set up my usual project structure",
-    user_id="developer-123"
-)
+**What to say to Claude:**
+```
+Set up my usual project structure
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```markdown
 I remember your preferred project structure! Setting it up now...
 
@@ -241,12 +232,12 @@ This matches your usual setup from previous projects. Anything else you'd like m
 
 ### 4. Check Memory Stats
 
-**Command:**
-```python
-genie_memory_stats(user_id="developer-123")
+**What to say to Claude:**
+```
+Show me my Genie memory stats
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```markdown
 🧞 **Genie Memory Stats**
 
@@ -265,20 +256,17 @@ genie_memory_stats(user_id="developer-123")
 
 ### Scenario 1: Full-Stack Development Workflow
 
-```python
-# Genie coordinates filesystem, Git, and database tools
-ask_genie(
-    query="""I'm starting a new FastAPI project. Please:
-    1. Create the project structure
-    2. Initialize Git with a good .gitignore
-    3. Create a SQLite database with users table
-    4. Generate a basic FastAPI app with user endpoints
-    5. Create initial migration files""",
-    user_id="fullstack-dev"
-)
+**What to say to Claude:**
+```
+I'm starting a new FastAPI project. Please:
+1. Create the project structure
+2. Initialize Git with a good .gitignore
+3. Create a SQLite database with users table
+4. Generate a basic FastAPI app with user endpoints
+5. Create initial migration files
 ```
 
-**What Genie Does:**
+**What Claude does:**
 - Uses filesystem MCP to create directories and files
 - Uses Git MCP to initialize repo and create .gitignore
 - Uses database MCP to create SQLite database and schema
@@ -288,20 +276,16 @@ ask_genie(
 
 ### Scenario 2: Code Review and Documentation
 
-```python
-# Genie analyzes code and updates documentation
-ask_genie(
-    query="""Review the changes in my current branch and:
-    1. Check for potential bugs or improvements
-    2. Update the CHANGELOG.md
-    3. Generate API documentation
-    4. Suggest test cases for new features""",
-    user_id="code-reviewer",
-    context="Working on authentication feature"
-)
+**What to say to Claude:**
+```
+Review the changes in my current branch and:
+1. Check for potential bugs or improvements
+2. Update the CHANGELOG.md
+3. Generate API documentation
+4. Suggest test cases for new features
 ```
 
-**What Genie Does:**
+**What Claude does:**
 - Uses Git MCP to get diff and changed files
 - Uses filesystem MCP to read code files
 - Analyzes code for issues
@@ -312,19 +296,16 @@ ask_genie(
 
 ### Scenario 3: Database Migration Workflow
 
-```python
-# Genie handles complex database operations
-ask_genie(
-    query="""I need to add a 'last_login' timestamp to users table:
-    1. Create a migration file
-    2. Add the column with default value
-    3. Update the SQLAlchemy model
-    4. Generate a test to verify the migration""",
-    user_id="backend-dev"
-)
+**What to say to Claude:**
+```
+I need to add a 'last_login' timestamp to users table:
+1. Create a migration file
+2. Add the column with default value
+3. Update the SQLAlchemy model
+4. Generate a test to verify the migration
 ```
 
-**What Genie Does:**
+**What Claude does:**
 - Uses database MCP to inspect current schema
 - Creates migration file with proper up/down methods
 - Uses filesystem MCP to update model files
@@ -333,31 +314,16 @@ ask_genie(
 
 ### Scenario 4: Multi-Repository Management
 
-```python
-# Genie coordinates across multiple repositories
-ask_genie(
-    query="""Check all my active projects:
-    1. List repos with uncommitted changes
-    2. Show repos that are ahead of origin
-    3. Identify repos with pending pull requests
-    4. Create a summary report""",
-    user_id="tech-lead",
-    mcp_servers={
-        "git-work": {
-            "command": "uvx",
-            "args": ["mcp-server-git"],
-            "env": {"GIT_DIR": "/work/projects"}
-        },
-        "git-personal": {
-            "command": "uvx",
-            "args": ["mcp-server-git"],
-            "env": {"GIT_DIR": "/personal/projects"}
-        }
-    }
-)
+**What to say to Claude:**
+```
+Check all my active projects:
+1. List repos with uncommitted changes
+2. Show repos that are ahead of origin
+3. Identify repos with pending pull requests
+4. Create a summary report
 ```
 
-**What Genie Does:**
+**What Claude does:**
 - Connects to multiple Git MCP servers
 - Scans all repositories
 - Identifies uncommitted changes
@@ -414,27 +380,20 @@ export GENIE_MCP_CONFIGS='{
 
 You can also provide MCP servers at runtime:
 
-```python
-ask_genie(
-    query="List all my GitHub repositories",
-    mcp_servers={
-        "github": {
-            "command": "uvx",
-            "args": ["mcp-server-github"],
-            "env": {"GITHUB_TOKEN": "ghp_your_token"}
-        }
-    },
-    user_id="developer-123"
-)
+**What to say to Claude:**
 ```
+List all my GitHub repositories
+```
+
+Claude will automatically use the GitHub MCP server configured with your token to retrieve the list of repositories.
 
 ## Best Practices
 
 1. **Start Simple**: Begin with one or two MCP servers, add more as needed
 2. **Use Sessions**: Different `user_id` for different projects or contexts
 3. **Provide Context**: Use the `context` parameter for complex queries
-4. **Check Memory**: Periodically review what Genie remembers with `genie_memory_stats()`
-5. **Clear When Needed**: Use `genie_clear_memories()` to reset if needed
+4. **Check Memory**: Periodically ask Claude to show what Genie remembers about your sessions
+5. **Clear When Needed**: Ask Claude to clear Genie's memories if needed
 6. **Descriptive Queries**: Be specific about what you want Genie to do
 7. **Iterative Refinement**: Follow up with additional questions to refine results
 

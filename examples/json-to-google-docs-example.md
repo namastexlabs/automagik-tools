@@ -195,19 +195,12 @@ Thank you for your business!
 }
 ```
 
-**Command:**
-```python
-convert_json_to_docs(
-    json_data='{"invoice":{"number":"INV-2024-001",...}}',
-    template_id="1a2b3c4d5e6f7g8h9i0j",
-    output_filename="Invoice_INV-2024-001.docx",
-    folder_id="your-folder-id",
-    share_with_emails=["client@example.com"],
-    make_public=False
-)
+**In Claude Desktop, say:**
+```
+Create a Google Doc from this JSON data using template ID 1a2b3c4d5e6f7g8h9i0j, save it as Invoice_INV-2024-001.docx in folder your-folder-id, and share it with client@example.com
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -223,16 +216,12 @@ convert_json_to_docs(
 
 ### 2. Upload Template
 
-**Command:**
-```python
-upload_template(
-    file_path="/path/to/invoice-template.docx",
-    template_name="Invoice Template 2024",
-    folder_id="your-templates-folder-id"
-)
+**In Claude Desktop, say:**
+```
+Upload the template file at /path/to/invoice-template.docx with the name "Invoice Template 2024" to folder your-templates-folder-id
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -245,15 +234,12 @@ upload_template(
 
 ### 3. List Available Templates
 
-**Command:**
-```python
-list_templates(
-    folder_id="your-templates-folder-id",
-    search_query="invoice"
-)
+**In Claude Desktop, say:**
+```
+List all templates in folder your-templates-folder-id that contain "invoice" in their name
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -279,12 +265,12 @@ list_templates(
 
 ### 4. Extract Placeholders from Template
 
-**Command:**
-```python
-extract_placeholders(template_id="1a2b3c4d5e6f7g8h9i0j")
+**In Claude Desktop, say:**
+```
+Extract all placeholders from template with ID 1a2b3c4d5e6f7g8h9i0j
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -315,15 +301,12 @@ extract_placeholders(template_id="1a2b3c4d5e6f7g8h9i0j")
 
 ### 5. Validate JSON Data
 
-**Command:**
-```python
-validate_json_data(
-    json_data='{"invoice":{"number":"INV-001"},"customer":{"name":"Acme"}}',
-    template_id="1a2b3c4d5e6f7g8h9i0j"
-)
+**In Claude Desktop, say:**
+```
+Validate this JSON data against template ID 1a2b3c4d5e6f7g8h9i0j: {"invoice":{"number":"INV-001"},"customer":{"name":"Acme"}}
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -355,65 +338,83 @@ validate_json_data(
 
 ### Scenario 1: Automated Monthly Reports
 
-```python
-# Generate monthly sales report from API data
-import requests
+**In Claude Desktop, say:**
+```
+First, fetch data from the API at https://api.example.com/reports/monthly-sales
 
-# Fetch data from API
-response = requests.get("https://api.example.com/reports/monthly-sales")
-sales_data = response.json()
+Then, create a document from the sales data using template ID monthly-report-template-id, save it as Sales_Report_{month}_{year}.docx in folder reports-folder-id, and share it with manager@example.com and ceo@example.com
+```
 
-# Convert to document
-result = convert_json_to_docs(
-    json_data=sales_data,
-    template_id="monthly-report-template-id",
-    output_filename=f"Sales_Report_{sales_data['month']}_{sales_data['year']}.docx",
-    folder_id="reports-folder-id",
-    share_with_emails=["manager@example.com", "ceo@example.com"],
-    make_public=False
-)
+**Claude does:**
+- Fetches data from the API
+- Creates a document from the sales data
+- Shares it with the specified recipients
 
-print(f"Report generated: {result['web_view_link']}")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "file_id": "9z8y7x6w5v4u3t2s1r0q",
+  "file_name": "Sales_Report_January_2024.docx",
+  "web_view_link": "https://docs.google.com/document/d/9z8y7x6w5v4u3t2s1r0q/edit",
+  "shared_with": ["manager@example.com", "ceo@example.com"],
+  "message": "Monthly sales report generated and shared successfully"
+}
 ```
 
 ### Scenario 2: Bulk Certificate Generation
 
-```python
-# Generate certificates for course completions
-students = [
-    {"name": "John Doe", "course": "Python 101", "date": "2024-01-15", "grade": "A"},
-    {"name": "Jane Smith", "course": "Python 101", "date": "2024-01-15", "grade": "A+"},
-    # ... more students
-]
+**In Claude Desktop, say:**
+```
+Generate certificates for these course completions:
+- John Doe, Python 101, 2024-01-15, grade A
+- Jane Smith, Python 101, 2024-01-15, grade A+
 
-for student in students:
-    result = convert_json_to_docs(
-        json_data=student,
-        template_id="certificate-template-id",
-        output_filename=f"Certificate_{student['name'].replace(' ', '_')}.docx",
-        folder_id="certificates-folder-id",
-        share_with_emails=[student.get("email")],
-        make_public=False
-    )
-    print(f"Certificate created for {student['name']}: {result['web_view_link']}")
+Use template ID certificate-template-id, save each as Certificate_{name}.docx in folder certificates-folder-id, and share with each student's email if provided
+```
+
+**Claude does:**
+- Generates certificates for each student
+- Saves them with appropriate filenames
+- Shares them with the students
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Generated 2 certificates successfully",
+  "certificates": [
+    {
+      "student": "John Doe",
+      "file_name": "Certificate_John_Doe.docx",
+      "web_view_link": "https://docs.google.com/document/d/9z8y7x6w5v4u3t2s1r0q/edit"
+    },
+    {
+      "student": "Jane Smith",
+      "file_name": "Certificate_Jane_Smith.docx",
+      "web_view_link": "https://docs.google.com/document/d/8y7x6w5v4u3t2s1r0q9z/edit"
+    }
+  ]
+}
 ```
 
 ### Scenario 3: Contract Generation with Markdown
 
-```python
-# Generate contract with markdown formatting
-contract_data = {
-    "contract": {
-        "number": "CTR-2024-001",
-        "date": "2024-01-15",
-        "effective_date": "2024-02-01"
-    },
-    "client": {
-        "name": "**Acme Corporation**",
-        "representative": "*John Doe, CEO*",
-        "address": "123 Business St\nSan Francisco, CA 94102"
-    },
-    "terms": """
+**In Claude Desktop, say:**
+```
+Generate a contract with markdown formatting using this data:
+
+Contract details:
+- Number: CTR-2024-001
+- Date: 2024-01-15
+- Effective date: 2024-02-01
+
+Client details:
+- Name: **Acme Corporation**
+- Representative: *John Doe, CEO*
+- Address: 123 Business St, San Francisco, CA 94102
+
+Terms:
 ## Payment Terms
 - **Initial Payment**: 50% upfront
 - **Final Payment**: 50% upon completion
@@ -424,53 +425,49 @@ contract_data = {
 2. Responsive HTML/CSS implementation
 3. Backend API development
 4. Deployment and training
-    """,
-    "total_amount": "$50,000"
-}
 
-result = convert_json_to_docs(
-    json_data=contract_data,
-    template_id="contract-template-id",
-    output_filename="Contract_CTR-2024-001.docx",
-    folder_id="contracts-folder-id",
-    share_with_emails=["legal@example.com", "client@acme.com"]
-)
+Total amount: $50,000
+
+Use template ID contract-template-id, save as Contract_CTR-2024-001.docx in folder contracts-folder-id, and share with legal@example.com and client@acme.com
+```
+
+**Claude does:**
+- Generates a contract with markdown formatting
+- Saves it with the specified filename
+- Shares it with the legal team and client
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "file_id": "7x6w5v4u3t2s1r0q9z8y",
+  "file_name": "Contract_CTR-2024-001.docx",
+  "web_view_link": "https://docs.google.com/document/d/7x6w5v4u3t2s1r0q9z8y/edit",
+  "shared_with": ["legal@example.com", "client@acme.com"],
+  "message": "Contract generated with markdown formatting and shared successfully"
+}
 ```
 
 ### Scenario 4: Data Export Pipeline
 
-```python
-# Export database records to documents
-import sqlite3
+**In Claude Desktop, say:**
+```
+Export database records to documents. First, query the customers.db database for all completed orders. Then, for each order, generate an order confirmation document using template ID order-confirmation-template-id, save as Order_{order_id}.docx in folder order-confirmations-folder-id, and share with the customer's email address.
+```
 
-# Query database
-conn = sqlite3.connect("customers.db")
-cursor = conn.execute("SELECT * FROM orders WHERE status = 'completed'")
+**Claude does:**
+- Queries the database for completed orders
+- Generates order confirmation documents for each record
+- Shares them with the respective customers
 
-for row in cursor:
-    order_data = {
-        "order": {
-            "id": row[0],
-            "date": row[1],
-            "total": row[2]
-        },
-        "customer": {
-            "name": row[3],
-            "email": row[4],
-            "address": row[5]
-        }
-    }
-    
-    # Generate order confirmation document
-    convert_json_to_docs(
-        json_data=order_data,
-        template_id="order-confirmation-template-id",
-        output_filename=f"Order_{order_data['order']['id']}.docx",
-        folder_id="order-confirmations-folder-id",
-        share_with_emails=[order_data['customer']['email']]
-    )
-
-conn.close()
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Exported 15 order confirmations successfully",
+  "orders_processed": 15,
+  "folder_link": "https://drive.google.com/drive/folders/order-confirmations-folder-id"
+}
 ```
 
 ## Features Demonstrated
@@ -547,14 +544,14 @@ Or with custom formatting:
    - Check template is in shared folder
 
 4. **"Invalid JSON data"**
-   - Validate JSON syntax (use `validate_json_data()`)
+   - Validate JSON syntax by asking Claude to validate your JSON data against the template
    - Check for missing required fields
    - Verify nested structure matches template
 
 5. **"Placeholders not replaced"**
    - Check placeholder syntax: `{{key}}` not `{key}` or `[[key]]`
    - Verify JSON keys match placeholder names exactly
-   - Use `extract_placeholders()` to see expected keys
+   - Ask Claude to show the expected placeholders from your template
 
 6. **"Markdown not converting"**
    - Enable markdown conversion: `GOOGLE_DOCS_ENABLE_MARKDOWN_CONVERSION=true`

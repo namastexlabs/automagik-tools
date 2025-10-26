@@ -120,12 +120,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. Check Health Status
 
-**Command:**
-```python
-get_health()
+**What to say to Claude:**
+```
+Check the health status of the Spark service
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "healthy",
@@ -141,12 +141,12 @@ get_health()
 
 ### 2. List Available Workflows
 
-**Command:**
-```python
-list_workflows(limit=10)
+**What to say to Claude:**
+```
+List available workflows, limit to 10
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "workflows": [
@@ -179,15 +179,12 @@ list_workflows(limit=10)
 
 ### 3. Run a Workflow
 
-**Command:**
-```python
-run_workflow(
-    workflow_id="f9c38d51-56a4-42e8-8b0f-10b180345468",
-    input_text="What are the best practices for error handling in Python async functions?"
-)
+**What to say to Claude:**
+```
+Run the Python Expert Agent workflow with this question: "What are the best practices for error handling in Python async functions?"
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -195,7 +192,7 @@ run_workflow(
   "workflow_id": "f9c38d51-56a4-42e8-8b0f-10b180345468",
   "workflow_name": "Python Expert Agent",
   "result": {
-    "response": "Here are the best practices for error handling in Python async functions:\n\n1. **Use try-except blocks**:\n```python\nasync def fetch_data():\n    try:\n        result = await api_call()\n        return result\n    except aiohttp.ClientError as e:\n        logger.error(f'API call failed: {e}')\n        raise\n```\n\n2. **Handle specific exceptions first**:\n- Catch specific exceptions before generic ones\n- Use asyncio.TimeoutError for timeouts\n- Handle asyncio.CancelledError for task cancellation\n\n3. **Use asyncio.gather with return_exceptions**:\n```python\nresults = await asyncio.gather(\n    task1(), task2(), task3(),\n    return_exceptions=True\n)\n```\n\n4. **Implement retry logic with exponential backoff**\n5. **Use context managers for resource cleanup**\n6. **Log errors appropriately**\n7. **Propagate errors when necessary**",
+    "response": "Here are the best practices for error handling in Python async functions:\n\n1. **Use try-except blocks**:\n```python\nasync def fetch_data():\n    try:\n        result = await api_call()\n        return result\n    except aiohttp.ClientError as e:\n        logger.error(f'API call failed: {e}')\n        raise\n```\n\n2. **Handle specific exceptions first**:\n- Catch specific exceptions before generic ones\n- Use asyncio.TimeoutError for timeouts\n- Handle asyncio.CancelledError for task cancellation\n\n3. **Use asyncio.gather with return_exceptions**:\n```python\nresults = await asyncio.gather(\n    task1(), task2(), task3(),\n    return_exceptions=True\n)\n```",
         "tokens_used": 245,
         "execution_time": "3.2s"
     },
@@ -207,17 +204,12 @@ run_workflow(
 
 ### 4. Create a Schedule
 
-**Command:**
-```python
-create_schedule(
-    workflow_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    schedule_type="cron",
-    schedule_expr="0 9 * * *",  # Daily at 9 AM
-    input_value="Generate daily sales report for yesterday"
-)
+**What to say to Claude:**
+```
+Create a schedule for the Data Analysis Workflow to run daily at 9 AM with the input: "Generate daily sales report for yesterday"
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -235,12 +227,12 @@ create_schedule(
 
 ### 5. List Active Schedules
 
-**Command:**
-```python
-list_schedules()
+**What to say to Claude:**
+```
+List all active schedules
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "schedules": [
@@ -277,17 +269,12 @@ list_schedules()
 
 ### 6. Add Workflow Source
 
-**Command:**
-```python
-add_source(
-    name="Production Agents",
-    source_type="automagik-agents",
-    url="http://production.example.com:8881",
-    api_key="prod_api_key_here"
-)
+**What to say to Claude:**
+```
+Add a new workflow source named "Production Agents" with URL http://production.example.com:8881 and API key prod_api_key_here
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -306,183 +293,170 @@ add_source(
 
 ### Scenario 1: Daily Report Automation
 
-```python
-# Add data analysis workflow
-workflows = list_workflows()
-data_workflow = next(w for w in workflows['workflows'] if 'analysis' in w['name'].lower())
+**What to say to Claude:**
+```
+First, find the data analysis workflow and then schedule it to generate a comprehensive daily report with sales, inventory, and customer metrics every weekday at 8 AM
+```
 
-# Schedule daily report generation
-schedule = create_schedule(
-    workflow_id=data_workflow['id'],
-    schedule_type="cron",
-    schedule_expr="0 8 * * 1-5",  # Weekdays at 8 AM
-    input_value="Generate comprehensive daily report with sales, inventory, and customer metrics"
-)
+**What Claude does:**
+- Finds the data analysis workflow
+- Schedules it to run weekdays at 8 AM
+- Monitors recent executions
 
-print(f"Daily report scheduled: {schedule['schedule_id']}")
-print(f"Next run: {schedule['next_run']}")
-
-# Monitor execution
-tasks = list_tasks(workflow_id=data_workflow['id'], status="completed", limit=5)
-print(f"Recent executions: {len(tasks['tasks'])}")
-for task in tasks['tasks']:
-    print(f"- {task['started_at']}: {task['status']} ({task['execution_time']})")
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Daily report scheduled successfully. Next run: Monday at 8:00 AM",
+  "schedule_id": "sched_xyz789abc123",
+  "workflow_name": "Data Analysis Workflow"
+}
 ```
 
 ### Scenario 2: Multi-Source Workflow Orchestration
 
-```python
-# Connect to multiple sources
-sources = [
+**What to say to Claude:**
+```
+Connect to multiple workflow sources:
+1. Development Agents at http://dev.example.com:8881 with API key dev_key
+2. Production Hive at http://prod.example.com:8886 with API key prod_key
+
+Then list all available workflows from all sources and group them by source
+```
+
+**What Claude does:**
+- Connects to multiple workflow sources
+- Lists all available workflows
+- Groups workflows by source
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Connected to 2 sources. Discovered 15 total workflows.",
+  "sources": [
     {
-        "name": "Development Agents",
-        "type": "automagik-agents",
-        "url": "http://dev.example.com:8881",
-        "api_key": "dev_key"
+      "name": "Development Agents",
+      "workflows": 7
     },
     {
-        "name": "Production Hive",
-        "type": "automagik-hive",
-        "url": "http://prod.example.com:8886",
-        "api_key": "prod_key"
+      "name": "Production Hive",
+      "workflows": 8
     }
-]
-
-for source in sources:
-    result = add_source(
-        name=source["name"],
-        source_type=source["type"],
-        url=source["url"],
-        api_key=source["api_key"]
-    )
-    print(f"Added {source['name']}: {result['workflows_discovered']} workflows")
-
-# List all available workflows from all sources
-all_workflows = list_workflows(limit=100)
-print(f"\nTotal workflows available: {all_workflows['total_count']}")
-
-# Group by source
-by_source = {}
-for workflow in all_workflows['workflows']:
-    source = workflow['source']
-    by_source[source] = by_source.get(source, 0) + 1
-
-for source, count in by_source.items():
-    print(f"- {source}: {count} workflows")
+  ]
+}
 ```
 
 ### Scenario 3: Interval-Based Monitoring
 
-```python
-# Create health check workflow
-health_check = run_workflow(
-    workflow_id="system-health-agent",
-    input_text="Check all system components and report status"
-)
+**What to say to Claude:**
+```
+First, run a system health check workflow to check all system components and report status
 
-# Schedule regular monitoring
-monitoring_schedule = create_schedule(
-    workflow_id="system-health-agent",
-    schedule_type="interval",
-    schedule_expr="15m",  # Every 15 minutes
-    input_value="Perform system health check and alert if issues found"
-)
+Then, schedule regular monitoring to perform system health checks every 15 minutes and alert if issues are found
 
-print(f"Monitoring active: Every 15 minutes")
-print(f"Schedule ID: {monitoring_schedule['schedule_id']}")
+Finally, show recent health checks
+```
 
-# Check recent health checks
-recent_checks = list_tasks(
-    workflow_id="system-health-agent",
-    limit=10
-)
+**What Claude does:**
+- Runs an initial system health check
+- Schedules regular monitoring every 15 minutes
+- Shows recent health check results
 
-print(f"\nRecent health checks:")
-for check in recent_checks['tasks']:
-    status_emoji = "✅" if check['status'] == 'completed' else "❌"
-    print(f"{status_emoji} {check['started_at']}: {check['status']}")
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Monitoring scheduled every 15 minutes. Recent checks: 8 completed, 0 failed.",
+  "schedule_id": "sched_health_123",
+  "recent_checks": [
+    {
+      "timestamp": "2024-01-15T15:00:00Z",
+      "status": "completed",
+      "duration": "2.1s"
+    },
+    {
+      "timestamp": "2024-01-15T14:45:00Z",
+      "status": "completed",
+      "duration": "1.9s"
+    }
+  ]
+}
 ```
 
 ### Scenario 4: On-Demand Workflow Execution
 
-```python
-# Execute different workflows based on user requests
-user_requests = [
+**What to say to Claude:**
+```
+Execute these workflows:
+1. Run the code reviewer agent to review the authentication module for security issues
+2. Run the data analyst agent to analyze user engagement metrics from last week
+3. Run the content writer agent to write a blog post about AI automation trends
+
+Then monitor all tasks
+```
+
+**What Claude does:**
+- Executes multiple workflows based on user requests
+- Monitors all task statuses
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Started 3 workflows. Monitoring in progress.",
+  "tasks": [
     {
-        "workflow": "code-reviewer-agent",
-        "input": "Review the authentication module for security issues"
+      "workflow": "Code Reviewer Agent",
+      "task_id": "task_abc123",
+      "status": "running"
     },
     {
-        "workflow": "data-analyst-agent",
-        "input": "Analyze user engagement metrics from last week"
+      "workflow": "Data Analyst Agent",
+      "task_id": "task_def456",
+      "status": "completed"
     },
     {
-        "workflow": "content-writer-agent",
-        "input": "Write a blog post about AI automation trends"
+      "workflow": "Content Writer Agent",
+      "task_id": "task_ghi789",
+      "status": "running"
     }
-]
-
-results = []
-for request in user_requests:
-    # Find workflow by name
-    workflows = list_workflows()
-    workflow = next(
-        (w for w in workflows['workflows'] if request['workflow'] in w['name'].lower()),
-        None
-    )
-    
-    if workflow:
-        result = run_workflow(
-            workflow_id=workflow['id'],
-            input_text=request['input']
-        )
-        results.append({
-            "workflow": workflow['name'],
-            "task_id": result['task_id'],
-            "status": result['status']
-        })
-        print(f"✓ Started: {workflow['name']}")
-    else:
-        print(f"✗ Workflow not found: {request['workflow']}")
-
-# Monitor all tasks
-print(f"\nMonitoring {len(results)} tasks...")
-for result in results:
-    task = get_task(result['task_id'])
-    print(f"- {result['workflow']}: {task['status']}")
+  ]
+}
 ```
 
 ### Scenario 5: Schedule Management
 
-```python
-# List all schedules
-schedules = list_schedules()
+**What to say to Claude:**
+```
+First, list all active schedules and show their details including success rates
 
-print(f"Active Schedules: {schedules['total_count']}\n")
+Then, disable any schedules with success rates below 90%
 
-for schedule in schedules['schedules']:
-    print(f"📅 {schedule['workflow_name']}")
-    print(f"   Schedule: {schedule['schedule_expression']} ({schedule['schedule_type']})")
-    print(f"   Next run: {schedule['next_run']}")
-    print(f"   Success rate: {schedule['success_rate']}")
-    print(f"   Enabled: {schedule['is_enabled']}")
-    
-    # Disable schedules with low success rate
-    if float(schedule['success_rate'].rstrip('%')) < 90:
-        disable_schedule(schedule['id'])
-        print(f"   ⚠️ Disabled due to low success rate")
-    
-    print()
+Finally, create a new schedule for weekend batch processing to run weekly cleanup on Sundays at 2 AM
+```
 
-# Create new schedule for weekend batch processing
-weekend_schedule = create_schedule(
-    workflow_id="batch-processing-workflow",
-    schedule_type="cron",
-    schedule_expr="0 2 * * 0",  # Sundays at 2 AM
-    input_value="Run weekly batch processing and cleanup"
-)
+**What Claude does:**
+- Lists all active schedules with details
+- Disables schedules with low success rates
+- Creates a new weekend batch processing schedule
 
-print(f"Weekend batch processing scheduled: {weekend_schedule['next_run']}")
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Schedule management completed. 1 schedule disabled, 1 new schedule created.",
+  "disabled_schedules": [
+    "sched_old_123"
+  ],
+  "new_schedules": [
+    {
+      "name": "Weekend Batch Processing",
+      "next_run": "2024-01-21T02:00:00Z",
+      "schedule_id": "sched_weekend_456"
+    }
+  ]
+}
 ```
 
 ## Features Demonstrated
@@ -499,44 +473,24 @@ print(f"Weekend batch processing scheduled: {weekend_schedule['next_run']}")
 
 ### Cron Format
 
-```python
-# Every day at 9 AM
-"0 9 * * *"
+These are examples of cron expressions you can use when scheduling workflows:
 
-# Every Monday at 8:30 AM
-"30 8 * * 1"
-
-# Every 15 minutes
-"*/15 * * * *"
-
-# First day of every month at midnight
-"0 0 1 * *"
-
-# Weekdays at 6 PM
-"0 18 * * 1-5"
-
-# Every hour during business hours (9 AM - 5 PM) on weekdays
-"0 9-17 * * 1-5"
-```
+- `0 9 * * *` - Every day at 9 AM
+- `30 8 * * 1` - Every Monday at 8:30 AM
+- `*/15 * * * *` - Every 15 minutes
+- `0 0 1 * *` - First day of every month at midnight
+- `0 18 * * 1-5` - Weekdays at 6 PM
+- `0 9-17 * * 1-5` - Every hour during business hours (9 AM - 5 PM) on weekdays
 
 ### Interval Format
 
-```python
-# Every 5 minutes
-"5m"
+These are examples of interval expressions you can use when scheduling workflows:
 
-# Every 30 seconds
-"30s"
-
-# Every 2 hours
-"2h"
-
-# Every day
-"1d"
-
-# Every week
-"7d"
-```
+- `5m` - Every 5 minutes
+- `30s` - Every 30 seconds
+- `2h` - Every 2 hours
+- `1d` - Every day
+- `7d` - Every week
 
 ## Best Practices
 
@@ -552,42 +506,49 @@ print(f"Weekend batch processing scheduled: {weekend_schedule['next_run']}")
 
 ### Sync Remote Workflows
 
-```python
-# Discover workflows from remote source
-remote_workflows = list_remote_workflows(
-    source_url="http://remote.example.com:8881"
-)
+**What to say to Claude:**
+```
+Discover workflows from the remote source at http://remote.example.com:8881
 
-print(f"Found {len(remote_workflows['workflows'])} remote workflows")
+Then sync any workflows with 'production' in their name
+```
 
-# Sync specific workflow
-for workflow in remote_workflows['workflows']:
-    if 'production' in workflow['name'].lower():
-        sync_result = sync_workflow(
-            workflow_id=workflow['id'],
-            input_component="text",
-            output_component="markdown"
-        )
-        print(f"Synced: {workflow['name']}")
+**What Claude does:**
+- Discovers workflows from the remote source
+- Syncs production workflows
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Discovered 5 remote workflows. Synced 2 production workflows.",
+  "discovered": 5,
+  "synced": [
+    "Production Data Pipeline",
+    "Production Monitoring Agent"
+  ]
+}
 ```
 
 ### Conditional Scheduling
 
-```python
-# Get workflow details
-workflow = get_workflow("data-analysis-workflow")
+**What to say to Claude:**
+```
+Check if the data analysis workflow is healthy, and if so, schedule it to run every 6 hours
+```
 
-# Only schedule if workflow is healthy
-if workflow['last_run_status'] == 'success':
-    schedule = create_schedule(
-        workflow_id=workflow['id'],
-        schedule_type="cron",
-        schedule_expr="0 */6 * * *",  # Every 6 hours
-        input_value="Run analysis"
-    )
-    print(f"Scheduled: {schedule['schedule_id']}")
-else:
-    print(f"Workflow unhealthy, skipping schedule")
+**What Claude does:**
+- Checks the workflow's last run status
+- Schedules it to run every 6 hours if healthy
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Workflow is healthy. Scheduled to run every 6 hours.",
+  "schedule_id": "sched_cond_789",
+  "next_run": "2024-01-15T21:00:00Z"
+}
 ```
 
 ## Troubleshooting
@@ -614,7 +575,7 @@ else:
    - Check Spark scheduler is running
 
 5. **Task execution failed**
-   - Review task details with `get_task()`
+   - Ask Claude to review task details
    - Check workflow source is accessible
    - Verify input format matches workflow requirements
 

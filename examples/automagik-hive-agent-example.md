@@ -115,12 +115,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. Check Hive Status
 
-**Command:**
-```python
-check_playground_status()
+**In Claude Desktop, say:**
+```
+Check the status of the Automagik Hive service
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "healthy",
@@ -135,12 +135,12 @@ check_playground_status()
 
 ### 2. List Available Agents
 
-**Command:**
-```python
-list_available_agents()
+**In Claude Desktop, say:**
+```
+List all available agents in the Automagik Hive
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "agents": [
@@ -175,16 +175,12 @@ list_available_agents()
 
 ### 3. Start Agent Conversation
 
-**Command:**
-```python
-start_agent_conversation(
-    agent_id="customer-service-agent",
-    message="Hello, I need help with my recent order #12345",
-    user_id="customer-001"
-)
+**In Claude Desktop, say:**
+```
+Start a conversation with the customer-service-agent about order #12345 for user customer-001
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -199,16 +195,12 @@ start_agent_conversation(
 
 ### 4. Continue Agent Conversation
 
-**Command:**
-```python
-continue_agent_conversation(
-    agent_id="customer-service-agent",
-    run_id="run_abc123def456",
-    message="My email is customer@example.com"
-)
+**In Claude Desktop, say:**
+```
+Continue the conversation with customer-service-agent (run ID: run_abc123def456) with the message: My email is customer@example.com
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -222,20 +214,15 @@ continue_agent_conversation(
 
 ### 5. Execute Workflow
 
-**Command:**
-```python
-execute_workflow(
-    workflow_id="data-analysis-workflow",
-    input_data={
-        "dataset": "sales_data_2024.csv",
-        "analysis_type": "monthly_trends",
-        "output_format": "report"
-    },
-    user_id="analyst-001"
-)
+**In Claude Desktop, say:**
+```
+Execute the data-analysis-workflow with this input data for user analyst-001:
+Dataset: sales_data_2024.csv
+Analysis type: monthly_trends
+Output format: report
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -259,16 +246,12 @@ execute_workflow(
 
 ### 6. Start Team Collaboration
 
-**Command:**
-```python
-start_team_collaboration(
-    team_id="marketing-team",
-    task_description="Create a comprehensive social media campaign for our new product launch including content calendar, post designs, and engagement strategy",
-    user_id="marketing-manager"
-)
+**In Claude Desktop, say:**
+```
+Start a team collaboration with the marketing-team for user marketing-manager. Task: Create a comprehensive social media campaign for our new product launch including content calendar, post designs, and engagement strategy
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -293,135 +276,190 @@ start_team_collaboration(
 
 ### Scenario 1: Customer Support Automation
 
-```python
-# Test customer service agent with various scenarios
-test_scenarios = [
-    "I want to return a product",
-    "My order hasn't arrived yet",
-    "I need to change my shipping address",
-    "Can I get a refund?"
-]
+**In Claude Desktop, say:**
+```
+Test the customer-service-agent with these scenarios for user test-user:
+1. I want to return a product
+2. My order hasn't arrived yet
+3. I need to change my shipping address
+4. Can I get a refund?
 
-for scenario in test_scenarios:
-    # Start new conversation for each scenario
-    result = start_agent_conversation(
-        agent_id="customer-service-agent",
-        message=scenario,
-        user_id="test-user"
-    )
-    
-    print(f"Scenario: {scenario}")
-    print(f"Response: {result['response']}\n")
-    
-    # Test follow-up
-    follow_up = continue_agent_conversation(
-        agent_id="customer-service-agent",
-        run_id=result['run_id'],
-        message="Can you help me with that right now?"
-    )
-    
-    print(f"Follow-up: {follow_up['response']}\n")
-    print("-" * 50)
+For each scenario, start a new conversation and then test a follow-up message: "Can you help me with that right now?"
+```
+
+**Claude does:**
+- Tests the customer service agent with various scenarios
+- Starts new conversations for each scenario
+- Tests follow-up messages
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Tested 4 customer service scenarios successfully",
+  "results": [
+    {
+      "scenario": "I want to return a product",
+      "initial_response": "I'd be happy to help you with your return. Could you please provide your order number?",
+      "follow_up_response": "I can process that return for you right away. I'll need your order number and reason for return."
+    },
+    {
+      "scenario": "My order hasn't arrived yet",
+      "initial_response": "I'm sorry to hear your order is delayed. Let me check the tracking information for you.",
+      "follow_up_response": "I can help with that immediately. What's your order number so I can look up the details?"
+    }
+  ]
+}
 ```
 
 ### Scenario 2: Data Analysis Pipeline
 
-```python
-# Execute data analysis workflow with different datasets
-datasets = [
-    {"name": "sales_q1.csv", "type": "quarterly"},
-    {"name": "sales_q2.csv", "type": "quarterly"},
-    {"name": "sales_q3.csv", "type": "quarterly"},
-    {"name": "sales_q4.csv", "type": "quarterly"}
-]
+**In Claude Desktop, say:**
+```
+Execute the data-analysis-workflow for the data team with these quarterly sales datasets:
+1. sales_q1.csv
+2. sales_q2.csv
+3. sales_q3.csv
+4. sales_q4.csv
 
-results = []
-for dataset in datasets:
-    result = execute_workflow(
-        workflow_id="data-analysis-workflow",
-        input_data={
-            "dataset": dataset["name"],
-            "analysis_type": "trends",
-            "compare_previous": True
-        },
-        user_id="data-team"
-    )
-    results.append(result)
-    
-    print(f"Analyzed {dataset['name']}: {result['result']['summary']}")
+For each dataset, use analysis type "trends" and compare with previous periods. After completing all analyses, show the workflow execution history.
+```
 
-# Get comprehensive view
-history = view_workflow_execution_history(
-    workflow_id="data-analysis-workflow",
-    user_id="data-team"
-)
-print(f"\nTotal executions: {len(history['executions'])}")
+**Claude does:**
+- Executes data analysis workflow for each quarterly dataset
+- Compares trends with previous periods
+- Shows execution history
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Executed 4 quarterly data analyses successfully",
+  "results": [
+    {
+      "dataset": "sales_q1.csv",
+      "summary": "Q1 analysis completed with 12% growth",
+      "insights": ["New customer acquisition up 15%", "Top product: Widget Pro"]
+    },
+    {
+      "dataset": "sales_q2.csv",
+      "summary": "Q2 analysis completed with 8% growth",
+      "insights": ["Seasonal products performed well", "Mobile app orders increased 20%"]
+    }
+  ],
+  "total_executions": 4,
+  "execution_history": {
+    "workflow_id": "data-analysis-workflow",
+    "total_runs": 12,
+    "recent_runs": 4
+  }
+}
 ```
 
 ### Scenario 3: Multi-Agent Content Creation
 
-```python
-# Collaborate with content creation team
-collaboration = start_team_collaboration(
-    team_id="content-creation-team",
-    task_description="""
-    Create a comprehensive blog post about AI in healthcare:
-    - Research current trends and statistics
-    - Write engaging 2000-word article
-    - Create 3 infographics
-    - Optimize for SEO
-    - Generate social media snippets
-    """,
-    user_id="content-manager"
-)
+**In Claude Desktop, say:**
+```
+Start a team collaboration with the content-creation-team for user content-manager. Task: Create a comprehensive blog post about AI in healthcare with these requirements:
+- Research current trends and statistics
+- Write engaging 2000-word article
+- Create 3 infographics
+- Optimize for SEO
+- Generate social media snippets
 
-print(f"Team assembled: {collaboration['team_members']}")
-print(f"Initial plan: {collaboration['initial_plan']}")
+Then monitor the progress of this collaboration.
+```
 
-# Monitor progress
-details = get_team_collaboration_details(
-    collaboration_id=collaboration['collaboration_id']
-)
+**Claude does:**
+- Assembles the content creation team
+- Assigns the AI in healthcare blog task
+- Monitors progress
 
-print(f"Progress: {details['progress_percentage']}%")
-print(f"Current phase: {details['current_phase']}")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Content creation team assembled and working",
+  "team_members": [
+    "content-strategist-agent",
+    "researcher-agent",
+    "writer-agent",
+    "designer-agent",
+    "seo-specialist-agent"
+  ],
+  "initial_plan": {
+    "phases": ["Research", "Writing", "Design", "SEO", "Social Media"],
+    "estimated_time": "4 hours",
+    "deliverables": ["Blog post", "Infographics", "Social snippets"]
+  },
+  "progress": {
+    "percentage": 25,
+    "current_phase": "Research",
+    "completed_steps": 1,
+    "total_steps": 5
+  }
+}
 ```
 
 ### Scenario 4: Agent Memory and Learning
 
-```python
-# Check what agent remembers about user
-memories = view_agent_memories(
-    agent_id="customer-service-agent",
-    user_id="customer-001"
-)
+**In Claude Desktop, say:**
+```
+Check what the customer-service-agent remembers about user customer-001, then start a new conversation with the same agent asking: "Do you remember my previous orders?"
+```
 
-print("Agent Memories:")
-for memory in memories['memories']:
-    print(f"- {memory['content']} (learned: {memory['created_at']})")
+**Claude does:**
+- Checks the agent's memories about the user
+- Starts a new conversation with context
 
-# Continue conversation with context
-result = start_agent_conversation(
-    agent_id="customer-service-agent",
-    message="Do you remember my previous orders?",
-    user_id="customer-001"
-)
-
-print(f"\nAgent response: {result['response']}")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Retrieved agent memories and started new conversation",
+  "memories": [
+    {
+      "content": "Customer has ordered 3 products in the last 6 months",
+      "created_at": "2024-01-10T14:30:00Z"
+    },
+    {
+      "content": "Customer prefers email communication and has premium account",
+      "created_at": "2024-01-05T09:15:00Z"
+    }
+  ],
+  "conversation_response": "Yes, I remember your previous orders. You've purchased 3 products from us in the last 6 months. Your most recent order was the Widget Pro, delivered on January 8th. Is there something specific about your previous orders you'd like to know?"
+}
 ```
 
 ### Scenario 5: Quick Task Execution
 
-```python
-# Use quick_run for fast task execution
-result = quick_run(
-    task_description="Analyze the sentiment of customer reviews from last month and provide a summary report",
-    agent_id="data-analyst-agent"  # Optional: specify agent
-)
+**In Claude Desktop, say:**
+```
+Quickly analyze the sentiment of customer reviews from last month and provide a summary report using the data-analyst-agent
+```
 
-print(f"Task completed: {result['status']}")
-print(f"Result: {result['result']}")
-print(f"Execution time: {result['execution_time']}")
+**Claude does:**
+- Executes a quick sentiment analysis task
+- Uses the specified data analyst agent
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Sentiment analysis completed successfully",
+  "result": {
+    "summary": "Overall positive sentiment with some areas for improvement",
+    "sentiment_score": 0.72,
+    "positive_reviews": 85,
+    "negative_reviews": 15,
+    "key_insights": [
+      "Product quality praised consistently",
+      "Shipping delays mentioned in 12% of negative reviews",
+      "Customer service responsiveness needs improvement"
+    ]
+  },
+  "execution_time": "12 seconds"
+}
 ```
 
 ## Features Demonstrated
@@ -448,60 +486,125 @@ print(f"Execution time: {result['execution_time']}")
 
 ### Rename Sessions for Organization
 
-```python
-# Rename conversation for easy reference
-rename_agent_conversation(
-    agent_id="customer-service-agent",
-    run_id="run_abc123def456",
-    new_name="Customer 001 - Order Issue Resolution"
-)
+**In Claude Desktop, say:**
+```
+Rename the conversation with customer-service-agent (run ID: run_abc123def456) to "Customer 001 - Order Issue Resolution"
 
-# Rename workflow execution
-rename_workflow_execution(
-    execution_id="exec_workflow_123",
-    new_name="Q1 2024 Sales Analysis"
-)
+Also rename the workflow execution with ID exec_workflow_123 to "Q1 2024 Sales Analysis"
+```
+
+**Claude does:**
+- Renames the specified conversation for better organization
+- Renames the workflow execution
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Renamed conversation and workflow execution successfully",
+  "renamed_items": [
+    {
+      "type": "conversation",
+      "id": "run_abc123def456",
+      "new_name": "Customer 001 - Order Issue Resolution"
+    },
+    {
+      "type": "workflow_execution",
+      "id": "exec_workflow_123",
+      "new_name": "Q1 2024 Sales Analysis"
+    }
+  ]
+}
 ```
 
 ### Filter and Search History
 
-```python
-# Get specific conversation
-conversation = get_specific_agent_conversation(
-    agent_id="customer-service-agent",
-    run_id="run_abc123def456"
-)
+**In Claude Desktop, say:**
+```
+Get the specific conversation with customer-service-agent (run ID: run_abc123def456)
 
-# View all conversations for an agent
-history = view_agent_conversation_history(
-    agent_id="customer-service-agent",
-    user_id="customer-001"
-)
+Then show all conversations for customer-service-agent with user customer-001
 
-# Get workflow execution details
-execution = get_workflow_execution_details(
-    execution_id="exec_workflow_123"
-)
+Finally, get the details for workflow execution with ID exec_workflow_123
+```
+
+**Claude does:**
+- Retrieves the specific conversation
+- Shows conversation history for the agent and user
+- Gets workflow execution details
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Retrieved conversation history and execution details",
+  "specific_conversation": {
+    "run_id": "run_abc123def456",
+    "agent_id": "customer-service-agent",
+    "user_id": "customer-001",
+    "messages": 8,
+    "created_at": "2024-01-15T10:30:00Z"
+  },
+  "conversation_history": {
+    "agent_id": "customer-service-agent",
+    "user_id": "customer-001",
+    "total_conversations": 3,
+    "recent_conversations": [
+      {
+        "run_id": "run_abc123def456",
+        "created_at": "2024-01-15T10:30:00Z",
+        "message_count": 8
+      }
+    ]
+  },
+  "workflow_execution": {
+    "execution_id": "exec_workflow_123",
+    "workflow_id": "data-analysis-workflow",
+    "status": "completed",
+    "execution_time": "45 seconds"
+  }
+}
 ```
 
 ### Cleanup Old Data
 
-```python
-# Delete old conversations
-delete_agent_conversation(
-    agent_id="customer-service-agent",
-    run_id="run_old_conversation"
-)
+**In Claude Desktop, say:**
+```
+Delete the old conversation with customer-service-agent (run ID: run_old_conversation)
 
-# Delete workflow executions
-delete_workflow_execution(
-    execution_id="exec_old_workflow"
-)
+Also delete the workflow execution with ID exec_old_workflow
 
-# Delete team collaborations
-delete_team_collaboration(
-    collaboration_id="collab_old_team"
-)
+Finally, delete the team collaboration with ID collab_old_team
+```
+
+**Claude does:**
+- Deletes the specified old conversation
+- Removes the workflow execution
+- Cleans up the team collaboration
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Cleaned up old data successfully",
+  "deleted_items": [
+    {
+      "type": "conversation",
+      "id": "run_old_conversation",
+      "status": "deleted"
+    },
+    {
+      "type": "workflow_execution",
+      "id": "exec_old_workflow",
+      "status": "deleted"
+    },
+    {
+      "type": "team_collaboration",
+      "id": "collab_old_team",
+      "status": "deleted"
+    }
+  ]
+}
 ```
 
 ## Troubleshooting
@@ -514,13 +617,13 @@ delete_team_collaboration(
    - Test connection: `curl http://localhost:8886/health`
 
 2. **"Agent not found"**
-   - List available agents with `list_available_agents()`
+   - Ask Claude to list available agents
    - Verify agent_id spelling
    - Check agent is active in Hive
 
 3. **"Workflow execution failed"**
    - Check input_data format matches workflow requirements
-   - Use `get_workflow_details()` to see expected inputs
+   - Ask Claude to show workflow details to see expected inputs
    - Review execution logs for specific errors
 
 4. **"Session not found"**
@@ -539,7 +642,7 @@ delete_team_collaboration(
 2. **Batch Operations**: Group related tasks together
 3. **Monitor Resources**: Check Hive status regularly
 4. **Cleanup Regularly**: Delete old sessions to improve performance
-5. **Use Quick Run**: For simple tasks, use `quick_run()` for efficiency
+5. **Use Quick Run**: For simple tasks, ask Claude to quickly run a task for efficiency
 
 ## Security Considerations
 

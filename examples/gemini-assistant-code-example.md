@@ -126,24 +126,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. Code Review with File Attachments
 
-**Command:**
-```python
-consult_gemini(
-    problem_description="Need to optimize this React dashboard component for better performance",
-    attached_files=[
-        "/path/to/src/components/Dashboard.jsx",
-        "/path/to/src/hooks/useData.js"
-    ],
-    file_descriptions={
-        "/path/to/src/components/Dashboard.jsx": "Main dashboard with performance issues - re-renders too often",
-        "/path/to/src/hooks/useData.js": "Custom hook for data fetching"
-    },
-    specific_question="How can I reduce unnecessary re-renders and improve data fetching?",
-    preferred_approach="optimize"
-)
+**In Claude Desktop, say:**
+```
+I need help optimizing this React dashboard component for better performance. I've attached the Dashboard.jsx file (main dashboard with performance issues - re-renders too often) and useData.js (custom hook for data fetching). How can I reduce unnecessary re-renders and improve data fetching?
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```markdown
 I've analyzed your Dashboard component and useData hook. Here are the key performance issues and solutions:
 
@@ -217,35 +205,32 @@ Would you like me to provide the complete refactored code or explain any of thes
 
 ### 2. Debugging Session with Follow-ups
 
-**Initial Query:**
-```python
-consult_gemini(
-    problem_description="Getting 'Cannot read property of undefined' error in production",
-    code_context="""
-    // User service
-    async function getUserProfile(userId) {
-      const response = await fetch(`/api/users/${userId}`);
-      const data = await response.json();
-      return data.user.profile;
-    }
-    
-    // Component
-    const UserProfile = ({ userId }) => {
-      const [profile, setProfile] = useState(null);
-      
-      useEffect(() => {
-        getUserProfile(userId).then(setProfile);
-      }, [userId]);
-      
-      return <div>{profile.name}</div>;
-    };
-    """,
-    specific_question="Why am I getting this error and how do I fix it?",
-    preferred_approach="debug"
-)
+**In Claude Desktop, say for the initial query:**
+```
+I'm getting a 'Cannot read property of undefined' error in production. Here's my code:
+
+// User service
+async function getUserProfile(userId) {
+  const response = await fetch(`/api/users/${userId}`);
+  const data = await response.json();
+  return data.user.profile;
+}
+
+// Component
+const UserProfile = ({ userId }) => {
+  const [profile, setProfile] = useState(null);
+  
+  useEffect(() => {
+    getUserProfile(userId).then(setProfile);
+  }, [userId]);
+  
+  return <div>{profile.name}</div>;
+};
+
+Why am I getting this error and how do I fix it?
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```markdown
 I found the issue! There are actually **three** potential sources of the undefined error:
 
@@ -313,17 +298,12 @@ async function getUserProfile(userId) {
 The error is happening because you're not checking if `profile` exists before accessing `profile.name`. Add the loading/error states as shown above.
 ```
 
-**Follow-up Query:**
-```python
-consult_gemini(
-    session_id="<session_id_from_previous>",
-    specific_question="I implemented your fix but now getting CORS errors. How do I handle that?",
-    additional_context="Added error handling, but API calls are being blocked by CORS policy",
-    preferred_approach="follow-up"
-)
+**For the follow-up query, in Claude Desktop say:**
+```
+I implemented your fix but now I'm getting CORS errors. How do I handle that? I've added error handling, but API calls are being blocked by CORS policy.
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```markdown
 Good catch! CORS errors are a different issue. Since you've fixed the undefined error, let's tackle CORS:
 
@@ -378,12 +358,12 @@ Which backend framework are you using? I can provide more specific configuration
 
 ### 3. List Active Sessions
 
-**Command:**
-```python
-list_sessions()
+**In Claude Desktop, say:**
+```
+Show me my active Gemini Assistant sessions
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "sessions": [
@@ -415,87 +395,45 @@ list_sessions()
 
 ### Scenario 1: Architecture Review
 
-```python
-consult_gemini(
-    problem_description="Designing a microservices architecture for e-commerce platform",
-    attached_files=[
-        "/docs/architecture-proposal.md",
-        "/src/services/order-service/main.py",
-        "/src/services/payment-service/main.py"
-    ],
-    specific_question="""
-    Review this microservices design and provide feedback on:
-    1. Service boundaries and responsibilities
-    2. Communication patterns (sync vs async)
-    3. Data consistency strategies
-    4. Potential bottlenecks
-    5. Scalability concerns
-    """,
-    preferred_approach="review"
-)
+**In Claude Desktop, say:**
+```
+I'm designing a microservices architecture for an e-commerce platform. I've attached the architecture proposal document and the main files for the order and payment services. Please review this microservices design and provide feedback on:
+1. Service boundaries and responsibilities
+2. Communication patterns (sync vs async)
+3. Data consistency strategies
+4. Potential bottlenecks
+5. Scalability concerns
 ```
 
 ### Scenario 2: Performance Optimization
 
-```python
-consult_gemini(
-    problem_description="API endpoint taking 5+ seconds to respond under load",
-    attached_files=[
-        "/src/api/routes/products.js",
-        "/src/database/queries.js",
-        "/src/cache/redis.js"
-    ],
-    file_descriptions={
-        "/src/api/routes/products.js": "Product listing endpoint with filters",
-        "/src/database/queries.js": "Database query functions",
-        "/src/cache/redis.js": "Redis caching layer"
-    },
-    specific_question="Identify performance bottlenecks and suggest optimizations",
-    preferred_approach="optimize"
-)
+**In Claude Desktop, say:**
+```
+I have an API endpoint that's taking 5+ seconds to respond under load. I've attached the product listing endpoint with filters, the database query functions, and the Redis caching layer files. Please identify performance bottlenecks and suggest optimizations.
 ```
 
 ### Scenario 3: Security Audit
 
-```python
-consult_gemini(
-    problem_description="Security review before production deployment",
-    attached_files=[
-        "/src/auth/middleware.js",
-        "/src/api/routes/users.js",
-        "/src/database/models/user.js"
-    ],
-    specific_question="""
-    Perform security audit focusing on:
-    1. Authentication vulnerabilities
-    2. SQL injection risks
-    3. XSS prevention
-    4. Data validation
-    5. Sensitive data exposure
-    """,
-    preferred_approach="review"
-)
+**In Claude Desktop, say:**
+```
+I need a security review before production deployment. I've attached the authentication middleware, user routes, and user model files. Please perform a security audit focusing on:
+1. Authentication vulnerabilities
+2. SQL injection risks
+3. XSS prevention
+4. Data validation
+5. Sensitive data exposure
 ```
 
 ### Scenario 4: Refactoring Guidance
 
-```python
-# Initial consultation
-session = consult_gemini(
-    problem_description="Legacy codebase needs refactoring to modern patterns",
-    code_context="[paste legacy code]",
-    specific_question="What's the best approach to refactor this without breaking existing functionality?",
-    preferred_approach="solution"
-)
+**In Claude Desktop, say for initial consultation:**
+```
+I have a legacy codebase that needs refactoring to modern patterns. Here's the legacy code: [paste legacy code]. What's the best approach to refactor this without breaking existing functionality?
+```
 
-# Follow-up after implementation
-consult_gemini(
-    session_id=session["session_id"],
-    specific_question="I've refactored the user service. Can you review the changes?",
-    attached_files=["/src/services/user-service-new.js"],
-    additional_context="Migrated from callbacks to async/await, added error handling",
-    preferred_approach="review"
-)
+**For follow-up after implementation, say:**
+```
+I've refactored the user service. I've attached the new file. Can you review the changes? I've migrated from callbacks to async/await and added error handling.
 ```
 
 ## Features Demonstrated
@@ -522,46 +460,19 @@ consult_gemini(
 
 ### Hybrid Context (Text + Files)
 
-```python
-consult_gemini(
-    problem_description="Implementing real-time notifications",
-    code_context="""
-    Current implementation uses polling:
-    setInterval(() => fetchNotifications(), 5000);
-    
-    Want to migrate to WebSockets for real-time updates.
-    """,
-    attached_files=[
-        "/src/api/notifications.js",
-        "/src/components/NotificationBell.jsx"
-    ],
-    specific_question="How do I migrate from polling to WebSockets without breaking existing functionality?",
-    preferred_approach="solution"
-)
+**In Claude Desktop, say:**
+```
+I'm implementing real-time notifications. My current implementation uses polling:
+setInterval(() => fetchNotifications(), 5000);
+
+I want to migrate to WebSockets for real-time updates. I've attached the notifications API file and the NotificationBell component. How do I migrate from polling to WebSockets without breaking existing functionality?
 ```
 
 ### Multiple File Analysis
 
-```python
-consult_gemini(
-    problem_description="Analyzing full authentication flow",
-    attached_files=[
-        "/src/auth/login.js",
-        "/src/auth/register.js",
-        "/src/auth/middleware.js",
-        "/src/auth/jwt.js",
-        "/src/database/models/user.js"
-    ],
-    file_descriptions={
-        "/src/auth/login.js": "Login endpoint handler",
-        "/src/auth/register.js": "User registration logic",
-        "/src/auth/middleware.js": "Auth middleware for protected routes",
-        "/src/auth/jwt.js": "JWT token generation and validation",
-        "/src/database/models/user.js": "User model with password hashing"
-    },
-    specific_question="Review the entire authentication flow for security issues and best practices",
-    preferred_approach="review"
-)
+**In Claude Desktop, say:**
+```
+I need to analyze the full authentication flow for security issues and best practices. I've attached the login endpoint handler, user registration logic, auth middleware for protected routes, JWT token generation and validation, and user model with password hashing files.
 ```
 
 ## Troubleshooting
@@ -574,7 +485,7 @@ consult_gemini(
 
 2. **"Session not found"**
    - Session may have expired (default: 1 hour)
-   - Use `list_sessions()` to see active sessions
+   - Ask Claude to list active sessions
    - Start a new session if needed
 
 3. **"File upload failed"**

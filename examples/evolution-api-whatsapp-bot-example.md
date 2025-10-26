@@ -121,18 +121,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. Sending a Text Message
 
-**Command:**
-```python
-send_text_message(
-    instance="my-whatsapp-bot",
-    message="Hello! Welcome to our customer support. How can I help you today?",
-    number="+1234567890",
-    delay=1000,
-    linkPreview=True
-)
+**What to say to Claude:**
+```
+Send a WhatsApp message to +1234567890: "Hello! Welcome to our customer support. How can I help you today?"
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -155,20 +149,12 @@ send_text_message(
 
 ### 2. Sending Media with Caption
 
-**Command:**
-```python
-send_media(
-    instance="my-whatsapp-bot",
-    media="https://example.com/product-catalog.pdf",
-    mediatype="document",
-    mimetype="application/pdf",
-    number="+1234567890",
-    caption="Here's our latest product catalog! 📋",
-    fileName="Product_Catalog_2024.pdf"
-)
+**What to say to Claude:**
+```
+Send a WhatsApp document to +1234567890 with the file from https://example.com/product-catalog.pdf, caption: "Here's our latest product catalog! 📋", and filename: "Product_Catalog_2024.pdf"
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -195,19 +181,12 @@ send_media(
 
 ### 3. Sending Location
 
-**Command:**
-```python
-send_location(
-    instance="my-whatsapp-bot",
-    latitude=37.7749,
-    longitude=-122.4194,
-    number="+1234567890",
-    name="Our Main Store",
-    address="123 Market St, San Francisco, CA 94103"
-)
+**What to say to Claude:**
+```
+Send a WhatsApp location to +1234567890: latitude 37.7749, longitude -122.4194, name "Our Main Store", address "123 Market St, San Francisco, CA 94103"
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -235,24 +214,12 @@ send_location(
 
 ### 4. Sending Contact Card
 
-**Command:**
-```python
-send_contact(
-    instance="my-whatsapp-bot",
-    contact=[
-        {
-            "fullName": "John Support",
-            "wuid": "1234567890",
-            "phoneNumber": "+1234567890",
-            "organization": "Customer Support Team",
-            "email": "support@example.com"
-        }
-    ],
-    number="+1234567890"
-)
+**What to say to Claude:**
+```
+Send a WhatsApp contact card to +1234567890 for John Support, phone +1234567890, organization "Customer Support Team", email support@example.com
 ```
 
-**Expected Response:**
+**Expected Response from Claude:**
 ```json
 {
   "status": "success",
@@ -279,70 +246,148 @@ send_contact(
 
 ### Scenario 1: Customer Support Bot
 
-```python
-# Step 1: Send typing indicator
-send_presence(
-    instance="my-whatsapp-bot",
-    number="+1234567890",
-    presence="composing",
-    delay=2000
-)
+**What to say to Claude:**
+```
+First show typing indicator to +1234567890, wait 2 seconds, then send: "Hi! 👋 I'm your support assistant. I can help you with:
 
-# Step 2: Send welcome message
-send_text_message(
-    instance="my-whatsapp-bot",
-    message="Hi! 👋 I'm your support assistant. I can help you with:\n\n1. Order tracking\n2. Product information\n3. Technical support\n4. Store locations\n\nWhat would you like help with?",
-    number="+1234567890"
-)
+1. Order tracking
+2. Product information
+3. Technical support
+4. Store locations
+
+What would you like help with?" to +1234567890
+```
+
+**What Claude does:**
+- Shows typing indicator to +1234567890
+- Waits 2 seconds
+- Sends the welcome message
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "key": {
+      "remoteJid": "1234567890@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB0XXXXX"
+    },
+    "message": {
+      "conversation": "Hi! 👋 I'm your support assistant..."
+    }
+  }
+}
 ```
 
 ### Scenario 2: Order Confirmation with Invoice
 
-```python
-# Send order confirmation with invoice document
-send_media(
-    instance="my-whatsapp-bot",
-    media="https://example.com/invoices/INV-12345.pdf",
-    mediatype="document",
-    mimetype="application/pdf",
-    number="+1234567890",
-    caption="✅ Order #12345 confirmed!\n\nTotal: $99.99\nEstimated delivery: 3-5 business days\n\nYour invoice is attached. Thank you for your order!",
-    fileName="Invoice_12345.pdf"
-)
+**What to say to Claude:**
+```
+Send a WhatsApp document to +1234567890 with the invoice from https://example.com/invoices/INV-12345.pdf, caption: "✅ Order #12345 confirmed!
+
+Total: $99.99
+Estimated delivery: 3-5 business days
+
+Your invoice is attached. Thank you for your order!", and filename: "Invoice_12345.pdf"
+```
+
+**What Claude does:**
+- Sends the invoice document with the specified caption
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "key": {
+      "remoteJid": "1234567890@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB0XXXXX"
+    },
+    "message": {
+      "documentMessage": {
+        "url": "...",
+        "mimetype": "application/pdf",
+        "caption": "✅ Order #12345 confirmed!\n\nTotal: $99.99\nEstimated delivery: 3-5 business days\n\nYour invoice is attached. Thank you for your order!"
+      }
+    }
+  }
+}
 ```
 
 ### Scenario 3: Store Location Sharing
 
-```python
-# Share store location with customer
-send_location(
-    instance="my-whatsapp-bot",
-    latitude=40.7128,
-    longitude=-74.0060,
-    number="+1234567890",
-    name="Downtown Store",
-    address="456 Broadway, New York, NY 10013"
-)
+**What to say to Claude:**
+```
+First, send a WhatsApp location to +1234567890: latitude 40.7128, longitude -74.0060, name "Downtown Store", address "456 Broadway, New York, NY 10013"
 
-# Follow up with store hours
-send_text_message(
-    instance="my-whatsapp-bot",
-    message="📍 Our downtown store is open:\n\nMon-Fri: 9 AM - 8 PM\nSat-Sun: 10 AM - 6 PM\n\nSee you soon!",
-    number="+1234567890"
-)
+Then send: "📍 Our downtown store is open:
+
+Mon-Fri: 9 AM - 8 PM
+Sat-Sun: 10 AM - 6 PM
+
+See you soon!" to +1234567890
+```
+
+**What Claude does:**
+- Shares the store location
+- Follows up with store hours
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "key": {
+      "remoteJid": "1234567890@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB0XXXXX"
+    },
+    "message": {
+      "locationMessage": {
+        "degreesLatitude": 40.7128,
+        "degreesLongitude": -74.0060,
+        "name": "Downtown Store",
+        "address": "456 Broadway, New York, NY 10013"
+      }
+    }
+  }
+}
 ```
 
 ### Scenario 4: React to Customer Messages
 
-```python
-# React with thumbs up to acknowledge message
-send_reaction(
-    instance="my-whatsapp-bot",
-    remote_jid="1234567890@s.whatsapp.net",
-    from_me=False,
-    message_id="3EB0XXXXX",
-    reaction="👍"
-)
+**What to say to Claude:**
+```
+React to the customer's message with a thumbs up emoji
+```
+
+**What Claude does:**
+- Adds a thumbs up reaction to the customer's message
+
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "key": {
+      "remoteJid": "1234567890@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB0XXXXX"
+    },
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "1234567890@s.whatsapp.net",
+          "fromMe": false,
+          "id": "3EB0XXXXX"
+        },
+        "text": "👍"
+      }
+    }
+  }
+}
 ```
 
 ## Features Demonstrated
@@ -357,8 +402,8 @@ send_reaction(
 
 ## Best Practices
 
-1. **Use Typing Indicators**: Make conversations feel natural with `send_presence()`
-2. **Add Delays**: Use the `delay` parameter to space out messages
+1. **Use Typing Indicators**: Make conversations feel natural by asking Claude to show typing indicators
+2. **Add Delays**: Ask Claude to add delays between messages to space them out
 3. **Rich Media**: Use appropriate media types (image, video, document)
 4. **Clear Captions**: Always add descriptive captions to media
 5. **Error Handling**: Check response status before proceeding

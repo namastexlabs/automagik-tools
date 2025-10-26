@@ -123,12 +123,12 @@ Add this to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### 1. List All Instances
 
-**Command:**
-```python
-manage_instances(operation="list")
+**In Claude Desktop, say:**
+```
+List all OMNI messaging instances and their connection status
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -170,20 +170,12 @@ manage_instances(operation="list")
 
 ### 2. Create New Instance
 
-**Command:**
-```python
-manage_instances(
-    operation="create",
-    config={
-        "name": "business-whatsapp",
-        "channel_type": "whatsapp",
-        "auto_qr": True,
-        "webhook_url": "https://example.com/webhook"
-    }
-)
+**In Claude Desktop, say:**
+```
+Create a new OMNI messaging instance named business-whatsapp for WhatsApp with auto QR code generation and webhook URL https://example.com/webhook
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -201,17 +193,12 @@ manage_instances(
 
 ### 3. Send Text Message
 
-**Command:**
-```python
-send_message(
-    message_type="text",
-    phone="+1234567890",
-    message="Hello! Thank you for contacting our support team. How can we help you today?",
-    instance_name="my-whatsapp"
-)
+**In Claude Desktop, say:**
+```
+Send a text message to +1234567890 via my-whatsapp instance: "Hello! Thank you for contacting our support team. How can we help you today?"
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -227,19 +214,12 @@ send_message(
 
 ### 4. Send Media Message
 
-**Command:**
-```python
-send_message(
-    message_type="media",
-    phone="+1234567890",
-    media_url="https://example.com/product-image.jpg",
-    media_type="image",
-    caption="Check out our new product! 🎉 Available now with 20% off.",
-    instance_name="my-whatsapp"
-)
+**In Claude Desktop, say:**
+```
+Send a media message to +1234567890 via my-whatsapp instance with the image from https://example.com/product-image.jpg, media type image, and caption: "Check out our new product! 🎉 Available now with 20% off."
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -257,16 +237,12 @@ send_message(
 
 ### 5. Get Message Traces
 
-**Command:**
-```python
-manage_traces(
-    operation="list",
-    instance_name="my-whatsapp",
-    limit=10
-)
+**In Claude Desktop, say:**
+```
+Get the last 10 message traces for the my-whatsapp instance
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -300,17 +276,12 @@ manage_traces(
 
 ### 6. Get Analytics
 
-**Command:**
-```python
-manage_traces(
-    operation="analytics",
-    instance_name="my-whatsapp",
-    start_date="2024-01-01",
-    end_date="2024-01-15"
-)
+**In Claude Desktop, say:**
+```
+Get analytics for the my-whatsapp instance from January 1, 2024 to January 15, 2024
 ```
 
-**Expected Response:**
+**Claude responds:**
 ```json
 {
   "status": "success",
@@ -345,67 +316,80 @@ manage_traces(
 
 ### Scenario 1: Multi-Channel Customer Support
 
-```python
-# Setup instances for different channels
-channels = [
-    {"name": "support-whatsapp", "type": "whatsapp"},
-    {"name": "support-slack", "type": "slack"},
-    {"name": "support-discord", "type": "discord"}
-]
+**In Claude Desktop, say:**
+```
+First, check if all messaging instances are connected:
+- support-whatsapp
+- support-slack
+- support-discord
 
-# Check all instances are connected
-instances = manage_instances(operation="list")
+For any disconnected instances, restart the connection.
 
-for instance in instances['instances']:
-    if instance['connection_status'] != 'connected':
-        print(f"⚠️ {instance['name']} is not connected!")
-        # Restart connection
-        manage_instances(
-            operation="restart",
-            instance_name=instance['name']
-        )
-    else:
-        print(f"✓ {instance['name']} is connected")
+Then, send this welcome message to users on all channels:
+"Hello! Welcome to our support. How can we help you today?"
 
-# Send welcome message across all channels
-welcome_message = "Hello! Welcome to our support. How can we help you today?"
+Send to:
+- WhatsApp: +1234567890 via support-whatsapp
+- Slack: User U12345678 via support-slack
+- Discord: User 987654321098765432 via support-discord
+```
 
-# WhatsApp
-send_message(
-    message_type="text",
-    phone="+1234567890",
-    message=welcome_message,
-    instance_name="support-whatsapp"
-)
+**Claude does:**
+- Checks connection status of all instances
+- Restarts any disconnected instances
+- Sends welcome messages across all channels
 
-# Slack (using phone field for user ID)
-send_message(
-    message_type="text",
-    phone="U12345678",  # Slack user ID
-    message=welcome_message,
-    instance_name="support-slack"
-)
-
-# Discord (using phone field for user ID)
-send_message(
-    message_type="text",
-    phone="987654321098765432",  # Discord user ID
-    message=welcome_message,
-    instance_name="support-discord"
-)
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Multi-channel support setup completed successfully",
+  "instance_status": [
+    {
+      "instance": "support-whatsapp",
+      "status": "connected",
+      "action": "none"
+    },
+    {
+      "instance": "support-slack",
+      "status": "connected",
+      "action": "none"
+    },
+    {
+      "instance": "support-discord",
+      "status": "connected",
+      "action": "none"
+    }
+  ],
+  "messages_sent": [
+    {
+      "channel": "whatsapp",
+      "recipient": "+1234567890",
+      "status": "sent",
+      "message_id": "msg_whatsapp_123"
+    },
+    {
+      "channel": "slack",
+      "recipient": "U12345678",
+      "status": "sent",
+      "message_id": "msg_slack_456"
+    },
+    {
+      "channel": "discord",
+      "recipient": "987654321098765432",
+      "status": "sent",
+      "message_id": "msg_discord_789"
+    }
+  ]
+}
 ```
 
 ### Scenario 2: Automated Marketing Campaign
 
-```python
-# Send promotional campaign to customer list
-customers = [
-    {"phone": "+1234567890", "name": "John Doe", "channel": "whatsapp"},
-    {"phone": "+0987654321", "name": "Jane Smith", "channel": "whatsapp"},
-    # ... more customers
-]
+**In Claude Desktop, say:**
+```
+Run an automated marketing campaign with this message:
 
-campaign_message = """
 🎉 Special Offer Just for You!
 
 Hi {name}! 
@@ -416,174 +400,190 @@ Use code: WEEKEND30
 Shop now: https://example.com/shop
 
 Valid until Sunday midnight.
-"""
 
-# Send personalized messages
-for customer in customers:
-    personalized_message = campaign_message.format(name=customer['name'])
-    
-    result = send_message(
-        message_type="text",
-        phone=customer['phone'],
-        message=personalized_message,
-        instance_name=f"marketing-{customer['channel']}"
-    )
-    
-    print(f"Sent to {customer['name']}: {result['status']}")
-    
-    # Add delay to avoid rate limiting
-    import time
-    time.sleep(1)
+Send personalized messages to these customers via WhatsApp:
+1. John Doe at +1234567890
+2. Jane Smith at +0987654321
 
-# Track campaign performance
-analytics = manage_traces(
-    operation="analytics",
-    instance_name="marketing-whatsapp",
-    start_date="2024-01-15",
-    end_date="2024-01-17"
-)
+Add a 1-second delay between messages to avoid rate limiting.
 
-print(f"\nCampaign Results:")
-print(f"Messages sent: {analytics['analytics']['total_messages']}")
-print(f"Delivery rate: {analytics['analytics']['success_rate']}")
-print(f"Read rate: {analytics['analytics']['delivery_stats']['read'] / analytics['analytics']['total_messages'] * 100:.1f}%")
+After sending, show campaign performance analytics for the marketing-whatsapp instance from January 15-17, 2024.
+```
+
+**Claude does:**
+- Sends personalized promotional messages to customers
+- Adds delays between messages
+- Tracks campaign performance with analytics
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Marketing campaign executed successfully",
+  "messages_sent": [
+    {
+      "recipient": "John Doe",
+      "phone": "+1234567890",
+      "status": "sent",
+      "message_id": "msg_campaign_123"
+    },
+    {
+      "recipient": "Jane Smith",
+      "phone": "+0987654321",
+      "status": "sent",
+      "message_id": "msg_campaign_456"
+    }
+  ],
+  "campaign_analytics": {
+    "period": "2024-01-15 to 2024-01-17",
+    "messages_sent": 2,
+    "delivery_rate": "100%",
+    "read_rate": "85.0%",
+    "success_rate": "100%"
+  }
+}
 ```
 
 ### Scenario 3: Order Notifications with Media
 
-```python
-# Send order confirmation with product images
-orders = [
-    {
-        "order_id": "ORD-12345",
-        "customer_phone": "+1234567890",
-        "product_image": "https://example.com/products/widget-pro.jpg",
-        "total": "$99.99"
-    }
-]
+**In Claude Desktop, say:**
+```
+Send order confirmation notifications with media for this order:
 
-for order in orders:
-    # Send product image with order details
-    send_message(
-        message_type="media",
-        phone=order['customer_phone'],
-        media_url=order['product_image'],
-        media_type="image",
-        caption=f"""
+Order ID: ORD-12345
+Customer phone: +1234567890
+Product image: https://example.com/products/widget-pro.jpg
+Total: $99.99
+
+First, send a media message with the product image and this caption:
+
 ✅ Order Confirmed!
 
-Order ID: {order['order_id']}
-Total: {order['total']}
+Order ID: ORD-12345
+Total: $99.99
 
 Your order will be delivered in 3-5 business days.
-Track your order: https://example.com/track/{order['order_id']}
+Track your order: https://example.com/track/ORD-12345
 
 Thank you for shopping with us!
-        """,
-        instance_name="orders-whatsapp"
-    )
-    
-    # Send follow-up text with contact info
-    send_message(
-        message_type="contact",
-        phone=order['customer_phone'],
-        contacts=[
-            {
-                "full_name": "Customer Support",
-                "phone_number": "+1-800-SUPPORT",
-                "email": "support@example.com"
-            }
-        ],
-        instance_name="orders-whatsapp"
-    )
+
+Then, send a contact card with customer support information:
+Name: Customer Support
+Phone: +1-800-SUPPORT
+Email: support@example.com
+
+Send both messages via the orders-whatsapp instance.
+```
+
+**Claude does:**
+- Sends order confirmation with product image
+- Follows up with customer support contact information
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Order notification sent successfully",
+  "order_confirmation": {
+    "order_id": "ORD-12345",
+    "recipient": "+1234567890",
+    "media_message": {
+      "status": "sent",
+      "message_id": "msg_media_123",
+      "media_type": "image"
+    },
+    "contact_message": {
+      "status": "sent",
+      "message_id": "msg_contact_456"
+    }
+  }
+}
 ```
 
 ### Scenario 4: Trace Debugging and Monitoring
 
-```python
-# Monitor failed messages
-failed_traces = manage_traces(
-    operation="list",
-    instance_name="my-whatsapp",
-    trace_status="failed",
-    limit=50
-)
+**In Claude Desktop, say:**
+```
+Monitor failed messages for the my-whatsapp instance, showing up to 50 failed traces. For each failed message, show:
+- Trace ID
+- Recipient
+- Message type
+- Sent time
+- Error message
+- Retry count
 
-print(f"Failed messages: {failed_traces['total_count']}")
+Then, get all message traces for phone number +1234567890 and show the total count and timestamp of the last message.
+```
 
-for trace in failed_traces['traces']:
-    print(f"\n❌ Failed Message:")
-    print(f"   Trace ID: {trace['trace_id']}")
-    print(f"   Recipient: {trace['recipient']}")
-    print(f"   Type: {trace['message_type']}")
-    print(f"   Sent at: {trace['sent_at']}")
-    
-    # Get detailed payload for debugging
-    payload = manage_traces(
-        operation="get_payloads",
-        trace_id=trace['trace_id']
-    )
-    
-    print(f"   Error: {payload['error_message']}")
-    print(f"   Retry count: {payload['retry_count']}")
+**Claude does:**
+- Monitors failed messages and provides debugging information
+- Retrieves message history for a specific phone number
 
-# Get traces for specific phone number
-customer_traces = manage_traces(
-    operation="by_phone",
-    phone="+1234567890"
-)
-
-print(f"\nMessages to +1234567890: {customer_traces['total_count']}")
-print(f"Last message: {customer_traces['traces'][0]['sent_at']}")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Trace debugging completed",
+  "failed_messages": {
+    "total_count": 2,
+    "traces": [
+      {
+        "trace_id": "trace_failed_123",
+        "recipient": "+0987654321",
+        "message_type": "text",
+        "sent_at": "2024-01-15T14:30:00Z",
+        "error": "Recipient not available",
+        "retry_count": 3
+      }
+    ]
+  },
+  "customer_history": {
+    "phone": "+1234567890",
+    "total_messages": 15,
+    "last_message": "2024-01-15T14:36:00Z"
+  }
+}
 ```
 
 ### Scenario 5: Instance Management and QR Code Setup
 
-```python
-# Create new WhatsApp instance
-new_instance = manage_instances(
-    operation="create",
-    config={
-        "name": "sales-whatsapp",
-        "channel_type": "whatsapp",
-        "auto_qr": True
-    }
-)
+**In Claude Desktop, say:**
+```
+Create a new WhatsApp messaging instance named sales-whatsapp with auto QR code generation.
 
-print(f"Instance created: {new_instance['instance']['name']}")
-print(f"Status: {new_instance['instance']['connection_status']}")
+Then, get the QR code for scanning and show when it expires.
 
-# Get QR code for scanning
-qr_result = manage_instances(
-    operation="qr",
-    instance_name="sales-whatsapp"
-)
+Next, poll the connection status every 10 seconds for up to 30 attempts until connected, then set this instance as the default.
+```
 
-print(f"\nQR Code available at: {qr_result['qr_code']}")
-print(f"Expires at: {qr_result['qr_expires_at']}")
-print("Please scan with WhatsApp mobile app")
+**Claude does:**
+- Creates a new WhatsApp instance with auto QR generation
+- Retrieves the QR code for scanning
+- Polls connection status until connected
+- Sets the instance as default
 
-# Poll for connection status
-import time
-max_attempts = 30
-for attempt in range(max_attempts):
-    status = manage_instances(
-        operation="status",
-        instance_name="sales-whatsapp"
-    )
-    
-    if status['connection_status'] == 'connected':
-        print(f"\n✓ Connected! Phone: {status['phone_number']}")
-        break
-    
-    print(f"Waiting for connection... ({attempt + 1}/{max_attempts})")
-    time.sleep(10)
-
-# Set as default instance
-manage_instances(
-    operation="set_default",
-    instance_name="sales-whatsapp"
-)
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Instance management completed successfully",
+  "instance_setup": {
+    "instance_created": "sales-whatsapp",
+    "connection_status": "awaiting_qr",
+    "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "qr_expires_at": "2024-01-15T15:00:00Z"
+  },
+  "connection_monitoring": {
+    "attempts": 3,
+    "connected": true,
+    "phone_number": "+1234567890",
+    "final_status": "connected"
+  },
+  "default_setting": {
+    "instance": "sales-whatsapp",
+    "status": "set_as_default"
+  }
+}
 ```
 
 ## Features Demonstrated
@@ -599,56 +599,120 @@ manage_instances(
 ## Message Types Supported
 
 ### Text Messages
-```python
-send_message(message_type="text", phone="+1234567890", message="Hello!")
+
+**In Claude Desktop, say:**
+```
+Send a text message to +1234567890: "Hello!"
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_text_123",
+  "recipient": "+1234567890",
+  "message_type": "text",
+  "sent_at": "2024-01-15T14:36:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ### Media Messages (Images, Videos, Documents)
-```python
-send_message(
-    message_type="media",
-    phone="+1234567890",
-    media_url="https://example.com/image.jpg",
-    media_type="image",
-    caption="Check this out!"
-)
+
+**In Claude Desktop, say:**
+```
+Send a media message to +1234567890 with the image from https://example.com/image.jpg, media type image, and caption: "Check this out!"
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_media_456",
+  "recipient": "+1234567890",
+  "message_type": "media",
+  "media_type": "image",
+  "caption": "Check this out!",
+  "sent_at": "2024-01-15T14:37:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ### Audio Messages
-```python
-send_message(
-    message_type="audio",
-    phone="+1234567890",
-    audio_url="https://example.com/voice.mp3"
-)
+
+**In Claude Desktop, say:**
+```
+Send an audio message to +1234567890 with the audio file from https://example.com/voice.mp3
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_audio_789",
+  "recipient": "+1234567890",
+  "message_type": "audio",
+  "sent_at": "2024-01-15T14:38:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ### Stickers
-```python
-send_message(
-    message_type="sticker",
-    phone="+1234567890",
-    sticker_url="https://example.com/sticker.webp"
-)
+
+**In Claude Desktop, say:**
+```
+Send a sticker to +1234567890 with the sticker from https://example.com/sticker.webp
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_sticker_123",
+  "recipient": "+1234567890",
+  "message_type": "sticker",
+  "sent_at": "2024-01-15T14:39:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ### Contact Cards
-```python
-send_message(
-    message_type="contact",
-    phone="+1234567890",
-    contacts=[{"full_name": "John Doe", "phone_number": "+1234567890"}]
-)
+
+**In Claude Desktop, say:**
+```
+Send a contact card to +1234567890 for John Doe with phone number +1234567890
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_contact_456",
+  "recipient": "+1234567890",
+  "message_type": "contact",
+  "sent_at": "2024-01-15T14:40:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ### Reactions
-```python
-send_message(
-    message_type="reaction",
-    phone="+1234567890",
-    message_id="msg_123",
-    emoji="👍"
-)
+
+**In Claude Desktop, say:**
+```
+React to message msg_123 from +1234567890 with a thumbs up emoji
+```
+
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message_id": "msg_reaction_789",
+  "recipient": "+1234567890",
+  "message_type": "reaction",
+  "emoji": "👍",
+  "sent_at": "2024-01-15T14:41:00Z",
+  "delivery_status": "sent"
+}
 ```
 
 ## Best Practices
@@ -665,83 +729,91 @@ send_message(
 
 ### Cleanup Old Traces
 
-```python
-# Preview cleanup (dry run)
-cleanup_preview = manage_traces(
-    operation="cleanup",
-    days_old=30,
-    dry_run=True
-)
+**In Claude Desktop, say:**
+```
+Preview cleanup of message traces older than 30 days, then confirm and execute the cleanup if traces are found to be deleted.
+```
 
-print(f"Traces to be deleted: {cleanup_preview['traces_to_delete']}")
-print(f"Space to be freed: {cleanup_preview['space_freed']}")
+**Claude does:**
+- Previews cleanup of old traces
+- Executes cleanup if traces are found
 
-# Confirm and execute cleanup
-if cleanup_preview['traces_to_delete'] > 0:
-    cleanup_result = manage_traces(
-        operation="cleanup",
-        days_old=30,
-        dry_run=False
-    )
-    print(f"Deleted {cleanup_result['deleted_count']} traces")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Trace cleanup completed successfully",
+  "preview": {
+    "traces_to_delete": 1250,
+    "space_freed": "25.6 MB"
+  },
+  "cleanup_result": {
+    "deleted_count": 1250,
+    "space_freed": "25.6 MB"
+  }
+}
 ```
 
 ### Profile Management
 
-```python
-# Fetch user profile
-profile = manage_profiles(
-    operation="fetch",
-    phone_number="+1234567890",
-    instance_name="my-whatsapp"
-)
+**In Claude Desktop, say:**
+```
+Fetch the user profile for +1234567890 on the my-whatsapp instance, then update the instance profile picture with the image from https://example.com/company-logo.jpg
+```
 
-print(f"User: {profile['name']}")
-print(f"Status: {profile['status']}")
-print(f"Profile picture: {profile['profile_picture_url']}")
+**Claude does:**
+- Fetches user profile information
+- Updates the instance profile picture
 
-# Update instance profile picture
-manage_profiles(
-    operation="update_picture",
-    picture_url="https://example.com/company-logo.jpg",
-    instance_name="my-whatsapp"
-)
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Profile management completed successfully",
+  "profile_fetch": {
+    "user": "John Doe",
+    "status": "Available",
+    "profile_picture": "https://example.com/profile-pic.jpg"
+  },
+  "profile_update": {
+    "instance": "my-whatsapp",
+    "new_picture": "https://example.com/company-logo.jpg",
+    "updated_at": "2024-01-15T14:45:00Z"
+  }
+}
 ```
 
 ### Bulk Operations with Progress Tracking
 
-```python
-# Send to large recipient list with progress tracking
-recipients = [...]  # Large list of phone numbers
+**In Claude Desktop, say:**
+```
+Send an important announcement to a large list of recipients via WhatsApp, tracking progress every 10 messages and adding a 0.5 second delay between messages for rate limiting. Show success and failure counts when complete.
+```
 
-total = len(recipients)
-success_count = 0
-failed_count = 0
+**Claude does:**
+- Sends messages to all recipients with rate limiting
+- Tracks progress and counts successes/failures
 
-for i, phone in enumerate(recipients, 1):
-    try:
-        result = send_message(
-            message_type="text",
-            phone=phone,
-            message="Important announcement..."
-        )
-        
-        if result['status'] == 'success':
-            success_count += 1
-        else:
-            failed_count += 1
-            
-    except Exception as e:
-        failed_count += 1
-        print(f"Error sending to {phone}: {e}")
-    
-    # Progress update every 10 messages
-    if i % 10 == 0:
-        print(f"Progress: {i}/{total} ({i/total*100:.1f}%) - Success: {success_count}, Failed: {failed_count}")
-    
-    time.sleep(0.5)  # Rate limiting
-
-print(f"\nComplete! Success: {success_count}, Failed: {failed_count}")
+**Claude responds:**
+```json
+{
+  "status": "success",
+  "message": "Bulk messaging operation completed",
+  "operation_details": {
+    "total_recipients": 1000,
+    "messages_sent": 985,
+    "success_count": 985,
+    "failed_count": 15,
+    "completion_time": "8 minutes 23 seconds",
+    "rate_limiting": "0.5 seconds between messages"
+  },
+  "progress_updates": [
+    "Progress: 10/1000 (1.0%) - Success: 10, Failed: 0",
+    "Progress: 20/1000 (2.0%) - Success: 20, Failed: 0",
+    "Progress: 100/1000 (10.0%) - Success: 100, Failed: 0"
+  ],
+  "final_result": "Complete! Success: 985, Failed: 15"
+}
 ```
 
 ## Troubleshooting
@@ -754,7 +826,7 @@ print(f"\nComplete! Success: {success_count}, Failed: {failed_count}")
    - Verify spelling of instance name
 
 2. **"Connection not established"**
-   - Check instance status with `manage_instances(operation="status")`
+   - Check instance status by asking Claude to show the status of your instance
    - Restart instance if needed
    - For WhatsApp, rescan QR code
 
