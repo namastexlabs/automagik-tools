@@ -95,7 +95,17 @@ class TestToolFunctions:
     @pytest.mark.asyncio
     async def test_tool_has_resources(self, tool_instance):
         """Test that tool has resources"""
-        resources = await tool_instance._list_resources()
+        from fastmcp import Context
+
+        # Handle both old and new FastMCP API
+        # Old API: _list_resources(context)
+        # New API: _list_resources()
+        try:
+            resources = await tool_instance._list_resources(Context())
+        except TypeError:
+            # New API doesn't take context parameter
+            resources = await tool_instance._list_resources()
+
         # Note: Resources may be empty, so just check that it's a list
         assert isinstance(resources, list), "Resources should be a list"
 
@@ -139,7 +149,14 @@ class TestMCPProtocol:
     @pytest.mark.asyncio
     async def test_resource_list(self, tool_instance):
         """Test MCP resources/list"""
-        resources = await tool_instance._list_resources()
+        from fastmcp import Context
+
+        # Handle both old and new FastMCP API
+        try:
+            resources = await tool_instance._list_resources(Context())
+        except TypeError:
+            resources = await tool_instance._list_resources()
+
         # Automagik tool may not have resources
         assert isinstance(resources, list)
 
