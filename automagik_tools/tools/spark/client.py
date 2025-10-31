@@ -146,9 +146,18 @@ class SparkClient:
         workflow_id: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
-        """List task executions"""
-        params = {"limit": limit}
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """List task executions with pagination support
+
+        Returns paginated response with metadata:
+        - items: List of tasks
+        - total: Total count of tasks
+        - limit: Items per page
+        - offset: Current offset
+        - has_more: Whether more items are available
+        """
+        params = {"limit": limit, "offset": offset}
         if workflow_id:
             params["workflow_id"] = workflow_id
         if status:
@@ -197,16 +206,18 @@ class SparkClient:
     async def update_schedule(
         self,
         schedule_id: str,
-        schedule_type: Optional[str] = None,
-        schedule_expr: Optional[str] = None,
+        workflow_id: str,
+        schedule_type: str,
+        schedule_expr: str,
         input_value: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Update a schedule"""
-        data = {}
-        if schedule_type:
-            data["schedule_type"] = schedule_type
-        if schedule_expr:
-            data["schedule_expr"] = schedule_expr
+        """Update a schedule (all fields required by API)"""
+        # The Spark API requires all fields to be provided for updates
+        data = {
+            "workflow_id": workflow_id,
+            "schedule_type": schedule_type,
+            "schedule_expr": schedule_expr,
+        }
         if input_value is not None:
             data["input_value"] = input_value
         return await self.request(

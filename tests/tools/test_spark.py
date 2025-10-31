@@ -522,7 +522,17 @@ class TestSparkIntegration:
             ), f"Tool {tool_name} should have documentation"
 
         # Test resources (Spark doesn't define resources, but method should exist)
-        resources = await tool_instance._list_resources()
+        from unittest.mock import Mock
+
+        # Handle both old and new FastMCP API
+        try:
+            # Try new API first (no context)
+            resources = await tool_instance._list_resources()
+        except TypeError:
+            # Old API requires context parameter
+            mock_context = Mock()
+            resources = await tool_instance._list_resources(mock_context)
+
         assert isinstance(resources, list)
 
 
@@ -807,6 +817,7 @@ class TestNewScheduleTools:
                     "update_schedule",
                     {
                         "schedule_id": "schedule-123",
+                        "workflow_id": "workflow-1",
                         "schedule_type": "cron",
                         "schedule_expr": "0 */2 * * *",
                     },
@@ -1139,7 +1150,12 @@ class TestComprehensiveErrorCoverage:
                 with pytest.raises(Exception, match="Update failed"):
                     await client.call_tool(
                         "update_schedule",
-                        {"schedule_id": "sched-1", "schedule_type": "cron"},
+                        {
+                            "schedule_id": "sched-1",
+                            "workflow_id": "workflow-1",
+                            "schedule_type": "cron",
+                            "schedule_expr": "0 * * * *",
+                        },
                     )
 
     @pytest.mark.unit
@@ -1341,7 +1357,9 @@ class TestClientMethodsCoverage:
 
             mock_async_client.request.return_value = mock_response
 
-            result = await mock_client.update_schedule("sched-123", "cron", "0 9 * * *")
+            result = await mock_client.update_schedule(
+                "sched-123", "workflow-1", "cron", "0 9 * * *"
+            )
             assert result["updated"] is True
 
     @pytest.mark.unit
