@@ -146,10 +146,13 @@ class SparkClient:
         workflow_id: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        """List task executions with pagination support"""
-        params = {"limit": limit, "offset": offset}
+        """List task executions with optional filtering
+
+        Note: The Spark API has a maximum limit of 50 tasks per request.
+        Pagination (offset/skip) is not currently supported by the API.
+        """
+        params = {"limit": limit}
         if workflow_id:
             params["workflow_id"] = workflow_id
         if status:
