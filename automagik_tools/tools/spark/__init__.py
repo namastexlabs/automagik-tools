@@ -288,37 +288,45 @@ async def list_tasks(
     workflow_id: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
+    offset: int = 0,
     ctx: Optional[Context] = None,
 ) -> str:
     """
-    List task executions with optional filtering.
+    List task executions with pagination support.
 
     Args:
         workflow_id: Filter by specific workflow (optional)
         status: Filter by status - pending, running, completed, failed (optional)
-        limit: Maximum number of tasks to return (default: 50, max: 50)
+        limit: Maximum number of tasks to return (default: 50, max: 100)
+        offset: Number of tasks to skip for pagination (default: 0)
 
-    Returns a list of task executions with their details.
+    Returns a paginated response with:
+        - items: List of task executions
+        - total: Total number of tasks matching filters
+        - limit: Items per page
+        - offset: Current offset
+        - has_more: Whether more tasks are available
 
-    Note: The Spark API currently has a maximum limit of 50 tasks per request.
-    Pagination (offset/skip) is not supported by the API at this time.
-    If you need more than 50 tasks, use workflow_id or status filters to narrow results.
+    Pagination examples:
+        # Get first 50 tasks
+        list_tasks(limit=50, offset=0)
 
-    Example:
-        # Get up to 50 tasks
-        list_tasks(limit=50)
-        # Get tasks for specific workflow
-        list_tasks(workflow_id="workflow-id-here", limit=50)
-        # Get only completed tasks
-        list_tasks(status="completed", limit=50)
+        # Get next 50 tasks
+        list_tasks(limit=50, offset=50)
+
+        # Get specific workflow's tasks, paginated
+        list_tasks(workflow_id="workflow-id", limit=20, offset=0)
+
+        # Get only completed tasks, paginated
+        list_tasks(status="completed", limit=25, offset=0)
     """
     global client
     if not client:
         raise ValueError("Tool not configured")
 
     try:
-        tasks = await client.list_tasks(workflow_id, status, limit)
-        return json.dumps(tasks, indent=2)
+        result = await client.list_tasks(workflow_id, status, limit, offset)
+        return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
             ctx.error(f"Failed to list tasks: {str(e)}")
