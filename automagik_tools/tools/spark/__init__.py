@@ -288,25 +288,45 @@ async def list_tasks(
     workflow_id: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
+    offset: int = 0,
     ctx: Optional[Context] = None,
 ) -> str:
     """
-    List task executions with optional filtering.
+    List task executions with pagination support.
 
     Args:
         workflow_id: Filter by specific workflow (optional)
         status: Filter by status - pending, running, completed, failed (optional)
-        limit: Maximum number of tasks to return (default: 50)
+        limit: Maximum number of tasks to return (default: 50, max: 100)
+        offset: Number of tasks to skip for pagination (default: 0)
 
-    Returns a list of task executions with their details.
+    Returns a paginated response with:
+        - items: List of task executions
+        - total: Total number of tasks matching filters
+        - limit: Items per page
+        - offset: Current offset
+        - has_more: Whether more tasks are available
+
+    Pagination examples:
+        # Get first 50 tasks
+        list_tasks(limit=50, offset=0)
+
+        # Get next 50 tasks
+        list_tasks(limit=50, offset=50)
+
+        # Get specific workflow's tasks, paginated
+        list_tasks(workflow_id="workflow-id", limit=20, offset=0)
+
+        # Get only completed tasks, paginated
+        list_tasks(status="completed", limit=25, offset=0)
     """
     global client
     if not client:
         raise ValueError("Tool not configured")
 
     try:
-        tasks = await client.list_tasks(workflow_id, status, limit)
-        return json.dumps(tasks, indent=2)
+        result = await client.list_tasks(workflow_id, status, limit, offset)
+        return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
             ctx.error(f"Failed to list tasks: {str(e)}")
@@ -447,8 +467,9 @@ async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
 @mcp.tool()
 async def update_schedule(
     schedule_id: str,
-    schedule_type: Optional[str] = None,
-    schedule_expr: Optional[str] = None,
+    workflow_id: str,
+    schedule_type: str,
+    schedule_expr: str,
     input_value: Optional[str] = None,
     ctx: Optional[Context] = None,
 ) -> str:
@@ -457,11 +478,27 @@ async def update_schedule(
 
     Args:
         schedule_id: The UUID of the schedule to update
-        schedule_type: Type of schedule - "interval" or "cron" (optional)
-        schedule_expr: Schedule expression (optional)
+        workflow_id: The UUID of the workflow (required)
+        schedule_type: Type of schedule - "interval" or "cron" (required)
+        schedule_expr: Schedule expression (required)
+            - For interval: "5m", "1h", "30s", "2d"
+            - For cron: "0 9 * * *" (daily at 9 AM), "*/15 * * * *" (every 15 minutes)
         input_value: Default input for scheduled runs (optional)
 
     Returns the updated schedule details.
+
+    Note: The Spark API requires all schedule fields to be provided.
+          Use get_schedule() first to retrieve current values if you only want to change one field.
+
+    Example workflow:
+        1. schedule = get_schedule(schedule_id)
+        2. update_schedule(
+               schedule_id=schedule_id,
+               workflow_id=schedule["workflow_id"],
+               schedule_type=schedule["schedule_type"],
+               schedule_expr="0 10 * * *",  # Change only this
+               input_value=schedule.get("input_value")
+           )
     """
     global client
     if not client:
@@ -469,7 +506,7 @@ async def update_schedule(
 
     try:
         result = await client.update_schedule(
-            schedule_id, schedule_type, schedule_expr, input_value
+            schedule_id, workflow_id, schedule_type, schedule_expr, input_value
         )
         return json.dumps(result, indent=2)
     except Exception as e:
