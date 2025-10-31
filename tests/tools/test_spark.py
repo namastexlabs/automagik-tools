@@ -522,13 +522,16 @@ class TestSparkIntegration:
             ), f"Tool {tool_name} should have documentation"
 
         # Test resources (Spark doesn't define resources, but method should exist)
-        from fastmcp import Context
+        from unittest.mock import Mock
 
         # Handle both old and new FastMCP API
         try:
-            resources = await tool_instance._list_resources(Context())
-        except TypeError:
+            # Try new API first (no context)
             resources = await tool_instance._list_resources()
+        except TypeError:
+            # Old API requires context parameter
+            mock_context = Mock()
+            resources = await tool_instance._list_resources(mock_context)
 
         assert isinstance(resources, list)
 
