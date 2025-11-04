@@ -276,7 +276,9 @@ class SparkClient:
             data["url"] = url
         if api_key:
             data["api_key"] = api_key
-        return await self.request("PUT", f"/api/v1/sources/{source_id}", json_data=data)
+        return await self.request(
+            "PATCH", f"/api/v1/sources/{source_id}", json_data=data
+        )
 
     async def delete_source(self, source_id: str) -> Dict[str, Any]:
         """Delete a source"""
