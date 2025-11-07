@@ -293,6 +293,7 @@ async def send_message(
     emoji: Optional[str] = None,
     quoted_message_id: Optional[str] = None,
     delay: Optional[int] = None,
+    split_message: Optional[bool] = None,
 ) -> str:
     """
     Send messages through any configured instance (WhatsApp, Slack, Discord)
@@ -320,6 +321,8 @@ async def send_message(
         emoji: Emoji for reaction
         quoted_message_id: ID of message to quote/reply to
         delay: Delay in milliseconds before sending
+        split_message: Optional override for message splitting behavior. If None, uses instance config.
+                      For WhatsApp: controls splitting on \\n\\n. For Discord: controls preference for \\n\\n split point.
 
     Returns:
         JSON formatted response with message ID and status
@@ -328,6 +331,7 @@ async def send_message(
         send_message(message_type="text", phone="+1234567890", message="Hello!")
         send_message(message_type="media", phone="+1234567890", media_url="https://...", media_type="image")
         send_message(message_type="reaction", phone="+1234567890", message_id="...", emoji="👍")
+        send_message(message_type="text", phone="+1234567890", message="Long text\\n\\nwith sections", split_message=False)
     """
     client = _ensure_client()
 
@@ -357,6 +361,7 @@ async def send_message(
                 text=message,
                 quoted_message_id=quoted_message_id,
                 delay=delay,
+                split_message=split_message,
             )
             response = await client.send_text(instance_name, request)
 
