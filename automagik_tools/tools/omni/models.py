@@ -133,6 +133,10 @@ class SendTextRequest(BaseModel):
     text: str = Field(..., description="Message text", alias="message")
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = Field(None, description="Delay in milliseconds")
+    split_message: Optional[bool] = Field(
+        None,
+        description="Optional override for message splitting behavior. If None, uses instance config (enable_auto_split). For WhatsApp: controls splitting on \\n\\n. For Discord: controls preference for \\n\\n split point (2000-char hard limit always applies).",
+    )
 
 
 class SendMediaRequest(BaseModel):
