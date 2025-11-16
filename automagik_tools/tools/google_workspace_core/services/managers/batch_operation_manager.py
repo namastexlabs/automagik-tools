@@ -8,7 +8,7 @@ import logging
 import asyncio
 from typing import Any, Union, Dict, List, Tuple
 
-from automagik_tools.tools.google_workspace.services.docs_helpers import (
+from automagik_tools.tools.google_workspace_core.services.docs_helpers import (
     create_insert_text_request,
     create_delete_range_request,
     create_format_text_request,

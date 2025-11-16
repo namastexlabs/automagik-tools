@@ -10,10 +10,10 @@ import json
 from typing import List, Optional, Union
 
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service
-from automagik_tools.tools.google_workspace.core.server import server
-from automagik_tools.tools.google_workspace.core.utils import handle_http_errors
-from automagik_tools.tools.google_workspace.core.comments import create_comment_tools
+from automagik_tools.tools.google_workspace_core.auth.service_decorator import require_google_service
+from automagik_tools.tools.google_workspace_core.core.server import server
+from automagik_tools.tools.google_workspace_core.core.utils import handle_http_errors
+from automagik_tools.tools.google_workspace_core.core.comments import create_comment_tools
 
 # Configure module logger
 logger = logging.getLogger(__name__)
