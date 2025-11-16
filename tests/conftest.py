@@ -163,14 +163,23 @@ class MCPTestClient:
     async def close(self):
         """Close the MCP server process"""
         if self.process:
-            # Try graceful shutdown first
-            try:
-                self.process.terminate()
-                await asyncio.wait_for(self.process.wait(), timeout=2.0)
-            except asyncio.TimeoutError:
-                # Force kill if graceful shutdown fails
-                self.process.kill()
-                await self.process.wait()
+            # Check if process is still running
+            if self.process.returncode is None:
+                # Try graceful shutdown first
+                try:
+                    self.process.terminate()
+                    await asyncio.wait_for(self.process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    # Force kill if graceful shutdown fails
+                    try:
+                        self.process.kill()
+                        await self.process.wait()
+                    except ProcessLookupError:
+                        # Process already dead
+                        pass
+                except ProcessLookupError:
+                    # Process already dead
+                    pass
 
 
 @pytest.fixture(scope="function")  # Create new client for each test
