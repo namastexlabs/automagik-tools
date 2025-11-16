@@ -15,10 +15,10 @@ from typing import List, Optional, Dict, Any, Union
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service
-from automagik_tools.tools.google_workspace.core.utils import handle_http_errors
+from automagik_tools.tools.google_workspace_core.auth.service_decorator import require_google_service
+from automagik_tools.tools.google_workspace_core.core.utils import handle_http_errors
 
-from automagik_tools.tools.google_workspace.core.server import server
+from automagik_tools.tools.google_workspace_core.core.server import server
 
 
 # Configure module logger
