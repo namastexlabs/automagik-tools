@@ -18,10 +18,10 @@ def get_metadata():
         "author": "Peter Krueck (adapted for automagik-tools)",
         "tools": [
             "consult_gemini",
-            "list_sessions", 
+            "list_sessions",
             "end_session",
-            "get_gemini_requests"
-        ]
+            "get_gemini_requests",
+        ],
     }
 
 

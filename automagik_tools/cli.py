@@ -100,6 +100,7 @@ def create_dynamic_openapi_tool(
 def discover_tools() -> Dict[str, Any]:
     """Discover tools from the tools directory"""
     tools = {}
+    failed_tools = []
 
     # Get the tools directory
     tools_dir = Path(__file__).parent / "tools"
@@ -139,19 +140,35 @@ def discover_tools() -> Dict[str, Any]:
                         ),
                         "metadata": metadata,
                         "type": "Auto-discovered",
-                        "status": "⚪ Available",
+                        "status": "Available",
                         "description": metadata.get("description", f"{tool_name} tool"),
                     }
                 except Exception as e:
+                    error_msg = str(e)
+                    # Track failed tools for summary
+                    failed_tools.append((tool_name, error_msg))
+
                     # Use stderr for stdio transport to avoid polluting JSON-RPC
                     if os.environ.get("MCP_TRANSPORT") == "stdio":
                         stderr_console.print(
-                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
+                            f"[yellow]Warning: Failed to load {tool_name}: {error_msg}[/yellow]"
                         )
                     else:
-                        console.print(
-                            f"[yellow]Warning: Failed to load {tool_name}: {e}[/yellow]"
-                        )
+                        # Show concise message during discovery
+                        if "No module named" in error_msg:
+                            # Extract the missing module name
+                            missing_module = (
+                                error_msg.split("'")[1]
+                                if "'" in error_msg
+                                else "unknown"
+                            )
+                            console.print(
+                                f"[yellow]Warning: Failed to load {tool_name}: Missing dependency '{missing_module}'[/yellow]"
+                            )
+                        else:
+                            console.print(
+                                f"[yellow]Warning: Failed to load {tool_name}: {error_msg}[/yellow]"
+                            )
     else:
         console.print(f"[red]Tools directory not found: {tools_dir}[/red]")
 
@@ -310,12 +327,16 @@ def hub(
             console.print(
                 f"[green]🚀 Starting HTTP hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            hub_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "sse":
             console.print(
                 f"[green]🚀 Starting SSE hub server on {serve_host}:{serve_port}[/green]"
             )
-            hub_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            hub_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -383,12 +404,16 @@ def tool(
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -443,12 +468,16 @@ def openapi(
             console.print(
                 f"[green]🚀 Starting SSE server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="sse", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="sse", host=serve_host, port=serve_port, show_banner=False
+            )
         elif transport == "http":
             console.print(
                 f"[green]🚀 Starting HTTP server on {serve_host}:{serve_port}[/green]"
             )
-            mcp_server.run(transport="http", host=serve_host, port=serve_port, show_banner=False)
+            mcp_server.run(
+                transport="http", host=serve_host, port=serve_port, show_banner=False
+            )
         else:
             console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
             sys.exit(1)
@@ -586,7 +615,7 @@ def mcp_config(
             }
         }
         console.print(
-            "[yellow]⚠️  Hub serves all tools - configure environment variables as needed[/yellow]"
+            "[yellow][!] Hub serves all tools - configure environment variables as needed[/yellow]"
         )
         console.print("\n[green]MCP Configuration for Cursor:[/green]")
         console.print(json.dumps(config, indent=2))
@@ -606,7 +635,7 @@ def mcp_config(
             }
         }
         console.print(
-            "[yellow]⚠️  Discord API tool uses dynamic OpenAPI - requires latest automagik-tools[/yellow]"
+            "[yellow][!]  Discord API tool uses dynamic OpenAPI - requires latest automagik-tools[/yellow]"
         )
         console.print(
             "[yellow]   Replace YOUR_DISCORD_TOKEN_HERE with your actual Discord token[/yellow]"
@@ -671,7 +700,7 @@ def mcp_config(
 
                 if required:
                     console.print(
-                        f"[yellow]⚠️  {env_var} is required - replace {value} with actual value[/yellow]"
+                        f"[yellow][!]  {env_var} is required - replace {value} with actual value[/yellow]"
                     )
 
             if env_vars:
@@ -689,7 +718,7 @@ def mcp_config(
             "AUTOMAGIK_AGENTS_TIMEOUT": "1000",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Automagik Agents instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Automagik Agents instance[/yellow]"
         )
     elif tool_name == "evolution-api":
         config[tool_name]["env"] = {
@@ -697,7 +726,7 @@ def mcp_config(
             "EVOLUTION_API_API_KEY": "YOUR_API_KEY_HERE",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Evolution API instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Evolution API instance[/yellow]"
         )
     elif tool_name == "evolution-api-v2":
         config[tool_name]["env"] = {
@@ -705,7 +734,7 @@ def mcp_config(
             "EVOLUTION_API_V2_API_KEY": "YOUR_API_KEY_HERE",
         }
         console.print(
-            "[yellow]⚠️  Configure the environment variables above with your Evolution API v2 instance[/yellow]"
+            "[yellow][!]  Configure the environment variables above with your Evolution API v2 instance[/yellow]"
         )
 
     # Output the configuration

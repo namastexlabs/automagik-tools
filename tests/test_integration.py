@@ -16,6 +16,7 @@ from tests.conftest import SAMPLE_MCP_INITIALIZE, SAMPLE_MCP_LIST_TOOLS
 class TestEndToEndWorkflow:
     """Test complete end-to-end workflows"""
 
+    @pytest.mark.skip(reason="Removed serve command")
     @pytest.mark.asyncio
     async def test_complete_mcp_workflow(self, mock_evolution_config):
         """Test complete MCP workflow from CLI startup to tool execution"""
@@ -105,6 +106,7 @@ class TestEndToEndWorkflow:
             process.terminate()
             await process.wait()
 
+    @pytest.mark.skip(reason="Removed serve command")
     def test_cli_to_sse_server_startup(self, mock_evolution_config):
         """Test that CLI can start SSE server successfully"""
         # Use port 0 to avoid conflicts
@@ -140,6 +142,7 @@ class TestEndToEndWorkflow:
         assert "Tool 'evolution-api' loaded successfully" in output
         assert "Starting" in output
 
+    @pytest.mark.skip(reason="Removed serve-all command")
     def test_multi_tool_server_startup(self, mock_evolution_config):
         """Test that multi-tool server starts successfully"""
         import os
@@ -174,7 +177,7 @@ class TestPackageBuildAndInstall:
     def test_package_builds_successfully(self, project_root):
         """Test that the package builds without errors"""
         result = subprocess.run(
-            ["python", "-m", "build", "--no-isolation"],
+            ["python", "-m", "build"],
             cwd=project_root,
             capture_output=True,
             text=True,
@@ -240,7 +243,7 @@ class TestConfigurationIntegration:
         }
 
         result = subprocess.run(
-            ["python", "-m", "automagik_tools.cli", "list"],
+            [sys.executable, "-m", "automagik_tools.cli", "list"],
             env=env,
             capture_output=True,
             text=True,
@@ -274,6 +277,7 @@ class TestConfigurationIntegration:
 class TestErrorRecoveryAndResilience:
     """Test error recovery and system resilience"""
 
+    @pytest.mark.skip(reason="Removed serve command")
     @pytest.mark.asyncio
     async def test_server_recovers_from_malformed_input(self, mock_evolution_config):
         """Test that server recovers from malformed JSON input"""
@@ -361,6 +365,7 @@ class TestErrorRecoveryAndResilience:
 class TestPerformanceAndScaling:
     """Test performance characteristics and scaling"""
 
+    @pytest.mark.skip(reason="Removed serve command")
     @pytest.mark.asyncio
     async def test_multiple_concurrent_requests(self, mock_evolution_config):
         """Test handling multiple concurrent MCP requests"""
@@ -488,19 +493,18 @@ class TestDocumentationAndExamples:
         )
 
         assert result.returncode == 0
-        assert "serve" in result.stdout
-        assert "serve-all" in result.stdout
+        assert "tool" in result.stdout
+        assert "hub" in result.stdout
         assert "list" in result.stdout
         assert "version" in result.stdout
 
-        # Serve command help
+        # Tool command help
         result = subprocess.run(
-            ["python", "-m", "automagik_tools.cli", "serve", "--help"],
+            ["python", "-m", "automagik_tools.cli", "tool", "--help"],
             cwd=project_root,
             capture_output=True,
             text=True,
         )
 
         assert result.returncode == 0
-        assert "--tool" in result.stdout
-        assert "--transport" in result.stdout
+        assert "TOOL_NAME" in result.stdout

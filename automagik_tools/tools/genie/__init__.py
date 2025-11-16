@@ -46,6 +46,7 @@ mcp = FastMCP("Genie")
 # Lazy config initialization - defer until actually needed
 _module_config = None
 
+
 def _ensure_config():
     """Ensure config is loaded, initializing only when needed"""
     global _module_config
@@ -107,12 +108,10 @@ async def ask_genie(
         from agno.memory.v2.memory import Memory
         from agno.storage.sqlite import SqliteStorage
         from agno.tools.mcp import MultiMCPTools
-        from mcp import StdioServerParameters
 
         # Protect stdout during MCP operations to prevent stdio corruption
         import contextlib
         from io import StringIO
-        import subprocess
         import asyncio
 
         # For SSE transport, we need to ensure subprocess termination happens before response

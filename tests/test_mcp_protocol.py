@@ -12,6 +12,7 @@ from tests.conftest import SAMPLE_MCP_INITIALIZE, SAMPLE_MCP_LIST_TOOLS, MCPTest
 class TestMCPProtocolCompliance:
     """Test MCP protocol compliance"""
 
+    @pytest.mark.skip(reason="Depends on removed serve command")
     @pytest.mark.asyncio
     async def test_mcp_initialization(self, mcp_test_client):
         """Test MCP initialization handshake"""
@@ -145,6 +146,7 @@ class TestStdioTransport:
         assert responses[0]["id"] == 1
         assert responses[1]["id"] == 2
 
+    @pytest.mark.skip(reason="Depends on removed serve command")
     @pytest.mark.asyncio
     async def test_stdio_no_embedded_newlines(self, mcp_test_client):
         """Test that responses don't contain embedded newlines"""

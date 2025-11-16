@@ -1,0 +1,52 @@
+#!/bin/bash
+# Pre-commit hook for automagik-tools
+# Runs code quality checks before allowing commit
+#
+# To install: make install-hooks
+# Or manually: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Get list of Python files that are staged for commit
+PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -z "$PYTHON_FILES" ]; then
+    echo "✅ No Python files to check"
+    exit 0
+fi
+
+echo "📝 Found Python files to check:"
+echo "$PYTHON_FILES"
+
+# Check if uv is available
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv not found. Please install uv first."
+    exit 1
+fi
+
+# Run Black formatting check
+echo ""
+echo "🎨 Checking code formatting with Black..."
+if ! uv run black --check $PYTHON_FILES; then
+    echo ""
+    echo "❌ Code formatting issues found!"
+    echo "💡 Run 'uv run black <files>' or 'make format' to fix"
+    echo "   Or run: uv run black $PYTHON_FILES"
+    exit 1
+fi
+
+# Run Ruff linting
+echo ""
+echo "🔧 Linting with Ruff..."
+if ! uv run ruff check $PYTHON_FILES; then
+    echo ""
+    echo "❌ Linting issues found!"
+    echo "💡 Run 'uv run ruff check --fix <files>' to auto-fix"
+    exit 1
+fi
+
+echo ""
+echo "✅ All pre-commit checks passed!"
+echo ""

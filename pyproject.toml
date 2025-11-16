@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.8.18"
+version = "0.9.9"
 description = "A monorepo package for MCP tools with dynamic loading capabilities - featuring Evolution API v2 WhatsApp integration"
 authors = [
     {name = "Felipe Rosa", email = "felipe@namastex.ai"},
@@ -12,7 +12,7 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 keywords = ["mcp", "tools", "ai", "agents", "fastmcp", "whatsapp", "discord", "notion"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -112,6 +112,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.1.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",

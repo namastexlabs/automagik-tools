@@ -133,7 +133,7 @@ When adding features, update:
 
 ## 💬 Getting Help
 
-- **Discord**: [Join our community](https://discord.gg/automagik)
+- **Discord**: [Join our community](https://discord.gg/xcW8c7fF3R)
 - **Issues**: Check existing issues or create a new one
 - **Discussions**: Use GitHub Discussions for questions
 
