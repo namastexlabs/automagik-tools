@@ -11,13 +11,13 @@ from typing import List, Dict, Any
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 # Auth & server utilities
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service, require_multiple_services
-from automagik_tools.tools.google_workspace.core.utils import extract_office_xml_text, handle_http_errors
-from automagik_tools.tools.google_workspace.core.server import server
-from automagik_tools.tools.google_workspace.core.comments import create_comment_tools
+from automagik_tools.tools.google_workspace_core.auth.service_decorator import require_google_service, require_multiple_services
+from automagik_tools.tools.google_workspace_core.core.utils import extract_office_xml_text, handle_http_errors
+from automagik_tools.tools.google_workspace_core.core.server import server
+from automagik_tools.tools.google_workspace_core.core.comments import create_comment_tools
 
 # Import helper functions for document operations
-from automagik_tools.tools.google_workspace.services.docs_helpers import (
+from automagik_tools.tools.google_workspace_core.services.docs_helpers import (
     create_insert_text_request,
     create_delete_range_request,
     create_format_text_request,
@@ -29,17 +29,17 @@ from automagik_tools.tools.google_workspace.services.docs_helpers import (
 )
 
 # Import document structure and table utilities
-from automagik_tools.tools.google_workspace.services.docs_structure import (
+from automagik_tools.tools.google_workspace_core.services.docs_structure import (
     parse_document_structure,
     find_tables,
     analyze_document_complexity
 )
-from automagik_tools.tools.google_workspace.services.docs_tables import (
+from automagik_tools.tools.google_workspace_core.services.docs_tables import (
     extract_table_as_data
 )
 
 # Import operation managers for complex business logic
-from automagik_tools.tools.google_workspace.services.managers import (
+from automagik_tools.tools.google_workspace_core.services.managers import (
     TableOperationManager,
     HeaderFooterManager,
     ValidationManager,
