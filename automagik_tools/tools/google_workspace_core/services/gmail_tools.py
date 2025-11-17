@@ -15,10 +15,10 @@ from email.mime.text import MIMEText
 from fastapi import Body
 from pydantic import Field
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service
-from automagik_tools.tools.google_workspace.core.utils import handle_http_errors
-from automagik_tools.tools.google_workspace.core.server import server
-from automagik_tools.tools.google_workspace.auth.scopes import (
+from automagik_tools.tools.google_workspace_core.auth.service_decorator import require_google_service
+from automagik_tools.tools.google_workspace_core.core.utils import handle_http_errors
+from automagik_tools.tools.google_workspace_core.core.server import server
+from automagik_tools.tools.google_workspace_core.auth.scopes import (
     GMAIL_SEND_SCOPE,
     GMAIL_COMPOSE_SCOPE,
     GMAIL_MODIFY_SCOPE,

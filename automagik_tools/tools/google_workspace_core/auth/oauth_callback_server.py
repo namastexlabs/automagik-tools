@@ -101,12 +101,8 @@ class MinimalOAuthServer:
             return True, ""
 
         # Check if port is available
-        # Extract hostname from base_uri (e.g., "http://localhost" -> "localhost")
-        try:
-            parsed_uri = urlparse(self.base_uri)
-            hostname = parsed_uri.hostname or 'localhost'
-        except Exception:
-            hostname = 'localhost'
+        # Bind to 0.0.0.0 to accept connections from all interfaces (needed for Cloudflare tunnels)
+        hostname = '0.0.0.0'
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

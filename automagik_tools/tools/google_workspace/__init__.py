@@ -27,7 +27,7 @@ def create_server(cfg: Optional[GoogleWorkspaceConfig] = None):
         cfg: Configuration object. If None, loads from environment.
 
     Returns:
-        Configured FastMCP server instance (from core.server)
+        Configured FastMCP server instance (from .core.server)
     """
     global config
 

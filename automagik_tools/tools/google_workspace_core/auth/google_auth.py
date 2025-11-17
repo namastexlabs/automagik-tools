@@ -847,7 +847,7 @@ async def get_authenticated_google_service(
         logger.info(f"[{tool_name}] Valid email '{user_google_email}' provided, initiating auth flow.")
 
         # Ensure OAuth callback is available
-        from auth.oauth_callback_server import ensure_oauth_callback_available
+        from .oauth_callback_server import ensure_oauth_callback_available
 
         redirect_uri = get_oauth_redirect_uri()
         config = get_oauth_config()

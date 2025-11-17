@@ -48,7 +48,7 @@ class ExternalOAuthProvider(GoogleProvider):
             logger.debug("Validating external Google OAuth access token")
 
             try:
-                from auth.google_auth import get_user_info
+                from .auth.google_auth import get_user_info
 
                 # Create minimal Credentials object for userinfo API call
                 credentials = Credentials(

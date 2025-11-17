@@ -8,9 +8,9 @@ import logging
 import asyncio
 from typing import List, Dict, Any, Tuple
 
-from automagik_tools.tools.google_workspace.services.docs_helpers import create_insert_table_request
-from automagik_tools.tools.google_workspace.services.docs_structure import find_tables
-from automagik_tools.tools.google_workspace.services.docs_tables import validate_table_data
+from automagik_tools.tools.google_workspace_core.services.docs_helpers import create_insert_table_request
+from automagik_tools.tools.google_workspace_core.services.docs_structure import find_tables
+from automagik_tools.tools.google_workspace_core.services.docs_tables import validate_table_data
 
 logger = logging.getLogger(__name__)
 

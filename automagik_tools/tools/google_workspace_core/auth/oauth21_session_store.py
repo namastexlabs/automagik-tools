@@ -465,7 +465,7 @@ class OAuth21SessionStore:
             if allow_recent_auth and requested_user_email in self._sessions:
                 # Check transport mode to ensure this is only used in stdio
                 try:
-                    from core.config import get_transport_mode
+                    from ..core.config import get_transport_mode
                     transport_mode = get_transport_mode()
                     if transport_mode != "stdio":
                         logger.error(
@@ -618,7 +618,7 @@ def _resolve_client_credentials() -> Tuple[Optional[str], Optional[str]]:
 
     if not client_id or not client_secret:
         try:
-            from auth.oauth_config import get_oauth_config
+            from .oauth_config import get_oauth_config
 
             cfg = get_oauth_config()
             client_id = client_id or cfg.client_id
@@ -801,7 +801,7 @@ def store_token_session(token_response: dict, user_email: str, mcp_session_id: O
         # Try to get FastMCP session ID from context if not provided
         if not mcp_session_id:
             try:
-                from core.context import get_fastmcp_session_id
+                from ..core.context import get_fastmcp_session_id
                 mcp_session_id = get_fastmcp_session_id()
                 if mcp_session_id:
                     logger.debug(f"Got FastMCP session ID from context: {mcp_session_id}")
