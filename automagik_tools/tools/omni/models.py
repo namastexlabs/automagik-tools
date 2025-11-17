@@ -277,16 +277,30 @@ class TraceResponse(BaseModel):
 
 
 class TracePayloadResponse(BaseModel):
-    """Trace payload response"""
+    """Trace payload response - matches Omni backend schema"""
 
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    # Core fields (match backend exactly)
+    id: int  # Fixed: Backend returns int primary key, not str
     trace_id: str
+    stage: str  # Fixed: Backend uses "stage" not "direction"
     payload_type: str
-    direction: str
+    timestamp: Optional[str]  # Fixed: Backend uses "timestamp" not "created_at"
+
+    # Metadata fields
+    status_code: Optional[int] = None
+    error_details: Optional[str] = None
+    payload_size_original: Optional[int] = None
+    payload_size_compressed: Optional[int] = None
+    compression_ratio: Optional[float] = None
+
+    # Content flags
+    contains_media: bool = False
+    contains_base64: bool = False
+
+    # Actual payload data (optional)
     payload: Optional[Dict[str, Any]] = None
-    created_at: datetime
 
 
 class TraceAnalytics(BaseModel):
@@ -351,7 +365,7 @@ class ChatResponse(BaseModel):
     is_pinned: bool = False
     description: Optional[str] = None
     avatar_url: Optional[str] = None
-    unread_count: int = 0
+    unread_count: Optional[int] = None  # Fixed: Backend returns None when not available
     channel_data: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
     last_message_at: Optional[datetime] = None
