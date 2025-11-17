@@ -148,8 +148,24 @@ class LocalDirectoryCredentialStore(CredentialStore):
             return None
 
     def store_credential(self, user_email: str, credentials: Credentials) -> bool:
-        """Store credentials to local JSON file."""
+        """Store credentials to local JSON file, merging scopes with existing credentials."""
         creds_path = self._get_credential_path(user_email)
+
+        # Load existing credentials to merge scopes
+        existing_scopes = []
+        if os.path.exists(creds_path):
+            try:
+                with open(creds_path, "r") as f:
+                    existing_data = json.load(f)
+                    existing_scopes = existing_data.get("scopes", [])
+                    logger.debug(f"Loaded existing scopes for {user_email}: {existing_scopes}")
+            except (IOError, json.JSONDecodeError) as e:
+                logger.warning(f"Could not load existing credentials for scope merge: {e}")
+
+        # Merge scopes: combine existing + new, remove duplicates
+        new_scopes = credentials.scopes or []
+        merged_scopes = sorted(list(set(existing_scopes + new_scopes)))
+        logger.info(f"Merging scopes for {user_email}: {len(existing_scopes)} existing + {len(new_scopes)} new = {len(merged_scopes)} total")
 
         creds_data = {
             "token": credentials.token,
@@ -157,14 +173,14 @@ class LocalDirectoryCredentialStore(CredentialStore):
             "token_uri": credentials.token_uri,
             "client_id": credentials.client_id,
             "client_secret": credentials.client_secret,
-            "scopes": credentials.scopes,
+            "scopes": merged_scopes,
             "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
         }
 
         try:
             with open(creds_path, "w") as f:
                 json.dump(creds_data, f, indent=2)
-            logger.info(f"Stored credentials for {user_email} to {creds_path}")
+            logger.info(f"Stored credentials for {user_email} to {creds_path} with {len(merged_scopes)} scopes")
             return True
         except IOError as e:
             logger.error(

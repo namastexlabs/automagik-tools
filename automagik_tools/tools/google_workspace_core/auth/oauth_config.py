@@ -265,7 +265,7 @@ class OAuthConfig:
             return "oauth20"
 
         # Use the structured type for cleaner detection logic
-        from auth.oauth_types import OAuthVersionDetectionParams
+        from .oauth_types import OAuthVersionDetectionParams
         params = OAuthVersionDetectionParams.from_request(request_params)
 
         # Clear OAuth 2.1 indicator: PKCE is present
@@ -277,7 +277,7 @@ class OAuthConfig:
         authenticated_user = request_params.get("authenticated_user")
         if authenticated_user:
             try:
-                from auth.oauth21_session_store import get_oauth21_session_store
+                from .oauth21_session_store import get_oauth21_session_store
                 store = get_oauth21_session_store()
                 if store.has_session(authenticated_user):
                     return "oauth21"

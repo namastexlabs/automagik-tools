@@ -34,7 +34,7 @@ def check_credentials_directory_permissions(credentials_dir: str = None) -> None
         OSError: If there are other file system issues
     """
     if credentials_dir is None:
-        from auth.google_auth import get_default_credentials_dir
+        from ..auth.google_auth import get_default_credentials_dir
 
         credentials_dir = get_default_credentials_dir()
 

@@ -82,7 +82,7 @@ def configure_server_for_http():
         return
 
     # Use centralized OAuth configuration
-    from auth.oauth_config import get_oauth_config
+    from ..auth.oauth_config import get_oauth_config
     config = get_oauth_config()
 
     # Check if OAuth 2.1 is enabled via centralized config
@@ -99,7 +99,7 @@ def configure_server_for_http():
             # Check if external OAuth provider is configured
             if config.is_external_oauth21_provider():
                 # External OAuth mode: use custom provider that handles ya29.* access tokens
-                from auth.external_oauth_provider import ExternalOAuthProvider
+                from ..auth.external_oauth_provider import ExternalOAuthProvider
 
                 provider = ExternalOAuthProvider(
                     client_id=config.client_id,

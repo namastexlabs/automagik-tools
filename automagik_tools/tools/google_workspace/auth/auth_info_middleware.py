@@ -54,7 +54,7 @@ class AuthInfoMiddleware(Middleware):
                         logger.debug("Detected Google OAuth access token format")
                         
                         # Verify the token to get user info
-                        from core.server import get_auth_provider
+                        from .core.server import get_auth_provider
                         auth_provider = get_auth_provider()
                         
                         if auth_provider:
@@ -195,7 +195,7 @@ class AuthInfoMiddleware(Middleware):
             logger.debug("No authentication found via bearer token, checking other methods")
             
             # Check transport mode
-            from core.config import get_transport_mode
+            from .core.config import get_transport_mode
             transport_mode = get_transport_mode()
             
             if transport_mode == "stdio":
@@ -213,7 +213,7 @@ class AuthInfoMiddleware(Middleware):
                 
                 if requested_user:
                     try:
-                        from auth.oauth21_session_store import get_oauth21_session_store
+                        from .auth.oauth21_session_store import get_oauth21_session_store
                         store = get_oauth21_session_store()
                         
                         # Check if user has a recent session
@@ -229,7 +229,7 @@ class AuthInfoMiddleware(Middleware):
                 # If no requested user was provided but exactly one session exists, assume it in stdio mode
                 if not context.fastmcp_context.get_state("authenticated_user_email"):
                     try:
-                        from auth.oauth21_session_store import get_oauth21_session_store
+                        from .auth.oauth21_session_store import get_oauth21_session_store
                         store = get_oauth21_session_store()
                         single_user = store.get_single_user_email()
                         if single_user:
@@ -249,7 +249,7 @@ class AuthInfoMiddleware(Middleware):
                 mcp_session_id = context.fastmcp_context.session_id
                 if mcp_session_id:
                     try:
-                        from auth.oauth21_session_store import get_oauth21_session_store
+                        from .auth.oauth21_session_store import get_oauth21_session_store
                         store = get_oauth21_session_store()
                         
                         # Check if this MCP session is bound to a user

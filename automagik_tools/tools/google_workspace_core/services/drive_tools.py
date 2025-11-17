@@ -15,12 +15,12 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 import io
 import httpx
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service
-from automagik_tools.tools.google_workspace.auth.oauth_config import is_stateless_mode
-from automagik_tools.tools.google_workspace.core.utils import extract_office_xml_text, handle_http_errors
-from automagik_tools.tools.google_workspace.core.server import server
-from automagik_tools.tools.google_workspace.core.config import get_transport_mode
-from automagik_tools.tools.google_workspace.services.drive_helpers import DRIVE_QUERY_PATTERNS, build_drive_list_params
+from automagik_tools.tools.google_workspace_core.auth.service_decorator import require_google_service
+from automagik_tools.tools.google_workspace_core.auth.oauth_config import is_stateless_mode
+from automagik_tools.tools.google_workspace_core.core.utils import extract_office_xml_text, handle_http_errors
+from automagik_tools.tools.google_workspace_core.core.server import server
+from automagik_tools.tools.google_workspace_core.core.config import get_transport_mode
+from automagik_tools.tools.google_workspace_core.services.drive_helpers import DRIVE_QUERY_PATTERNS, build_drive_list_params
 
 logger = logging.getLogger(__name__)
 
