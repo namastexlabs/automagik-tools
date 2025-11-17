@@ -674,14 +674,9 @@ def get_credentials(
         logger.info(
             f"[get_credentials] Credentials expired. Attempting refresh. User: '{user_google_email}', Session: '{session_id}'"
         )
-        if not client_secrets_path:
-            logger.error(
-                "[get_credentials] Client secrets path required for refresh but not provided."
-            )
-            return None
         try:
             logger.debug(
-                f"[get_credentials] Refreshing token using client_secrets_path: {client_secrets_path}"
+                f"[get_credentials] Refreshing token using refresh_token (credentials have client_id/secret)"
             )
             # client_config = load_client_secrets(client_secrets_path) # Not strictly needed if creds have client_id/secret
             credentials.refresh(Request())
