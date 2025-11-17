@@ -27,9 +27,14 @@ start_google_auth(
 )
 ```
 
-### 3. Follow the Link
+### 3. Browser Opens Automatically 🎉
 
-Click the authentication link in your terminal/browser, grant permissions, and you're done!
+**Your browser will open automatically** showing the Google authentication page. Simply:
+1. Select your Google account
+2. Grant the requested permissions
+3. Done! The browser tab will close automatically after 5 seconds
+
+> **Note**: If you're in a headless environment or the browser doesn't open automatically, you'll see a clickable link in the terminal instead.
 
 ---
 
@@ -154,6 +159,22 @@ start_google_auth(user_google_email="you@example.com", service_name="gmail")
 ---
 
 ## 🛠️ Advanced Configuration
+
+### Disable Automatic Browser Opening
+
+By default, the browser opens automatically when authentication is needed. To disable this (e.g., in headless environments or CI/CD pipelines):
+
+```bash
+# Disable automatic browser opening
+export GOOGLE_OAUTH_AUTO_OPEN_BROWSER=false
+```
+
+Or in your `.env` file:
+```bash
+GOOGLE_OAUTH_AUTO_OPEN_BROWSER=false
+```
+
+When disabled, you'll receive a clickable link in the terminal instead of automatic browser opening.
 
 ### Custom Session TTL
 
@@ -408,6 +429,7 @@ OAuth 2.1 is the latest OAuth standard that:
 | `GOOGLE_OAUTH_CLIENT_ID` | Yes | OAuth client ID | `123.apps.googleusercontent.com` |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Yes | OAuth client secret | `GOCSPX-abc123...` |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Yes | Redirect URI | `http://localhost:8000/oauth2callback` |
+| `GOOGLE_OAUTH_AUTO_OPEN_BROWSER` | No | Auto-open browser for auth | `true` (default) |
 | `GOOGLE_CLIENT_SECRET_PATH` | No | Path to client_secret.json | `/path/to/client_secret.json` |
 | `MCP_ENABLE_OAUTH21` | No | Enable OAuth 2.1 mode | `true` (default) |
 | `WORKSPACE_MCP_STATELESS_MODE` | No | Enable stateless mode | `false` (default) |

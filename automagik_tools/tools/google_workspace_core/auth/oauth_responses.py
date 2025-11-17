@@ -185,8 +185,35 @@ def create_success_response(verified_user_id: Optional[str] = None) -> HTMLRespo
         <div class="message">
             Your credentials have been securely saved. You can now close this tab and retry your original command.
         </div>
-        <div class="auto-close">You can safely close this tab now</div>
+        <button class="button" onclick="window.close()">Close Tab</button>
+        <div class="auto-close" id="countdown">This tab will close automatically in <span id="timer">5</span> seconds...</div>
     </div>
+    <script>
+        // Auto-close countdown
+        let seconds = 5;
+        const timerElement = document.getElementById('timer');
+        const countdownElement = document.getElementById('countdown');
+
+        const countdown = setInterval(() => {{
+            seconds--;
+            if (seconds > 0) {{
+                timerElement.textContent = seconds;
+            }} else {{
+                clearInterval(countdown);
+                countdownElement.textContent = 'Closing now...';
+
+                // Try to close the window
+                setTimeout(() => {{
+                    window.close();
+
+                    // If window.close() doesn't work (some browsers block it), show message
+                    setTimeout(() => {{
+                        countdownElement.textContent = 'Please close this tab manually';
+                    }}, 500);
+                }}, 500);
+            }}
+        }}, 1000);
+    </script>
 </body>
 </html>"""
     return HTMLResponse(content=content)

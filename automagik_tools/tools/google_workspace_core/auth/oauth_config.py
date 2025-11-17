@@ -35,6 +35,9 @@ class OAuthConfig:
         self.client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
         self.client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
 
+        # UX configuration
+        self.auto_open_browser = os.getenv("GOOGLE_OAUTH_AUTO_OPEN_BROWSER", "true").lower() in ("true", "1", "yes")
+
         # OAuth 2.1 configuration
         self.oauth21_enabled = os.getenv("MCP_ENABLE_OAUTH21", "false").lower() == "true"
         self.pkce_required = self.oauth21_enabled  # PKCE is mandatory in OAuth 2.1

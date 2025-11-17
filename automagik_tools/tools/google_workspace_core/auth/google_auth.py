@@ -368,15 +368,47 @@ async def start_auth_flow(
             f"Auth flow started for {user_display_name}. State: {oauth_state[:8]}... Advise user to visit: {auth_url}"
         )
 
-        message_lines = [
-            f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
-            f"To proceed, the user must authorize this application for {service_name} access using all required permissions.",
-            "**LLM, please present this exact authorization URL to the user as a clickable hyperlink:**",
-            f"Authorization URL: {auth_url}",
-            f"Markdown for hyperlink: [Click here to authorize {service_name} access]({auth_url})\n",
-            "**LLM, after presenting the link, instruct the user as follows:**",
-            "1. Click the link and complete the authorization in their browser.",
-        ]
+        # Automatic browser opening for better UX
+        browser_opened = False
+        auto_open_browser = os.getenv("GOOGLE_OAUTH_AUTO_OPEN_BROWSER", "true").lower() in ("true", "1", "yes")
+
+        if auto_open_browser:
+            try:
+                import webbrowser
+                browser_opened = webbrowser.open(auth_url)
+                if browser_opened:
+                    logger.info(f"✅ Automatically opened browser for OAuth authorization")
+                else:
+                    logger.warning("⚠️ Could not automatically open browser (webbrowser.open returned False)")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not automatically open browser: {e}")
+                browser_opened = False
+
+        # Build user-friendly message based on whether browser was opened
+        if browser_opened:
+            message_lines = [
+                f"**✅ Browser Opened: Google Authentication for {user_display_name}**\n",
+                f"🌐 A browser window has been automatically opened for you to authorize {service_name} access.",
+                f"**Please check your browser and complete the authorization.**\n",
+                "If the browser did not open, you can manually click this link:",
+                f"[Click here to authorize {service_name} access]({auth_url})\n",
+            ]
+        else:
+            message_lines = [
+                f"**ACTION REQUIRED: Google Authentication Needed for {user_display_name}**\n",
+                f"To proceed, the user must authorize this application for {service_name} access using all required permissions.",
+                "**LLM, please present this exact authorization URL to the user as a clickable hyperlink:**",
+                f"Authorization URL: {auth_url}",
+                f"Markdown for hyperlink: [Click here to authorize {service_name} access]({auth_url})\n",
+            ]
+
+        # Add common instruction based on browser opening status
+        if browser_opened:
+            message_lines.append("**Steps:**")
+            message_lines.append("1. Complete the authorization in the opened browser window.")
+        else:
+            message_lines.append("**LLM, after presenting the link, instruct the user as follows:**")
+            message_lines.append("1. Click the link and complete the authorization in their browser.")
         session_info_for_llm = ""
 
         if not initial_email_provided:
