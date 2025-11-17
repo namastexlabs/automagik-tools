@@ -237,6 +237,19 @@ async def start_google_auth(service_name: str, user_google_email: str = USER_GOO
     if error_message:
         return f"**Authentication Error:** {error_message}"
 
+    # Ensure OAuth callback server is available before starting auth flow
+    from automagik_tools.tools.google_workspace_core.auth.oauth_callback_server import ensure_oauth_callback_available
+    from automagik_tools.tools.google_workspace_core.auth.oauth_config import get_oauth_config
+    from automagik_tools.tools.google_workspace_core.core.config import get_transport_mode
+
+    config = get_oauth_config()
+    success, error_msg = ensure_oauth_callback_available(
+        get_transport_mode(), config.port, config.base_uri
+    )
+    if not success:
+        error_detail = f" ({error_msg})" if error_msg else ""
+        return f"**Error:** Cannot initiate OAuth flow - callback server unavailable{error_detail}"
+
     try:
         auth_message = await start_auth_flow(
             user_google_email=user_google_email,

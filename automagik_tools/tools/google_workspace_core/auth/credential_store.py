@@ -149,15 +149,27 @@ class LocalDirectoryCredentialStore(CredentialStore):
 
     def store_credential(self, user_email: str, credentials: Credentials) -> bool:
         """Store credentials to local JSON file, merging scopes with existing credentials."""
+        from google.auth.transport.requests import Request
+        from google.auth.exceptions import RefreshError
+
         creds_path = self._get_credential_path(user_email)
 
-        # Load existing credentials to merge scopes
+        # Load existing credentials to merge scopes AND preserve refresh token
         existing_scopes = []
+        existing_refresh_token = None
+        existing_token_uri = None
+        existing_client_id = None
+        existing_client_secret = None
+
         if os.path.exists(creds_path):
             try:
                 with open(creds_path, "r") as f:
                     existing_data = json.load(f)
                     existing_scopes = existing_data.get("scopes", [])
+                    existing_refresh_token = existing_data.get("refresh_token")
+                    existing_token_uri = existing_data.get("token_uri")
+                    existing_client_id = existing_data.get("client_id")
+                    existing_client_secret = existing_data.get("client_secret")
                     logger.debug(f"Loaded existing scopes for {user_email}: {existing_scopes}")
             except (IOError, json.JSONDecodeError) as e:
                 logger.warning(f"Could not load existing credentials for scope merge: {e}")
@@ -167,12 +179,39 @@ class LocalDirectoryCredentialStore(CredentialStore):
         merged_scopes = sorted(list(set(existing_scopes + new_scopes)))
         logger.info(f"Merging scopes for {user_email}: {len(existing_scopes)} existing + {len(new_scopes)} new = {len(merged_scopes)} total")
 
+        # Decide which refresh token to keep
+        # If new auth has FEWER scopes than existing, keep the existing refresh token
+        # (it likely covers more scopes than the new one)
+        use_existing_refresh_token = (
+            existing_refresh_token and
+            len(new_scopes) < len(existing_scopes)
+        )
+
+        if use_existing_refresh_token:
+            logger.info(
+                f"Keeping existing refresh token for {user_email} "
+                f"(new auth has {len(new_scopes)} scopes, existing has {len(existing_scopes)} scopes)"
+            )
+            refresh_token = existing_refresh_token
+            token_uri = existing_token_uri or credentials.token_uri
+            client_id = existing_client_id or credentials.client_id
+            client_secret = existing_client_secret or credentials.client_secret
+        else:
+            logger.info(
+                f"Using new refresh token for {user_email} "
+                f"(new auth has {len(new_scopes)} scopes, existing has {len(existing_scopes)} scopes)"
+            )
+            refresh_token = credentials.refresh_token
+            token_uri = credentials.token_uri
+            client_id = credentials.client_id
+            client_secret = credentials.client_secret
+
         creds_data = {
-            "token": credentials.token,
-            "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "client_secret": credentials.client_secret,
+            "token": credentials.token,  # Always use new access token
+            "refresh_token": refresh_token,
+            "token_uri": token_uri,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "scopes": merged_scopes,
             "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
         }
