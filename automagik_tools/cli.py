@@ -117,6 +117,10 @@ def discover_tools() -> Dict[str, Any]:
                     module_name = f"automagik_tools.tools.{tool_name_snake}"
                     module = importlib.import_module(module_name)
 
+                    # Skip if marked as not a tool (e.g., google_workspace_core)
+                    if getattr(module, "__AUTOMAGIK_NOT_A_TOOL__", False):
+                        continue
+
                     # Get metadata if available
                     metadata = (
                         module.get_metadata() if hasattr(module, "get_metadata") else {}
