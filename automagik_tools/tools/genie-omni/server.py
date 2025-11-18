@@ -16,7 +16,6 @@ from .models import (
     SendMediaRequest,
     SendAudioRequest,
     SendReactionRequest,
-    MessageResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ async def my_whatsapp_info(instance_name: str = "genie") -> str:
         instance = await client.get_instance(instance_name, include_status=True)
 
         result = []
-        result.append(f"📱 MY WHATSAPP IDENTITY")
+        result.append("📱 MY WHATSAPP IDENTITY")
         result.append(f"Instance: {instance.name}")
         result.append(f"Number: {instance.phone_number or 'Not configured'}")
         result.append(f"Type: {instance.channel_type}")
@@ -164,7 +163,7 @@ async def my_conversations(
         )
 
         if not chats.chats:
-            return f"💬 No conversations found" + (
+            return "💬 No conversations found" + (
                 f" (type: {conversation_type})" if conversation_type != "all" else ""
             )
 
@@ -456,7 +455,7 @@ async def find_message(
     try:
         trace = await client.get_trace(trace_id)
 
-        result = [f"📱 MESSAGE DETAILS"]
+        result = ["📱 MESSAGE DETAILS"]
         result.append(f"Trace ID: {trace.trace_id}")
         result.append(f"From: {trace.sender_name or trace.sender_phone}")
         result.append(f"Type: {trace.message_type or 'unknown'}")
@@ -464,7 +463,7 @@ async def find_message(
         result.append(f"Received: {trace.received_at}")
 
         if trace.has_media:
-            result.append(f"Media: Yes")
+            result.append("Media: Yes")
 
         if trace.error_message:
             result.append(f"Error: {trace.error_message}")
