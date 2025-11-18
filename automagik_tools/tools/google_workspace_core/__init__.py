@@ -17,10 +17,9 @@ __version__ = "2.0.0"
 # Mark as non-tool for automagik-tools discovery
 __AUTOMAGIK_NOT_A_TOOL__ = True
 
-# Lazy imports - only load when needed to avoid circular dependencies
-__all__ = [
-    "get_google_service",
-    "SCOPES",
-    "set_enabled_tools",
-    "GoogleWorkspaceBaseConfig",
-]
+# NOTE: This is NOT a public API module - it provides shared utilities for Google Workspace tools.
+# Individual Google tools (google_gmail, google_drive, etc.) import directly from submodules:
+#   - from .auth.scopes import SCOPES, set_enabled_tools
+#   - from .config import GoogleWorkspaceBaseConfig
+#   - from .auth.google_auth import get_authenticated_google_service
+# Do not import from this top-level package.

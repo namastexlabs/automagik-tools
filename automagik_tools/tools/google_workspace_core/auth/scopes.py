@@ -114,14 +114,22 @@ TOOL_SCOPES_MAP = {
 
 def set_enabled_tools(enabled_tools):
     """
-    Set the globally enabled tools list.
+    Set the globally enabled Google Workspace SERVICES for OAuth scope management.
+
+    NOTE: This is different from core.tool_registry.set_enabled_tools() which controls
+    which specific MCP tool functions are registered. This function controls which
+    Google Workspace services (gmail, drive, calendar, etc.) are enabled, which
+    determines the OAuth scopes requested during authentication.
 
     Args:
-        enabled_tools: List of enabled tool names.
+        enabled_tools: List of enabled service names (e.g., ["gmail", "drive", "calendar"]).
+
+    Example:
+        set_enabled_tools(["gmail", "drive"])  # Only enable Gmail and Drive services
     """
     global _ENABLED_TOOLS
     _ENABLED_TOOLS = enabled_tools
-    logger.info(f"Enabled tools set for scope management: {enabled_tools}")
+    logger.info(f"Enabled Google Workspace services for scope management: {enabled_tools}")
 
 
 def get_current_scopes():

@@ -1,0 +1,29 @@
+# GitGuardian configuration
+# https://docs.gitguardian.com/internal-repositories-monitoring/integrations/git_hooks/pre_commit
+
+version: 2
+
+# Ignore test files that contain mock/fake credentials
+paths-ignore:
+  - tests/**/*
+  - **/test_*.py
+  - **/*_test.py
+  - **/conftest.py
+  - **/__pycache__/**
+  - .pytest_cache/**
+
+# Ignore documentation and example files that may contain example tokens
+  - docs/**/*
+  - examples/**/*
+  - *.md
+  - .env.example
+
+# Ignore known false positives
+matches-ignore:
+  # Test tokens in test_oauth_enhancements.py
+  - name: Mock bearer tokens in tests
+    match: Bearer abc123def456ghi789jkl012
+  - name: Test token constants
+    match: test_token_123
+  - name: Test refresh tokens
+    match: refresh_token_456
