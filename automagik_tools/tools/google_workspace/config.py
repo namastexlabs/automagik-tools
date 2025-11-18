@@ -2,9 +2,21 @@
 Google Workspace MCP Tool Configuration
 """
 
+from pathlib import Path
 from typing import Optional
+
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
+
+
+def _default_credentials_dir() -> str:
+    """Return a cross-platform default directory for OAuth credentials."""
+    try:
+        base_dir = Path.home()
+    except RuntimeError:
+        # Home directory can be unavailable in some sandboxed environments
+        base_dir = Path.cwd()
+    return str(base_dir / ".google_workspace_mcp" / "credentials")
 
 
 class GoogleWorkspaceConfig(BaseSettings):
@@ -14,8 +26,8 @@ class GoogleWorkspaceConfig(BaseSettings):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
 
-    # Credentials storage (project-level: personal-genie)
-    credentials_dir: str = "/home/namastex/.credentials/personal-genie/google-workspace"
+    # Credentials storage (per-user default, override via GOOGLE_WORKSPACE_CREDENTIALS_DIR)
+    credentials_dir: str = _default_credentials_dir()
 
     # Tool tier (core, extended, complete)
     tool_tier: str = "core"
