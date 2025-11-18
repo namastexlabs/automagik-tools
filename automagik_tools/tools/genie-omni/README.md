@@ -68,8 +68,8 @@ OMNI_DEFAULT_INSTANCE=genie
 ```python
 # Agent perspective - natural and friendly
 await send_whatsapp(
-    to="5512982298888",
-    message="Oi Felipe! Finished the bug analysis."
+    to="5511999999999",
+    message="Hello! Finished the bug analysis."
 )
 
 # Get my contacts
@@ -77,7 +77,7 @@ contacts = await my_contacts()
 
 # Read recent messages
 messages = await read_messages(
-    from_number="5512982298888",
+    from_number="5511999999999",
     limit=10
 )
 ```

@@ -16,6 +16,9 @@ from .models import (
     SendMediaRequest,
     SendAudioRequest,
     SendReactionRequest,
+    SendStickerRequest,
+    SendContactRequest,
+    ContactInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,8 +26,9 @@ logger = logging.getLogger(__name__)
 # Initialize MCP server
 mcp = FastMCP("genie-omni")
 
-# Global client (initialized on first use)
+# Global client and config (initialized on first use)
 _client: Optional[OmniClient] = None
+_config: Optional[OmniConfig] = None
 
 
 def initialize_client(config: OmniConfig) -> None:
@@ -33,17 +37,26 @@ def initialize_client(config: OmniConfig) -> None:
     Args:
         config: Configuration for the Omni client
     """
-    global _client
+    global _client, _config
+    _config = config
     _client = OmniClient(config)
 
 
 def get_client() -> OmniClient:
     """Get or create Omni client."""
-    global _client
+    global _client, _config
     if _client is None:
-        config = OmniConfig.from_env()
-        _client = OmniClient(config)
+        _config = OmniConfig.from_env()
+        _client = OmniClient(_config)
     return _client
+
+
+def get_config() -> OmniConfig:
+    """Get or create Omni config."""
+    global _config
+    if _config is None:
+        _config = OmniConfig.from_env()
+    return _config
 
 
 # =============================================================================
@@ -210,6 +223,9 @@ async def send_whatsapp(
     message_type: Literal["text", "media", "audio"] = "text",
     media_url: Optional[str] = None,
     audio_url: Optional[str] = None,
+    quoted_message_id: Optional[str] = None,
+    delay: Optional[int] = None,
+    split_message: Optional[bool] = None,
 ) -> str:
     """
     Send a WhatsApp message to someone.
@@ -222,37 +238,69 @@ async def send_whatsapp(
     - Send information proactively
 
     Args:
-        to: Phone number with country code (e.g., "5512982298888") or contact ID
+        to: Phone number with country code (e.g., "5511999999999") or contact ID
         message: Text message to send (or caption for media)
         instance_name: Your WhatsApp instance (default: "genie")
         message_type: Type of message (text/media/audio, default: text)
         media_url: URL of media file (if sending media)
         audio_url: URL of audio file (if sending audio)
+        quoted_message_id: Message ID to quote/reply to (optional)
+        delay: Delay in milliseconds before sending (optional)
+        split_message: Whether to split long messages on \\n\\n (optional, uses instance config by default)
 
     Returns:
         Confirmation that message was sent with message ID
 
     Examples:
-        send_whatsapp(to="5512982298888", message="Oi Felipe!")
-        send_whatsapp(to="5512982298888", message="Check this out", message_type="media", media_url="https://...")
+        send_whatsapp(to="5511999999999", message="Hello!")
+        send_whatsapp(to="5511999999999", message="Check this out", message_type="media", media_url="https://...")
+        send_whatsapp(to="5511999999999", message="Replying to you!", quoted_message_id="ABC123")
     """
+    # Safety check: validate recipient against master context
+    config = get_config()
+    is_allowed, validation_message = config.validate_recipient(to)
+
+    if not is_allowed:
+        logger.warning(f"Blocked send attempt to {to}: {validation_message}")
+        return validation_message
+
+    # Show safety warning if in full access mode
+    if not config.has_master_context():
+        logger.warning(config.get_safety_warning())
+
     client = get_client()
 
     try:
         if message_type == "text":
-            request = SendTextRequest(phone=to, message=message)
+            request = SendTextRequest(
+                phone=to,
+                message=message,
+                quoted_message_id=quoted_message_id,
+                delay=delay,
+                split_message=split_message,
+            )
             response = await client.send_text(instance_name, request)
         elif message_type == "media":
             if not media_url:
                 return "❌ Error: media_url required for media messages"
             request = SendMediaRequest(
-                phone=to, media_url=media_url, caption=message, media_type="image"
+                phone=to,
+                media_url=media_url,
+                caption=message,
+                media_type="image",
+                quoted_message_id=quoted_message_id,
+                delay=delay,
             )
             response = await client.send_media(instance_name, request)
         elif message_type == "audio":
             if not audio_url:
                 return "❌ Error: audio_url required for audio messages"
-            request = SendAudioRequest(phone=to, audio_url=audio_url)
+            request = SendAudioRequest(
+                phone=to,
+                audio_url=audio_url,
+                quoted_message_id=quoted_message_id,
+                delay=delay,
+            )
             response = await client.send_audio(instance_name, request)
         else:
             return f"❌ Error: Unknown message type '{message_type}'"
@@ -289,8 +337,20 @@ async def react_with(
         Confirmation that reaction was sent
 
     Example:
-        react_with(emoji="👍", to_message_id="ABC123", phone="5512982298888")
+        react_with(emoji="👍", to_message_id="ABC123", phone="5511999999999")
     """
+    # Safety check: validate recipient against master context
+    config = get_config()
+    is_allowed, validation_message = config.validate_recipient(phone)
+
+    if not is_allowed:
+        logger.warning(f"Blocked reaction attempt to {phone}: {validation_message}")
+        return validation_message
+
+    # Show safety warning if in full access mode
+    if not config.has_master_context():
+        logger.warning(config.get_safety_warning())
+
     client = get_client()
 
     try:
@@ -307,6 +367,148 @@ async def react_with(
     except Exception as e:
         logger.error(f"Error sending reaction: {e}")
         return f"❌ Failed to send reaction: {str(e)}"
+
+
+@mcp.tool()
+async def send_sticker(
+    to: str,
+    sticker_url: str,
+    instance_name: str = "genie",
+    quoted_message_id: Optional[str] = None,
+    delay: Optional[int] = None,
+) -> str:
+    """
+    Send a WhatsApp sticker to someone.
+
+    Use this when you need to:
+    - Send a sticker (fun, expressive communication)
+    - React visually to a message
+    - Add personality to your messages
+
+    Args:
+        to: Phone number with country code (e.g., "5511999999999") or contact ID
+        sticker_url: URL of the sticker file (WebP format recommended)
+        instance_name: Your WhatsApp instance (default: "genie")
+        quoted_message_id: Message ID to quote/reply to (optional)
+        delay: Delay in milliseconds before sending (optional)
+
+    Returns:
+        Confirmation that sticker was sent with message ID
+
+    Example:
+        send_sticker(to="5511999999999", sticker_url="https://example.com/sticker.webp")
+    """
+    # Safety check: validate recipient against master context
+    config = get_config()
+    is_allowed, validation_message = config.validate_recipient(to)
+
+    if not is_allowed:
+        logger.warning(f"Blocked sticker send attempt to {to}: {validation_message}")
+        return validation_message
+
+    # Show safety warning if in full access mode
+    if not config.has_master_context():
+        logger.warning(config.get_safety_warning())
+
+    client = get_client()
+
+    try:
+        request = SendStickerRequest(
+            phone=to,
+            sticker_url=sticker_url,
+            quoted_message_id=quoted_message_id,
+            delay=delay,
+        )
+        response = await client.send_sticker(instance_name, request)
+
+        if response.success:
+            return f"✅ Sticker sent to {to}\nMessage ID: {response.message_id}"
+        else:
+            return f"❌ Failed to send sticker: {response.error or 'Unknown error'}"
+
+    except Exception as e:
+        logger.error(f"Error sending sticker: {e}")
+        return f"❌ Failed to send sticker: {str(e)}"
+
+
+@mcp.tool()
+async def send_contact(
+    to: str,
+    contacts: List[Dict[str, Any]],
+    instance_name: str = "genie",
+    quoted_message_id: Optional[str] = None,
+    delay: Optional[int] = None,
+) -> str:
+    """
+    Send WhatsApp contact(s) (vCard) to someone.
+
+    Use this when you need to:
+    - Share someone's contact information
+    - Send business contacts
+    - Share multiple contacts at once
+
+    Args:
+        to: Phone number with country code (e.g., "5511999999999") or contact ID
+        contacts: List of contact dictionaries with fields:
+                 - full_name (required): Contact's full name
+                 - phone_number (optional): Contact's phone number
+                 - email (optional): Contact's email
+                 - organization (optional): Contact's company/org
+                 - url (optional): Contact's website
+        instance_name: Your WhatsApp instance (default: "genie")
+        quoted_message_id: Message ID to quote/reply to (optional)
+        delay: Delay in milliseconds before sending (optional)
+
+    Returns:
+        Confirmation that contact(s) were sent with message ID
+
+    Example:
+        send_contact(
+            to="5511999999999",
+            contacts=[{
+                "full_name": "John Doe",
+                "phone_number": "5511888888888",
+                "email": "john@example.com",
+                "organization": "Example Corp"
+            }]
+        )
+    """
+    # Safety check: validate recipient against master context
+    config = get_config()
+    is_allowed, validation_message = config.validate_recipient(to)
+
+    if not is_allowed:
+        logger.warning(f"Blocked contact send attempt to {to}: {validation_message}")
+        return validation_message
+
+    # Show safety warning if in full access mode
+    if not config.has_master_context():
+        logger.warning(config.get_safety_warning())
+
+    client = get_client()
+
+    try:
+        # Convert dict contacts to ContactInfo models
+        contact_models = [ContactInfo(**contact) for contact in contacts]
+
+        request = SendContactRequest(
+            phone=to,
+            contacts=contact_models,
+            quoted_message_id=quoted_message_id,
+            delay=delay,
+        )
+        response = await client.send_contact(instance_name, request)
+
+        if response.success:
+            contact_count = len(contacts)
+            plural = "s" if contact_count > 1 else ""
+            return f"✅ {contact_count} contact{plural} sent to {to}\nMessage ID: {response.message_id}"
+        else:
+            return f"❌ Failed to send contact(s): {response.error or 'Unknown error'}"
+
+    except Exception as e:
+        logger.error(f"Error sending contact: {e}")
+        return f"❌ Failed to send contact(s): {str(e)}"
 
 
 # =============================================================================
