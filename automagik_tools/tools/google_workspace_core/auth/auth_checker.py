@@ -6,6 +6,7 @@ to detect if an endpoint requires authentication before making requests.
 """
 
 from typing import Optional, Dict, Any
+import asyncio
 import httpx
 import logging
 import threading
@@ -253,7 +254,7 @@ async def check_multiple_endpoints(
 
     Args:
         endpoints: Dict mapping endpoint names to URLs
-        timeout: Timeout for each request
+        timeout: Timeout for each request (per endpoint)
 
     Returns:
         Dict mapping endpoint names to auth requirement (True/False)
@@ -266,21 +267,30 @@ async def check_multiple_endpoints(
         ... })
         >>> print(results)
         {'gmail': True, 'drive': True, 'calendar': False}
+
+    Note:
+        All endpoints are checked concurrently using asyncio.gather(),
+        so total execution time is roughly one timeout period rather than
+        timeout * number of endpoints.
     """
 
-    tasks = {
-        name: check_if_auth_required(url, timeout) for name, url in endpoints.items()
-    }
-
-    results = {}
-    for name, task in tasks.items():
+    async def check_with_error_handling(name: str, url: str) -> tuple[str, bool]:
+        """Check a single endpoint and return (name, result) tuple."""
         try:
-            results[name] = await task
+            result = await check_if_auth_required(url, timeout)
+            return (name, result)
         except Exception as e:
             logger.error(f"Error checking {name}: {e}")
-            results[name] = False
+            return (name, False)
 
-    return results
+    # Create tasks for all endpoints and run them concurrently
+    tasks = [check_with_error_handling(name, url) for name, url in endpoints.items()]
+
+    # Run all checks in parallel
+    endpoint_results = await asyncio.gather(*tasks)
+
+    # Convert list of tuples to dict
+    return dict(endpoint_results)
 
 
 def validate_bearer_token(token: str) -> bool:
@@ -440,5 +450,3 @@ _auth_check_cache = AuthCheckCache()
 def get_auth_check_cache() -> AuthCheckCache:
     """Get the global auth check cache"""
     return _auth_check_cache
-
-
