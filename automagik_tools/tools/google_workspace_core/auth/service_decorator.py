@@ -8,14 +8,22 @@ from typing import Dict, List, Optional, Any, Callable, Union, Tuple
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from fastmcp.server.dependencies import get_access_token, get_context
-from automagik_tools.tools.google_workspace_core.auth.google_auth import get_authenticated_google_service, GoogleAuthenticationError
+from automagik_tools.tools.google_workspace_core.auth.google_auth import (
+    get_authenticated_google_service,
+    GoogleAuthenticationError,
+)
 from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import (
     get_auth_provider,
     get_oauth21_session_store,
     ensure_session_from_access_token,
 )
-from automagik_tools.tools.google_workspace_core.auth.oauth_config import is_oauth21_enabled, get_oauth_config
-from automagik_tools.tools.google_workspace_core.core.context import set_fastmcp_session_id
+from automagik_tools.tools.google_workspace_core.auth.oauth_config import (
+    is_oauth21_enabled,
+    get_oauth_config,
+)
+from automagik_tools.tools.google_workspace_core.core.context import (
+    set_fastmcp_session_id,
+)
 from automagik_tools.tools.google_workspace_core.auth.scopes import (
     GMAIL_READONLY_SCOPE,
     GMAIL_SEND_SCOPE,
@@ -44,6 +52,7 @@ from automagik_tools.tools.google_workspace_core.auth.scopes import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 # Authentication helper functions
 def _get_auth_context(
@@ -135,7 +144,9 @@ def _override_oauth21_user_email(
     Returns:
         Tuple of (updated_user_email, updated_args)
     """
-    if not (use_oauth21 and authenticated_user and current_user_email != authenticated_user):
+    if not (
+        use_oauth21 and authenticated_user and current_user_email != authenticated_user
+    ):
         return current_user_email, args
 
     service_suffix = f" for service '{service_type}'" if service_type else ""
@@ -234,7 +245,9 @@ async def get_authenticated_google_service_oauth21(
                 f"Authenticated account {token_email} does not match requested user {user_google_email}."
             )
 
-        credentials = ensure_session_from_access_token(access_token, resolved_email, session_id)
+        credentials = ensure_session_from_access_token(
+            access_token, resolved_email, session_id
+        )
         if not credentials:
             raise GoogleAuthenticationError(
                 "Unable to build Google credentials from authenticated access token."
@@ -285,7 +298,9 @@ async def get_authenticated_google_service_oauth21(
     return service, user_google_email
 
 
-def _extract_oauth21_user_email(authenticated_user: Optional[str], func_name: str) -> str:
+def _extract_oauth21_user_email(
+    authenticated_user: Optional[str], func_name: str
+) -> str:
     """
     Extract user email for OAuth 2.1 mode.
 
@@ -307,9 +322,7 @@ def _extract_oauth21_user_email(authenticated_user: Optional[str], func_name: st
 
 
 def _extract_oauth20_user_email(
-    args: tuple,
-    kwargs: dict,
-    wrapper_sig: inspect.Signature
+    args: tuple, kwargs: dict, wrapper_sig: inspect.Signature
 ) -> str:
     """
     Extract user email for OAuth 2.0 mode from function arguments.
@@ -330,11 +343,8 @@ def _extract_oauth20_user_email(
 
     user_google_email = bound_args.arguments.get("user_google_email")
     if not user_google_email:
-        raise Exception(
-            "'user_google_email' parameter is required but was not found."
-        )
+        raise Exception("'user_google_email' parameter is required but was not found.")
     return user_google_email
-
 
 
 def _remove_user_email_arg_from_docstring(docstring: str) -> str:
@@ -356,18 +366,19 @@ def _remove_user_email_arg_from_docstring(docstring: str) -> str:
     # - user_google_email: Description
     # - user_google_email (str) - Description
     patterns = [
-        r'^\s*user_google_email\s*\([^)]*\)\s*:\s*[^\n]*\.?\s*(?:Required\.?)?\s*\n',
-        r'^\s*user_google_email\s*:\s*[^\n]*\n',
-        r'^\s*user_google_email\s*\([^)]*\)\s*-\s*[^\n]*\n',
+        r"^\s*user_google_email\s*\([^)]*\)\s*:\s*[^\n]*\.?\s*(?:Required\.?)?\s*\n",
+        r"^\s*user_google_email\s*:\s*[^\n]*\n",
+        r"^\s*user_google_email\s*\([^)]*\)\s*-\s*[^\n]*\n",
     ]
 
     modified_docstring = docstring
     for pattern in patterns:
-        modified_docstring = re.sub(pattern, '', modified_docstring, flags=re.MULTILINE)
+        modified_docstring = re.sub(pattern, "", modified_docstring, flags=re.MULTILINE)
 
     # Clean up any sequence of 3 or more newlines that might have been created
-    modified_docstring = re.sub(r'\n{3,}', '\n\n', modified_docstring)
+    modified_docstring = re.sub(r"\n{3,}", "\n\n", modified_docstring)
     return modified_docstring
+
 
 # Service configuration mapping
 SERVICE_CONFIGS = {
@@ -423,7 +434,6 @@ SCOPE_GROUPS = {
 }
 
 
-
 def _resolve_scopes(scopes: Union[str, List[str]]) -> List[str]:
     """Resolve scope names to actual scope URLs."""
     if isinstance(scopes, str):
@@ -464,7 +474,6 @@ def _handle_token_refresh_error(
         logger.warning(
             f"Token expired or revoked for user {user_email} accessing {service_name}"
         )
-
 
         service_display_name = f"Google {service_name.title()}"
 
@@ -525,10 +534,7 @@ def require_google_service(
         # In OAuth 2.1 mode, also exclude 'user_google_email' since it's automatically determined.
         if is_oauth21_enabled():
             # Remove both 'service' and 'user_google_email' parameters
-            filtered_params = [
-                p for p in params[1:]
-                if p.name != 'user_google_email'
-            ]
+            filtered_params = [p for p in params[1:] if p.name != "user_google_email"]
             wrapper_sig = original_sig.replace(parameters=filtered_params)
         else:
             # Only remove 'service' parameter for OAuth 2.0 mode
@@ -546,9 +552,13 @@ def require_google_service(
 
             # Extract user_google_email based on OAuth mode
             if is_oauth21_enabled():
-                user_google_email = _extract_oauth21_user_email(authenticated_user, func.__name__)
+                user_google_email = _extract_oauth21_user_email(
+                    authenticated_user, func.__name__
+                )
             else:
-                user_google_email = _extract_oauth20_user_email(args, kwargs, wrapper_sig)
+                user_google_email = _extract_oauth20_user_email(
+                    args, kwargs, wrapper_sig
+                )
 
             # Get service configuration from the decorator's arguments
             if service_type not in SERVICE_CONFIGS:
@@ -626,7 +636,9 @@ def require_google_service(
 
         # Conditionally modify docstring to remove user_google_email parameter documentation
         if is_oauth21_enabled():
-            logger.debug('OAuth 2.1 mode enabled, removing user_google_email from docstring')
+            logger.debug(
+                "OAuth 2.1 mode enabled, removing user_google_email from docstring"
+            )
             if func.__doc__:
                 wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
 
@@ -661,10 +673,7 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         # In OAuth 2.1 mode, remove user_google_email from the signature
         if is_oauth21_enabled():
             params = list(original_sig.parameters.values())
-            filtered_params = [
-                p for p in params
-                if p.name != 'user_google_email'
-            ]
+            filtered_params = [p for p in params if p.name != "user_google_email"]
             wrapper_sig = original_sig.replace(parameters=filtered_params)
         else:
             wrapper_sig = original_sig
@@ -677,7 +686,9 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
             # Extract user_google_email based on OAuth mode
             if is_oauth21_enabled():
-                user_google_email = _extract_oauth21_user_email(authenticated_user, tool_name)
+                user_google_email = _extract_oauth21_user_email(
+                    authenticated_user, tool_name
+                )
             else:
                 # OAuth 2.0 mode: extract from arguments (original logic)
                 param_names = list(original_sig.parameters.keys())
@@ -693,7 +704,9 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
                         pass
 
                 if not user_google_email:
-                    raise Exception("user_google_email parameter is required but not found")
+                    raise Exception(
+                        "user_google_email parameter is required but not found"
+                    )
 
             # Authenticate all services
             for config in service_configs:
@@ -771,13 +784,12 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
         # Conditionally modify docstring to remove user_google_email parameter documentation
         if is_oauth21_enabled():
-            logger.debug('OAuth 2.1 mode enabled, removing user_google_email from docstring')
+            logger.debug(
+                "OAuth 2.1 mode enabled, removing user_google_email from docstring"
+            )
             if func.__doc__:
                 wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
 
         return wrapper
 
     return decorator
-
-
-

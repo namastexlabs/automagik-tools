@@ -170,21 +170,26 @@ class LocalDirectoryCredentialStore(CredentialStore):
                     existing_token_uri = existing_data.get("token_uri")
                     existing_client_id = existing_data.get("client_id")
                     existing_client_secret = existing_data.get("client_secret")
-                    logger.debug(f"Loaded existing scopes for {user_email}: {existing_scopes}")
+                    logger.debug(
+                        f"Loaded existing scopes for {user_email}: {existing_scopes}"
+                    )
             except (IOError, json.JSONDecodeError) as e:
-                logger.warning(f"Could not load existing credentials for scope merge: {e}")
+                logger.warning(
+                    f"Could not load existing credentials for scope merge: {e}"
+                )
 
         # Merge scopes: combine existing + new, remove duplicates
         new_scopes = credentials.scopes or []
         merged_scopes = sorted(list(set(existing_scopes + new_scopes)))
-        logger.info(f"Merging scopes for {user_email}: {len(existing_scopes)} existing + {len(new_scopes)} new = {len(merged_scopes)} total")
+        logger.info(
+            f"Merging scopes for {user_email}: {len(existing_scopes)} existing + {len(new_scopes)} new = {len(merged_scopes)} total"
+        )
 
         # Decide which refresh token to keep
         # If new auth has FEWER scopes than existing, keep the existing refresh token
         # (it likely covers more scopes than the new one)
-        use_existing_refresh_token = (
-            existing_refresh_token and
-            len(new_scopes) < len(existing_scopes)
+        use_existing_refresh_token = existing_refresh_token and len(new_scopes) < len(
+            existing_scopes
         )
 
         if use_existing_refresh_token:
@@ -219,7 +224,9 @@ class LocalDirectoryCredentialStore(CredentialStore):
         try:
             with open(creds_path, "w") as f:
                 json.dump(creds_data, f, indent=2)
-            logger.info(f"Stored credentials for {user_email} to {creds_path} with {len(merged_scopes)} scopes")
+            logger.info(
+                f"Stored credentials for {user_email} to {creds_path} with {len(merged_scopes)} scopes"
+            )
             return True
         except IOError as e:
             logger.error(

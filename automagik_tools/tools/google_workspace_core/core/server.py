@@ -10,12 +10,30 @@ from starlette.middleware import Middleware
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
 
-from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import get_oauth21_session_store, set_auth_provider
-from automagik_tools.tools.google_workspace_core.auth.google_auth import handle_auth_callback, start_auth_flow, check_client_secrets
-from automagik_tools.tools.google_workspace_core.auth.mcp_session_middleware import MCPSessionMiddleware
-from automagik_tools.tools.google_workspace_core.auth.oauth_responses import create_error_response, create_success_response, create_server_error_response
-from automagik_tools.tools.google_workspace_core.auth.auth_info_middleware import AuthInfoMiddleware
-from automagik_tools.tools.google_workspace_core.auth.scopes import SCOPES, get_current_scopes # noqa
+from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import (
+    get_oauth21_session_store,
+    set_auth_provider,
+)
+from automagik_tools.tools.google_workspace_core.auth.google_auth import (
+    handle_auth_callback,
+    start_auth_flow,
+    check_client_secrets,
+)
+from automagik_tools.tools.google_workspace_core.auth.mcp_session_middleware import (
+    MCPSessionMiddleware,
+)
+from automagik_tools.tools.google_workspace_core.auth.oauth_responses import (
+    create_error_response,
+    create_success_response,
+    create_server_error_response,
+)
+from automagik_tools.tools.google_workspace_core.auth.auth_info_middleware import (
+    AuthInfoMiddleware,
+)
+from automagik_tools.tools.google_workspace_core.auth.scopes import (
+    SCOPES,
+    get_current_scopes,
+)  # noqa
 from automagik_tools.tools.google_workspace_core.core.config import (
     USER_GOOGLE_EMAIL,
     get_transport_mode,
@@ -31,6 +49,7 @@ _legacy_callback_registered = False
 
 session_middleware = Middleware(MCPSessionMiddleware)
 
+
 # Custom FastMCP that adds secure middleware stack for OAuth 2.1
 class SecureFastMCP(FastMCP):
     def streamable_http_app(self) -> "Starlette":
@@ -45,6 +64,7 @@ class SecureFastMCP(FastMCP):
         app.middleware_stack = app.build_middleware_stack()
         logger.info("Added middleware stack: Session Management")
         return app
+
 
 server = SecureFastMCP(
     name="google_workspace",
@@ -69,6 +89,7 @@ def _ensure_legacy_callback_route() -> None:
     server.custom_route("/oauth2callback", methods=["GET"])(legacy_oauth2_callback)
     _legacy_callback_registered = True
 
+
 def configure_server_for_http():
     """
     Configures the authentication provider for HTTP transport.
@@ -83,6 +104,7 @@ def configure_server_for_http():
 
     # Use centralized OAuth configuration
     from ..auth.oauth_config import get_oauth_config
+
     config = get_oauth_config()
 
     # Check if OAuth 2.1 is enabled via centralized config
@@ -110,8 +132,12 @@ def configure_server_for_http():
                 )
                 # Disable protocol-level auth, expect bearer tokens in tool calls
                 server.auth = None
-                logger.info("OAuth 2.1 enabled with EXTERNAL provider mode - protocol-level auth disabled")
-                logger.info("Expecting Authorization bearer tokens in tool call headers")
+                logger.info(
+                    "OAuth 2.1 enabled with EXTERNAL provider mode - protocol-level auth disabled"
+                )
+                logger.info(
+                    "Expecting Authorization bearer tokens in tool call headers"
+                )
             else:
                 # Standard OAuth 2.1 mode: use FastMCP's GoogleProvider
                 provider = GoogleProvider(
@@ -123,13 +149,17 @@ def configure_server_for_http():
                 )
                 # Enable protocol-level auth
                 server.auth = provider
-                logger.info("OAuth 2.1 enabled using FastMCP GoogleProvider with protocol-level auth")
+                logger.info(
+                    "OAuth 2.1 enabled using FastMCP GoogleProvider with protocol-level auth"
+                )
 
             # Always set auth provider for token validation in middleware
             set_auth_provider(provider)
             _auth_provider = provider
         except Exception as exc:
-            logger.error("Failed to initialize FastMCP GoogleProvider: %s", exc, exc_info=True)
+            logger.error(
+                "Failed to initialize FastMCP GoogleProvider: %s", exc, exc_info=True
+            )
             raise
     else:
         logger.info("OAuth 2.0 mode - Server will use legacy authentication.")
@@ -143,18 +173,22 @@ def get_auth_provider() -> Optional[GoogleProvider]:
     """Gets the global authentication provider instance."""
     return _auth_provider
 
+
 @server.custom_route("/health", methods=["GET"])
 async def health_check(request: Request):
     try:
         version = metadata.version("workspace-mcp")
     except metadata.PackageNotFoundError:
         version = "dev"
-    return JSONResponse({
-        "status": "healthy",
-        "service": "workspace-mcp",
-        "version": version,
-        "transport": get_transport_mode()
-    })
+    return JSONResponse(
+        {
+            "status": "healthy",
+            "service": "workspace-mcp",
+            "version": version,
+            "transport": get_transport_mode(),
+        }
+    )
+
 
 async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
     state = request.query_params.get("state")
@@ -162,7 +196,9 @@ async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
     error = request.query_params.get("error")
 
     if error:
-        msg = f"Authentication failed: Google returned an error: {error}. State: {state}."
+        msg = (
+            f"Authentication failed: Google returned an error: {error}. State: {state}."
+        )
         logger.error(msg)
         return create_error_response(msg)
 
@@ -179,17 +215,19 @@ async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
         logger.info(f"OAuth callback: Received code (state: {state}).")
 
         mcp_session_id = None
-        if hasattr(request, 'state') and hasattr(request.state, 'session_id'):
+        if hasattr(request, "state") and hasattr(request.state, "session_id"):
             mcp_session_id = request.state.session_id
 
         verified_user_id, credentials = handle_auth_callback(
             scopes=get_current_scopes(),
             authorization_response=str(request.url),
             redirect_uri=get_oauth_redirect_uri_for_current_mode(),
-            session_id=mcp_session_id
+            session_id=mcp_session_id,
         )
 
-        logger.info(f"OAuth callback: Successfully authenticated user: {verified_user_id}.")
+        logger.info(
+            f"OAuth callback: Successfully authenticated user: {verified_user_id}."
+        )
 
         try:
             store = get_oauth21_session_store()
@@ -206,7 +244,9 @@ async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
                 session_id=f"google-{state}",
                 mcp_session_id=mcp_session_id,
             )
-            logger.info(f"Stored Google credentials in OAuth 2.1 session store for {verified_user_id}")
+            logger.info(
+                f"Stored Google credentials in OAuth 2.1 session store for {verified_user_id}"
+            )
         except Exception as e:
             logger.error(f"Failed to store credentials in OAuth 2.1 store: {e}")
 
@@ -215,8 +255,11 @@ async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
         logger.error(f"Error processing OAuth callback: {str(e)}", exc_info=True)
         return create_server_error_response(str(e))
 
+
 @server.tool()
-async def start_google_auth(service_name: str, user_google_email: str = USER_GOOGLE_EMAIL) -> str:
+async def start_google_auth(
+    service_name: str, user_google_email: str = USER_GOOGLE_EMAIL
+) -> str:
     """
     Manually initiate Google OAuth authentication flow.
 
@@ -238,9 +281,15 @@ async def start_google_auth(service_name: str, user_google_email: str = USER_GOO
         return f"**Authentication Error:** {error_message}"
 
     # Ensure OAuth callback server is available before starting auth flow
-    from automagik_tools.tools.google_workspace_core.auth.oauth_callback_server import ensure_oauth_callback_available
-    from automagik_tools.tools.google_workspace_core.auth.oauth_config import get_oauth_config
-    from automagik_tools.tools.google_workspace_core.core.config import get_transport_mode
+    from automagik_tools.tools.google_workspace_core.auth.oauth_callback_server import (
+        ensure_oauth_callback_available,
+    )
+    from automagik_tools.tools.google_workspace_core.auth.oauth_config import (
+        get_oauth_config,
+    )
+    from automagik_tools.tools.google_workspace_core.core.config import (
+        get_transport_mode,
+    )
 
     config = get_oauth_config()
     success, error_msg = ensure_oauth_callback_available(
@@ -254,7 +303,7 @@ async def start_google_auth(service_name: str, user_google_email: str = USER_GOO
         auth_message = await start_auth_flow(
             user_google_email=user_google_email,
             service_name=service_name,
-            redirect_uri=get_oauth_redirect_uri_for_current_mode()
+            redirect_uri=get_oauth_redirect_uri_for_current_mode(),
         )
         return auth_message
     except Exception as e:

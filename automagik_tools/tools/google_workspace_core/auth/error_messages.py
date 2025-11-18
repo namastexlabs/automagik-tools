@@ -77,7 +77,9 @@ class AuthErrorGuidance:
 
         # Add technical details if requested
         if include_technical and self.technical_details:
-            lines.extend(["", f"{tech_prefix}Technical Details:", f"   {self.technical_details}"])
+            lines.extend(
+                ["", f"{tech_prefix}Technical Details:", f"   {self.technical_details}"]
+            )
 
         # Add documentation link
         if self.help_url:
@@ -134,7 +136,9 @@ class AuthErrorMessages:
         )
 
     @staticmethod
-    def token_revoked(user_email: str, service_name: str, reason: Optional[str] = None) -> AuthErrorGuidance:
+    def token_revoked(
+        user_email: str, service_name: str, reason: Optional[str] = None
+    ) -> AuthErrorGuidance:
         """Error message for revoked tokens"""
         reasons = [
             "You changed your Google account password",
@@ -173,7 +177,10 @@ class AuthErrorMessages:
 
     @staticmethod
     def insufficient_scopes(
-        user_email: str, service_name: str, required_scopes: List[str], current_scopes: List[str]
+        user_email: str,
+        service_name: str,
+        required_scopes: List[str],
+        current_scopes: List[str],
     ) -> AuthErrorGuidance:
         """Error message for insufficient permissions"""
         missing = sorted(set(required_scopes) - set(current_scopes))
@@ -261,7 +268,9 @@ class AuthErrorMessages:
         )
 
     @staticmethod
-    def session_already_bound(session_id: str, current_user: str, requested_user: str) -> AuthErrorGuidance:
+    def session_already_bound(
+        session_id: str, current_user: str, requested_user: str
+    ) -> AuthErrorGuidance:
         """Error message for session already authenticated as different user"""
         return AuthErrorGuidance(
             error_type=ErrorType.SESSION_ALREADY_BOUND,
@@ -287,7 +296,9 @@ class AuthErrorMessages:
         )
 
     @staticmethod
-    def invalid_state(state: Optional[str] = None, reason: str = "unknown") -> AuthErrorGuidance:
+    def invalid_state(
+        state: Optional[str] = None, reason: str = "unknown"
+    ) -> AuthErrorGuidance:
         """Error message for invalid OAuth state parameter"""
         return AuthErrorGuidance(
             error_type=ErrorType.INVALID_STATE,
@@ -371,7 +382,9 @@ class AuthErrorMessages:
         )
 
     @staticmethod
-    def generic_auth_error(error: Exception, user_email: str, service_name: str = "unknown") -> AuthErrorGuidance:
+    def generic_auth_error(
+        error: Exception, user_email: str, service_name: str = "unknown"
+    ) -> AuthErrorGuidance:
         """Generic error message with troubleshooting steps"""
         return AuthErrorGuidance(
             error_type=ErrorType.GENERIC_AUTH_ERROR,

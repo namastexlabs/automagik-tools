@@ -69,7 +69,9 @@ async def my_whatsapp_info(instance_name: str = "genie") -> str:
         result.append(f"Instance: {instance.name}")
         result.append(f"Number: {instance.phone_number or 'Not configured'}")
         result.append(f"Type: {instance.channel_type}")
-        result.append(f"Status: {instance.evolution_status.get('state', 'unknown') if instance.evolution_status else 'unknown'}")
+        result.append(
+            f"Status: {instance.evolution_status.get('state', 'unknown') if instance.evolution_status else 'unknown'}"
+        )
         result.append(f"Connected: {'✅ Yes' if instance.is_active else '❌ No'}")
 
         return "\n".join(result)
@@ -81,9 +83,7 @@ async def my_whatsapp_info(instance_name: str = "genie") -> str:
 
 @mcp.tool()
 async def my_contacts(
-    instance_name: str = "genie",
-    search: Optional[str] = None,
-    limit: int = 50
+    instance_name: str = "genie", search: Optional[str] = None, limit: int = 50
 ) -> str:
     """
     Get MY contacts - people I can message on WhatsApp.
@@ -105,10 +105,7 @@ async def my_contacts(
 
     try:
         contacts = await client.list_contacts(
-            instance_name=instance_name,
-            page=1,
-            page_size=limit,
-            search_query=search
+            instance_name=instance_name, page=1, page_size=limit, search_query=search
         )
 
         if not contacts.contacts:
@@ -136,7 +133,7 @@ async def my_contacts(
 async def my_conversations(
     instance_name: str = "genie",
     conversation_type: Optional[Literal["direct", "group", "all"]] = "all",
-    limit: int = 20
+    limit: int = 20,
 ) -> str:
     """
     Get MY active conversations on WhatsApp.
@@ -163,11 +160,13 @@ async def my_conversations(
             instance_name=instance_name,
             page=1,
             page_size=limit,
-            chat_type_filter=chat_filter
+            chat_type_filter=chat_filter,
         )
 
         if not chats.chats:
-            return f"💬 No conversations found" + (f" (type: {conversation_type})" if conversation_type != "all" else "")
+            return f"💬 No conversations found" + (
+                f" (type: {conversation_type})" if conversation_type != "all" else ""
+            )
 
         result = [f"💬 MY CONVERSATIONS ({chats.total_count} total)"]
         if conversation_type != "all":
@@ -201,7 +200,7 @@ async def send_whatsapp(
     instance_name: str = "genie",
     message_type: Literal["text", "media", "audio"] = "text",
     media_url: Optional[str] = None,
-    audio_url: Optional[str] = None
+    audio_url: Optional[str] = None,
 ) -> str:
     """
     Send a WhatsApp message to someone.
@@ -237,7 +236,9 @@ async def send_whatsapp(
         elif message_type == "media":
             if not media_url:
                 return "❌ Error: media_url required for media messages"
-            request = SendMediaRequest(phone=to, media_url=media_url, caption=message, media_type="image")
+            request = SendMediaRequest(
+                phone=to, media_url=media_url, caption=message, media_type="image"
+            )
             response = await client.send_media(instance_name, request)
         elif message_type == "audio":
             if not audio_url:
@@ -259,10 +260,7 @@ async def send_whatsapp(
 
 @mcp.tool()
 async def react_with(
-    emoji: str,
-    to_message_id: str,
-    phone: str,
-    instance_name: str = "genie"
+    emoji: str, to_message_id: str, phone: str, instance_name: str = "genie"
 ) -> str:
     """
     React to a WhatsApp message with an emoji.
@@ -287,7 +285,9 @@ async def react_with(
     client = get_client()
 
     try:
-        request = SendReactionRequest(phone=phone, message_id=to_message_id, emoji=emoji)
+        request = SendReactionRequest(
+            phone=phone, message_id=to_message_id, emoji=emoji
+        )
         response = await client.send_reaction(instance_name, request)
 
         if response.success:
@@ -307,9 +307,7 @@ async def react_with(
 
 @mcp.tool()
 async def read_messages(
-    from_phone: str,
-    instance_name: str = "genie",
-    limit: int = 50
+    from_phone: str, instance_name: str = "genie", limit: int = 50
 ) -> str:
     """
     Read messages from a specific person or conversation.
@@ -340,7 +338,11 @@ async def read_messages(
 
         for trace in traces:
             sender = trace.sender_name or trace.sender_phone
-            timestamp = trace.received_at.strftime("%Y-%m-%d %H:%M") if trace.received_at else "Unknown"
+            timestamp = (
+                trace.received_at.strftime("%Y-%m-%d %H:%M")
+                if trace.received_at
+                else "Unknown"
+            )
             msg_type = trace.message_type or "unknown"
 
             result.append(f"[{timestamp}] {sender}")
@@ -359,9 +361,7 @@ async def read_messages(
 
 @mcp.tool()
 async def check_new_messages(
-    instance_name: str = "genie",
-    hours: int = 24,
-    limit: int = 50
+    instance_name: str = "genie", hours: int = 24, limit: int = 50
 ) -> str:
     """
     Check for new messages I've received recently.
@@ -388,9 +388,7 @@ async def check_new_messages(
         start_time = datetime.utcnow() - timedelta(hours=hours)
 
         filters = TraceFilter(
-            instance_name=instance_name,
-            start_date=start_time,
-            limit=limit
+            instance_name=instance_name, start_date=start_time, limit=limit
         )
 
         traces = await client.list_traces(filters)
@@ -413,7 +411,9 @@ async def check_new_messages(
         for sender, msgs in by_sender.items():
             result.append(f"👤 {sender} ({len(msgs)} messages)")
             for msg in msgs[:3]:  # Show max 3 per sender
-                timestamp = msg.received_at.strftime("%H:%M") if msg.received_at else "??"
+                timestamp = (
+                    msg.received_at.strftime("%H:%M") if msg.received_at else "??"
+                )
                 result.append(f"  [{timestamp}] {msg.message_type or 'unknown'}")
             if len(msgs) > 3:
                 result.append(f"  ... and {len(msgs) - 3} more")
@@ -433,9 +433,7 @@ async def check_new_messages(
 
 @mcp.tool()
 async def find_message(
-    trace_id: str,
-    instance_name: str = "genie",
-    include_payload: bool = False
+    trace_id: str, instance_name: str = "genie", include_payload: bool = False
 ) -> str:
     """
     Get details about a specific message by its trace ID.
@@ -488,10 +486,7 @@ async def find_message(
 
 
 @mcp.tool()
-async def find_person(
-    search: str,
-    instance_name: str = "genie"
-) -> str:
+async def find_person(search: str, instance_name: str = "genie") -> str:
     """
     Find a person in your contacts by name.
 

@@ -155,17 +155,22 @@ class SessionManager:
                 # Different user
                 if not allow_rebind:
                     logger.warning(
-                        f"Session {session_id} already bound to {binding.user_email}, " f"cannot bind to {user_email}"
+                        f"Session {session_id} already bound to {binding.user_email}, "
+                        f"cannot bind to {user_email}"
                     )
                     return False
 
                 # Rebind to new user
-                logger.info(f"Rebinding session {session_id} from {binding.user_email} to {user_email}")
+                logger.info(
+                    f"Rebinding session {session_id} from {binding.user_email} to {user_email}"
+                )
 
             # Cleanup if max sessions reached
             if len(self._bindings) >= self._max_sessions:
                 self._cleanup_lru(count=100)
-                logger.info(f"Reached max sessions ({self._max_sessions}), cleaned up LRU entries")
+                logger.info(
+                    f"Reached max sessions ({self._max_sessions}), cleaned up LRU entries"
+                )
 
             # Create new binding
             now = datetime.utcnow()
@@ -181,7 +186,9 @@ class SessionManager:
                 metadata=metadata or {},
             )
 
-            logger.info(f"Bound session {session_id} to {user_email}, expires at {now + ttl}")
+            logger.info(
+                f"Bound session {session_id} to {user_email}, expires at {now + ttl}"
+            )
             return True
 
     def get_user_email(self, session_id: str) -> Optional[str]:
@@ -283,7 +290,9 @@ class SessionManager:
                 return False
 
             binding.refresh(ttl or self._default_ttl)
-            logger.debug(f"Refreshed session {session_id}, new expiry: {binding.expires_at}")
+            logger.debug(
+                f"Refreshed session {session_id}, new expiry: {binding.expires_at}"
+            )
             return True
 
     def cleanup_expired(self) -> int:
@@ -295,7 +304,11 @@ class SessionManager:
         """
         with self._lock:
             now = datetime.utcnow()
-            expired = [sid for sid, binding in self._bindings.items() if now > binding.expires_at]
+            expired = [
+                sid
+                for sid, binding in self._bindings.items()
+                if now > binding.expires_at
+            ]
 
             for sid in expired:
                 binding = self._bindings[sid]
@@ -315,7 +328,11 @@ class SessionManager:
             Number of revoked sessions removed
         """
         with self._lock:
-            revoked = [sid for sid, binding in self._bindings.items() if binding.status == SessionStatus.REVOKED]
+            revoked = [
+                sid
+                for sid, binding in self._bindings.items()
+                if binding.status == SessionStatus.REVOKED
+            ]
 
             for sid in revoked:
                 del self._bindings[sid]
@@ -336,7 +353,9 @@ class SessionManager:
             Number of sessions actually removed
         """
         # Sort by last accessed time (oldest first)
-        sorted_sessions = sorted(self._bindings.items(), key=lambda x: x[1].last_accessed)
+        sorted_sessions = sorted(
+            self._bindings.items(), key=lambda x: x[1].last_accessed
+        )
 
         # Remove oldest (up to count)
         removed = 0
@@ -364,7 +383,9 @@ class SessionManager:
                     revoked_count = self.cleanup_revoked()
 
                     if expired_count > 0 or revoked_count > 0:
-                        logger.debug(f"Background cleanup: {expired_count} expired, {revoked_count} revoked")
+                        logger.debug(
+                            f"Background cleanup: {expired_count} expired, {revoked_count} revoked"
+                        )
 
                     # Log stats periodically
                     stats = self.get_stats()
@@ -376,9 +397,13 @@ class SessionManager:
 
             logger.info("Background session cleanup loop stopped")
 
-        self._cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True, name="SessionCleanup")
+        self._cleanup_thread = threading.Thread(
+            target=cleanup_loop, daemon=True, name="SessionCleanup"
+        )
         self._cleanup_thread.start()
-        logger.info(f"Started background session cleanup thread (interval: {self._cleanup_interval})")
+        logger.info(
+            f"Started background session cleanup thread (interval: {self._cleanup_interval})"
+        )
 
     def stop_background_cleanup(self) -> None:
         """Stop background cleanup thread"""
@@ -447,7 +472,11 @@ class SessionManager:
             List of session IDs bound to this user
         """
         with self._lock:
-            return [sid for sid, binding in self._bindings.items() if binding.user_email == user_email]
+            return [
+                sid
+                for sid, binding in self._bindings.items()
+                if binding.user_email == user_email
+            ]
 
     def unbind_all_for_user(self, user_email: str) -> int:
         """

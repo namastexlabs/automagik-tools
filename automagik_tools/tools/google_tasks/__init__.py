@@ -21,9 +21,7 @@ class TasksConfig(GoogleWorkspaceBaseConfig):
     """Tasks-specific configuration"""
 
     model_config = ConfigDict(
-        env_prefix="GOOGLE_TASKS_",
-        env_file=".env",
-        env_file_encoding="utf-8"
+        env_prefix="GOOGLE_TASKS_", env_file=".env", env_file_encoding="utf-8"
     )
 
 
@@ -38,7 +36,9 @@ def create_server(cfg: Optional[TasksConfig] = None):
         os.environ["GOOGLE_OAUTH_CLIENT_ID"] = config.client_id
     if config.client_secret:
         os.environ["GOOGLE_OAUTH_CLIENT_SECRET"] = config.client_secret
-    os.environ["GOOGLE_MCP_CREDENTIALS_DIR"] = os.path.expanduser(config.credentials_dir)
+    os.environ["GOOGLE_MCP_CREDENTIALS_DIR"] = os.path.expanduser(
+        config.credentials_dir
+    )
     os.environ["USER_GOOGLE_EMAIL"] = config.user_email or ""
     os.environ["MCP_ENABLE_OAUTH21"] = str(config.enable_oauth21).lower()
     os.environ["MCP_SINGLE_USER_MODE"] = str(config.single_user_mode).lower()
@@ -48,23 +48,36 @@ def create_server(cfg: Optional[TasksConfig] = None):
     os.environ["WORKSPACE_MCP_LOG_LEVEL"] = config.log_level
 
     # Reload OAuth configuration
-    from automagik_tools.tools.google_workspace_core.auth.oauth_config import reload_oauth_config
+    from automagik_tools.tools.google_workspace_core.auth.oauth_config import (
+        reload_oauth_config,
+    )
+
     reload_oauth_config()
 
     # Import the server from core
-    from automagik_tools.tools.google_workspace_core.core.server import server, set_transport_mode, configure_server_for_http
+    from automagik_tools.tools.google_workspace_core.core.server import (
+        server,
+        set_transport_mode,
+        configure_server_for_http,
+    )
 
-    set_transport_mode('stdio')
+    set_transport_mode("stdio")
 
     # Import Tasks tools to register them
     from . import tasks_tools  # noqa: F401
 
     # Configure tool registry
-    from automagik_tools.tools.google_workspace_core.core.tool_registry import set_enabled_tools as set_enabled_tool_names, wrap_server_tool_method, filter_server_tools
-    from automagik_tools.tools.google_workspace_core.auth.scopes import set_enabled_tools
+    from automagik_tools.tools.google_workspace_core.core.tool_registry import (
+        set_enabled_tools as set_enabled_tool_names,
+        wrap_server_tool_method,
+        filter_server_tools,
+    )
+    from automagik_tools.tools.google_workspace_core.auth.scopes import (
+        set_enabled_tools,
+    )
 
     wrap_server_tool_method(server)
-    set_enabled_tools(['tasks'])
+    set_enabled_tools(["tasks"])
     set_enabled_tool_names(None)
     filter_server_tools(server)
     configure_server_for_http()

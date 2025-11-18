@@ -40,7 +40,5 @@ class GoogleWorkspaceBaseConfig(BaseSettings):
     log_level: str = "INFO"
 
     model_config = ConfigDict(
-        env_prefix="GOOGLE_WORKSPACE_",
-        env_file=".env",
-        env_file_encoding="utf-8"
+        env_prefix="GOOGLE_WORKSPACE_", env_file=".env", env_file_encoding="utf-8"
     )

@@ -11,7 +11,7 @@ from typing import Optional
 from .config import GoogleWorkspaceConfig
 
 # Suppress googleapiclient discovery cache warning
-logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
+logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,9 @@ def create_server(cfg: Optional[GoogleWorkspaceConfig] = None):
         os.environ["GOOGLE_OAUTH_CLIENT_ID"] = config.client_id
     if config.client_secret:
         os.environ["GOOGLE_OAUTH_CLIENT_SECRET"] = config.client_secret
-    os.environ["GOOGLE_MCP_CREDENTIALS_DIR"] = os.path.expanduser(config.credentials_dir)
+    os.environ["GOOGLE_MCP_CREDENTIALS_DIR"] = os.path.expanduser(
+        config.credentials_dir
+    )
     os.environ["USER_GOOGLE_EMAIL"] = config.user_email or ""
     os.environ["MCP_ENABLE_OAUTH21"] = str(config.enable_oauth21).lower()
     os.environ["MCP_SINGLE_USER_MODE"] = str(config.single_user_mode).lower()
@@ -50,32 +52,48 @@ def create_server(cfg: Optional[GoogleWorkspaceConfig] = None):
 
     # Reload OAuth configuration
     from .auth.oauth_config import reload_oauth_config
+
     reload_oauth_config()
 
     # Import the pre-configured server from core
     from .core.server import server, set_transport_mode, configure_server_for_http
 
     # Set transport mode
-    set_transport_mode('stdio')
+    set_transport_mode("stdio")
 
     # Import and register tools based on tier
     _register_tools(config.tool_tier)
 
     # Configure tool registry
-    from .core.tool_registry import set_enabled_tools as set_enabled_tool_names, wrap_server_tool_method, filter_server_tools
+    from .core.tool_registry import (
+        set_enabled_tools as set_enabled_tool_names,
+        wrap_server_tool_method,
+        filter_server_tools,
+    )
     from .auth.scopes import set_enabled_tools
 
     # Wrap server tool method
     wrap_server_tool_method(server)
 
     # Determine which services to enable based on tool tier
-    all_services = ['gmail', 'drive', 'calendar', 'docs', 'sheets', 'chat', 'forms', 'slides', 'tasks', 'search']
-    core_services = ['gmail', 'drive', 'calendar', 'docs', 'sheets', 'chat', 'search']
+    all_services = [
+        "gmail",
+        "drive",
+        "calendar",
+        "docs",
+        "sheets",
+        "chat",
+        "forms",
+        "slides",
+        "tasks",
+        "search",
+    ]
+    core_services = ["gmail", "drive", "calendar", "docs", "sheets", "chat", "search"]
 
     if config.tool_tier == "core":
         enabled_services = core_services
     elif config.tool_tier == "extended":
-        enabled_services = core_services + ['forms', 'tasks']
+        enabled_services = core_services + ["forms", "tasks"]
     else:  # complete
         enabled_services = all_services
 

@@ -15,7 +15,9 @@ from email.mime.text import MIMEText
 from fastapi import Body
 from pydantic import Field
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import require_google_service
+from automagik_tools.tools.google_workspace.auth.service_decorator import (
+    require_google_service,
+)
 from automagik_tools.tools.google_workspace.core.utils import handle_http_errors
 from automagik_tools.tools.google_workspace.core.server import server
 from automagik_tools.tools.google_workspace.auth.scopes import (
@@ -69,7 +71,9 @@ def _extract_message_bodies(payload):
 
         if body_data:
             try:
-                decoded_data = base64.urlsafe_b64decode(body_data).decode("utf-8", errors="ignore")
+                decoded_data = base64.urlsafe_b64decode(body_data).decode(
+                    "utf-8", errors="ignore"
+                )
                 if mime_type == "text/plain" and not text_body:
                     text_body = decoded_data
                 elif mime_type == "text/html" and not html_body:
@@ -84,7 +88,9 @@ def _extract_message_bodies(payload):
     # Check the main payload if it has body data directly
     if payload.get("body", {}).get("data"):
         try:
-            decoded_data = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
+            decoded_data = base64.urlsafe_b64decode(payload["body"]["data"]).decode(
+                "utf-8", errors="ignore"
+            )
             mime_type = payload.get("mimeType", "")
             if mime_type == "text/plain" and not text_body:
                 text_body = decoded_data
@@ -93,10 +99,7 @@ def _extract_message_bodies(payload):
         except Exception as e:
             logger.warning(f"Failed to decode main payload body: {e}")
 
-    return {
-        "text": text_body,
-        "html": html_body
-    }
+    return {"text": text_body, "html": html_body}
 
 
 def _format_body_content(text_body: str, html_body: str) -> str:
@@ -115,7 +118,9 @@ def _format_body_content(text_body: str, html_body: str) -> str:
     elif html_body.strip():
         # Truncate very large HTML to keep responses manageable
         if len(html_body) > HTML_BODY_TRUNCATE_LIMIT:
-            html_body = html_body[:HTML_BODY_TRUNCATE_LIMIT] + "\n\n[HTML content truncated...]"
+            html_body = (
+                html_body[:HTML_BODY_TRUNCATE_LIMIT] + "\n\n[HTML content truncated...]"
+            )
         return f"[HTML Content Converted]\n{html_body}"
     else:
         return "[No readable content found]"
@@ -137,12 +142,14 @@ def _extract_attachments(payload: dict) -> List[Dict[str, Any]]:
         """Recursively search for attachments in message parts"""
         # Check if this part is an attachment
         if part.get("filename") and part.get("body", {}).get("attachmentId"):
-            attachments.append({
-                "filename": part["filename"],
-                "mimeType": part.get("mimeType", "application/octet-stream"),
-                "size": part.get("body", {}).get("size", 0),
-                "attachmentId": part["body"]["attachmentId"]
-            })
+            attachments.append(
+                {
+                    "filename": part["filename"],
+                    "mimeType": part.get("mimeType", "application/octet-stream"),
+                    "size": part.get("body", {}).get("size", 0),
+                    "attachmentId": part["body"]["attachmentId"],
+                }
+            )
 
         # Recursively search sub-parts
         if "parts" in part:
@@ -204,7 +211,7 @@ def _prepare_gmail_message(
     """
     # Handle reply subject formatting
     reply_subject = subject
-    if in_reply_to and not subject.lower().startswith('re:'):
+    if in_reply_to and not subject.lower().startswith("re:"):
         reply_subject = f"Re: {subject}"
 
     # Prepare the email
@@ -269,11 +276,13 @@ def _format_gmail_results_plain(messages: list, query: str) -> str:
     for i, msg in enumerate(messages, 1):
         # Handle potential null/undefined message objects
         if not msg or not isinstance(msg, dict):
-            lines.extend([
-                f"  {i}. Message: Invalid message data",
-                "     Error: Message object is null or malformed",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"  {i}. Message: Invalid message data",
+                    "     Error: Message object is null or malformed",
+                    "",
+                ]
+            )
             continue
 
         # Handle potential null/undefined values from Gmail API
@@ -364,7 +373,9 @@ async def search_gmail_messages(
 
 
 @server.tool()
-@handle_http_errors("get_gmail_message_content", is_read_only=True, service_type="gmail")
+@handle_http_errors(
+    "get_gmail_message_content", is_read_only=True, service_type="gmail"
+)
 @require_google_service("gmail", "gmail_read")
 async def get_gmail_message_content(
     service, message_id: str, user_google_email: str
@@ -447,7 +458,7 @@ async def get_gmail_message_content(
     if attachments:
         content_lines.append("\n--- ATTACHMENTS ---")
         for i, att in enumerate(attachments, 1):
-            size_kb = att['size'] / 1024
+            size_kb = att["size"] / 1024
             content_lines.append(
                 f"{i}. {att['filename']} ({att['mimeType']}, {size_kb:.1f} KB)\n"
                 f"   Attachment ID: {att['attachmentId']}\n"
@@ -458,7 +469,9 @@ async def get_gmail_message_content(
 
 
 @server.tool()
-@handle_http_errors("get_gmail_messages_content_batch", is_read_only=True, service_type="gmail")
+@handle_http_errors(
+    "get_gmail_messages_content_batch", is_read_only=True, service_type="gmail"
+)
 @require_google_service("gmail", "gmail_read")
 async def get_gmail_messages_content_batch(
     service,
@@ -556,7 +569,7 @@ async def get_gmail_messages_content_batch(
                     except ssl.SSLError as ssl_error:
                         if attempt < max_retries - 1:
                             # Exponential backoff: 1s, 2s, 4s
-                            delay = 2 ** attempt
+                            delay = 2**attempt
                             logger.warning(
                                 f"[get_gmail_messages_content_batch] SSL error for message {mid} on attempt {attempt + 1}: {ssl_error}. Retrying in {delay}s..."
                             )
@@ -598,7 +611,9 @@ async def get_gmail_messages_content_batch(
                     to = headers.get("To", "")
                     cc = headers.get("Cc", "")
 
-                    msg_output = f"Message ID: {mid}\nSubject: {subject}\nFrom: {sender}\n"
+                    msg_output = (
+                        f"Message ID: {mid}\nSubject: {subject}\nFrom: {sender}\n"
+                    )
                     if to:
                         msg_output += f"To: {to}\n"
                     if cc:
@@ -622,12 +637,16 @@ async def get_gmail_messages_content_batch(
                     # Format body content with HTML fallback
                     body_data = _format_body_content(text_body, html_body)
 
-                    msg_output = f"Message ID: {mid}\nSubject: {subject}\nFrom: {sender}\n"
+                    msg_output = (
+                        f"Message ID: {mid}\nSubject: {subject}\nFrom: {sender}\n"
+                    )
                     if to:
                         msg_output += f"To: {to}\n"
                     if cc:
                         msg_output += f"Cc: {cc}\n"
-                    msg_output += f"Web Link: {_generate_gmail_web_url(mid)}\n\n{body_data}\n"
+                    msg_output += (
+                        f"Web Link: {_generate_gmail_web_url(mid)}\n\n{body_data}\n"
+                    )
 
                     output_messages.append(msg_output)
 
@@ -639,7 +658,9 @@ async def get_gmail_messages_content_batch(
 
 
 @server.tool()
-@handle_http_errors("get_gmail_attachment_content", is_read_only=True, service_type="gmail")
+@handle_http_errors(
+    "get_gmail_attachment_content", is_read_only=True, service_type="gmail"
+)
 @require_google_service("gmail", "gmail_read")
 async def get_gmail_attachment_content(
     service,
@@ -678,7 +699,9 @@ async def get_gmail_attachment_content(
             .execute
         )
     except Exception as e:
-        logger.error(f"[get_gmail_attachment_content] Failed to download attachment: {e}")
+        logger.error(
+            f"[get_gmail_attachment_content] Failed to download attachment: {e}"
+        )
         return (
             f"Error: Failed to download attachment. The attachment ID may have changed.\n"
             f"Please fetch the message content again to get an updated attachment ID.\n\n"
@@ -686,7 +709,7 @@ async def get_gmail_attachment_content(
         )
 
     # Format response with attachment data
-    size_bytes = attachment.get('size', 0)
+    size_bytes = attachment.get("size", 0)
     size_kb = size_bytes / 1024 if size_bytes else 0
 
     result_lines = [
@@ -697,10 +720,12 @@ async def get_gmail_attachment_content(
         f"{attachment['data'][:100]}...",
         "\n\nThe full base64-encoded attachment data is available.",
         "To save: decode the base64 data and write to a file with the appropriate extension.",
-        "\nNote: Attachment IDs are ephemeral. Always use IDs from the most recent message fetch."
+        "\nNote: Attachment IDs are ephemeral. Always use IDs from the most recent message fetch.",
     ]
 
-    logger.info(f"[get_gmail_attachment_content] Successfully downloaded {size_kb:.1f} KB attachment")
+    logger.info(
+        f"[get_gmail_attachment_content] Successfully downloaded {size_kb:.1f} KB attachment"
+    )
     return "\n".join(result_lines)
 
 
@@ -714,13 +739,20 @@ async def send_gmail_message(
     subject: str = Body(..., description="Email subject."),
     body: str = Body(..., description="Email body content (plain text or HTML)."),
     body_format: Literal["plain", "html"] = Body(
-        "plain", description="Email body format. Use 'plain' for plaintext or 'html' for HTML content."
+        "plain",
+        description="Email body format. Use 'plain' for plaintext or 'html' for HTML content.",
     ),
     cc: Optional[str] = Body(None, description="Optional CC email address."),
     bcc: Optional[str] = Body(None, description="Optional BCC email address."),
-    thread_id: Optional[str] = Body(None, description="Optional Gmail thread ID to reply within."),
-    in_reply_to: Optional[str] = Body(None, description="Optional Message-ID of the message being replied to."),
-    references: Optional[str] = Body(None, description="Optional chain of Message-IDs for proper threading."),
+    thread_id: Optional[str] = Body(
+        None, description="Optional Gmail thread ID to reply within."
+    ),
+    in_reply_to: Optional[str] = Body(
+        None, description="Optional Message-ID of the message being replied to."
+    ),
+    references: Optional[str] = Body(
+        None, description="Optional chain of Message-IDs for proper threading."
+    ),
 ) -> str:
     """
     Sends an email using the user's Gmail account. Supports both new emails and replies.
@@ -812,14 +844,21 @@ async def draft_gmail_message(
     subject: str = Body(..., description="Email subject."),
     body: str = Body(..., description="Email body (plain text)."),
     body_format: Literal["plain", "html"] = Body(
-        "plain", description="Email body format. Use 'plain' for plaintext or 'html' for HTML content."
+        "plain",
+        description="Email body format. Use 'plain' for plaintext or 'html' for HTML content.",
     ),
     to: Optional[str] = Body(None, description="Optional recipient email address."),
     cc: Optional[str] = Body(None, description="Optional CC email address."),
     bcc: Optional[str] = Body(None, description="Optional BCC email address."),
-    thread_id: Optional[str] = Body(None, description="Optional Gmail thread ID to reply within."),
-    in_reply_to: Optional[str] = Body(None, description="Optional Message-ID of the message being replied to."),
-    references: Optional[str] = Body(None, description="Optional chain of Message-IDs for proper threading."),
+    thread_id: Optional[str] = Body(
+        None, description="Optional Gmail thread ID to reply within."
+    ),
+    in_reply_to: Optional[str] = Body(
+        None, description="Optional Message-ID of the message being replied to."
+    ),
+    references: Optional[str] = Body(
+        None, description="Optional chain of Message-IDs for proper threading."
+    ),
 ) -> str:
     """
     Creates a draft email in the user's Gmail account. Supports both new drafts and reply drafts.
@@ -1021,7 +1060,9 @@ async def get_gmail_thread_content(
 
 @server.tool()
 @require_google_service("gmail", "gmail_read")
-@handle_http_errors("get_gmail_threads_content_batch", is_read_only=True, service_type="gmail")
+@handle_http_errors(
+    "get_gmail_threads_content_batch", is_read_only=True, service_type="gmail"
+)
 async def get_gmail_threads_content_batch(
     service,
     thread_ids: List[str],
@@ -1087,7 +1128,7 @@ async def get_gmail_threads_content_batch(
                     except ssl.SSLError as ssl_error:
                         if attempt < max_retries - 1:
                             # Exponential backoff: 1s, 2s, 4s
-                            delay = 2 ** attempt
+                            delay = 2**attempt
                             logger.warning(
                                 f"[get_gmail_threads_content_batch] SSL error for thread {tid} on attempt {attempt + 1}: {ssl_error}. Retrying in {delay}s..."
                             )
@@ -1260,8 +1301,12 @@ async def modify_gmail_message_labels(
     service,
     user_google_email: str,
     message_id: str,
-    add_label_ids: List[str] = Field(default=[], description="Label IDs to add to the message."),
-    remove_label_ids: List[str] = Field(default=[], description="Label IDs to remove from the message."),
+    add_label_ids: List[str] = Field(
+        default=[], description="Label IDs to add to the message."
+    ),
+    remove_label_ids: List[str] = Field(
+        default=[], description="Label IDs to remove from the message."
+    ),
 ) -> str:
     """
     Adds or removes labels from a Gmail message.
@@ -1312,8 +1357,12 @@ async def batch_modify_gmail_message_labels(
     service,
     user_google_email: str,
     message_ids: List[str],
-    add_label_ids: List[str] = Field(default=[], description="Label IDs to add to messages."),
-    remove_label_ids: List[str] = Field(default=[], description="Label IDs to remove from messages."),
+    add_label_ids: List[str] = Field(
+        default=[], description="Label IDs to add to messages."
+    ),
+    remove_label_ids: List[str] = Field(
+        default=[], description="Label IDs to remove from messages."
+    ),
 ) -> str:
     """
     Adds or removes labels from multiple Gmail messages in a single batch request.

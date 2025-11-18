@@ -25,7 +25,12 @@ class StaleCredentialError(Exception):
     and indicates that the user must manually reauthenticate.
     """
 
-    def __init__(self, message: str, user_email: Optional[str] = None, last_error: Optional[Exception] = None):
+    def __init__(
+        self,
+        message: str,
+        user_email: Optional[str] = None,
+        last_error: Optional[Exception] = None,
+    ):
         super().__init__(message)
         self.user_email = user_email
         self.last_error = last_error
@@ -121,7 +126,9 @@ def _is_stale_credential_error(error: Exception) -> bool:
     return any(indicator in error_msg for indicator in stale_indicators)
 
 
-def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True, backoff_base: float = 2.0):
+def with_automatic_retry(
+    max_retries: int = 1, clear_cache_on_fail: bool = True, backoff_base: float = 2.0
+):
     """
     Decorator that automatically retries OAuth operations on stale credentials.
 
@@ -183,7 +190,9 @@ def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True,
                         # Clear cache if requested
                         if clear_cache_on_fail and user_email:
                             await _clear_user_credentials(user_email)
-                            logger.info(f"Cleared cached credentials for {user_email}, retrying...")
+                            logger.info(
+                                f"Cleared cached credentials for {user_email}, retrying..."
+                            )
 
                         # Exponential backoff
                         backoff_seconds = backoff_base**attempt
@@ -211,7 +220,9 @@ def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True,
             if last_error:
                 error_msg += f" Last error: {last_error}"
 
-            raise StaleCredentialError(error_msg, user_email=user_email, last_error=last_error)
+            raise StaleCredentialError(
+                error_msg, user_email=user_email, last_error=last_error
+            )
 
         @wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -241,7 +252,9 @@ def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True,
                     if attempt < max_retries:
                         if clear_cache_on_fail and user_email:
                             _clear_user_credentials_sync(user_email)
-                            logger.info(f"Cleared cached credentials for {user_email}, retrying...")
+                            logger.info(
+                                f"Cleared cached credentials for {user_email}, retrying..."
+                            )
 
                         import time
 
@@ -268,7 +281,9 @@ def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True,
             if last_error:
                 error_msg += f" Last error: {last_error}"
 
-            raise StaleCredentialError(error_msg, user_email=user_email, last_error=last_error)
+            raise StaleCredentialError(
+                error_msg, user_email=user_email, last_error=last_error
+            )
 
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
@@ -279,7 +294,9 @@ def with_automatic_retry(max_retries: int = 1, clear_cache_on_fail: bool = True,
     return decorator
 
 
-def with_retry_context(user_email: str, max_retries: int = 1, clear_cache_on_fail: bool = True):
+def with_retry_context(
+    user_email: str, max_retries: int = 1, clear_cache_on_fail: bool = True
+):
     """
     Context manager for retry logic without decorator.
 
@@ -319,7 +336,8 @@ def with_retry_context(user_email: str, max_retries: int = 1, clear_cache_on_fai
             if self.attempt >= self.max_retries:
                 # No more retries, raise StaleCredentialError
                 raise StaleCredentialError(
-                    f"Failed after {self.max_retries + 1} attempts. " f"Please reauthenticate.",
+                    f"Failed after {self.max_retries + 1} attempts. "
+                    f"Please reauthenticate.",
                     user_email=self.user_email,
                     last_error=exc_val,
                 )
@@ -333,7 +351,9 @@ def with_retry_context(user_email: str, max_retries: int = 1, clear_cache_on_fai
             await asyncio.sleep(backoff_seconds)
 
             self.attempt += 1
-            logger.info(f"Retrying after stale credential error (attempt {self.attempt + 1}/{self.max_retries + 1})")
+            logger.info(
+                f"Retrying after stale credential error (attempt {self.attempt + 1}/{self.max_retries + 1})"
+            )
 
             # Suppress exception to retry
             return True
@@ -360,7 +380,11 @@ class RetryConfig:
         self.default_backoff_base = default_backoff_base
         self.enabled = enabled
 
-    def create_decorator(self, max_retries: Optional[int] = None, clear_cache_on_fail: Optional[bool] = None):
+    def create_decorator(
+        self,
+        max_retries: Optional[int] = None,
+        clear_cache_on_fail: Optional[bool] = None,
+    ):
         """
         Create a retry decorator with configured defaults.
 
@@ -379,10 +403,14 @@ class RetryConfig:
             return noop_decorator
 
         return with_automatic_retry(
-            max_retries=max_retries if max_retries is not None else self.default_max_retries,
-            clear_cache_on_fail=clear_cache_on_fail
-            if clear_cache_on_fail is not None
-            else self.default_clear_cache,
+            max_retries=(
+                max_retries if max_retries is not None else self.default_max_retries
+            ),
+            clear_cache_on_fail=(
+                clear_cache_on_fail
+                if clear_cache_on_fail is not None
+                else self.default_clear_cache
+            ),
             backoff_base=self.default_backoff_base,
         )
 

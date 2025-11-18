@@ -81,7 +81,8 @@ def test_oauth_token_creation():
 def test_oauth_token_expired():
     """Test expired token detection"""
     token = OAuthToken(
-        access_token="test_token", expires_at=datetime.utcnow() - timedelta(hours=1)  # Already expired
+        access_token="test_token",
+        expires_at=datetime.utcnow() - timedelta(hours=1),  # Already expired
     )
 
     assert token.is_expired()
@@ -232,7 +233,9 @@ def test_insufficient_scopes_error():
     required = ["gmail.readonly", "gmail.send"]
     current = ["gmail.readonly"]
 
-    guidance = AuthErrorMessages.insufficient_scopes("user@example.com", "gmail", required, current)
+    guidance = AuthErrorMessages.insufficient_scopes(
+        "user@example.com", "gmail", required, current
+    )
 
     formatted = guidance.format()
 
@@ -249,7 +252,11 @@ def test_session_binding_creation():
     expires = now + timedelta(hours=24)
 
     binding = SessionBinding(
-        user_email="test@example.com", bound_at=now, expires_at=expires, last_accessed=now, access_count=1
+        user_email="test@example.com",
+        bound_at=now,
+        expires_at=expires,
+        last_accessed=now,
+        access_count=1,
     )
 
     assert binding.user_email == "test@example.com"
@@ -264,7 +271,10 @@ def test_session_binding_expired():
     expired = now - timedelta(hours=1)  # Already expired
 
     binding = SessionBinding(
-        user_email="test@example.com", bound_at=expired, expires_at=expired, last_accessed=expired
+        user_email="test@example.com",
+        bound_at=expired,
+        expires_at=expired,
+        last_accessed=expired,
     )
 
     assert binding.is_expired()
@@ -299,7 +309,9 @@ def test_session_manager_different_user_bind():
     result = manager.bind_session("session_123", "user2@example.com")
 
     assert result is False  # Should fail (different user)
-    assert manager.get_user_email("session_123") == "user1@example.com"  # Original binding preserved
+    assert (
+        manager.get_user_email("session_123") == "user1@example.com"
+    )  # Original binding preserved
 
 
 def test_session_manager_unbind():
@@ -372,7 +384,9 @@ async def test_check_if_auth_required_401():
         mock_response.status_code = 401
         mock_response.headers = {}
 
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
 
         result = await check_if_auth_required("http://example.com/api")
 
@@ -387,7 +401,9 @@ async def test_check_if_auth_required_200():
         mock_response.status_code = 200
         mock_response.headers = {}
 
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
 
         result = await check_if_auth_required("http://example.com/api")
 
@@ -402,7 +418,9 @@ async def test_check_if_auth_required_www_authenticate():
         mock_response.status_code = 200
         mock_response.headers = {"www-authenticate": "Bearer realm='example'"}
 
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
 
         result = await check_if_auth_required("http://example.com/api")
 
