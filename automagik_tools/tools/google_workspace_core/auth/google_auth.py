@@ -15,15 +15,27 @@ from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from automagik_tools.tools.google_workspace_core.auth.scopes import SCOPES, get_current_scopes # noqa
-from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import get_oauth21_session_store
-from automagik_tools.tools.google_workspace_core.auth.credential_store import get_credential_store
-from automagik_tools.tools.google_workspace_core.auth.oauth_config import get_oauth_config, is_stateless_mode
+from automagik_tools.tools.google_workspace_core.auth.scopes import (
+    SCOPES,
+    get_current_scopes,
+)  # noqa
+from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import (
+    get_oauth21_session_store,
+)
+from automagik_tools.tools.google_workspace_core.auth.credential_store import (
+    get_credential_store,
+)
+from automagik_tools.tools.google_workspace_core.auth.oauth_config import (
+    get_oauth_config,
+    is_stateless_mode,
+)
 from automagik_tools.tools.google_workspace_core.core.config import (
     get_transport_mode,
     get_oauth_redirect_uri,
 )
-from automagik_tools.tools.google_workspace_core.core.context import get_fastmcp_session_id
+from automagik_tools.tools.google_workspace_core.core.context import (
+    get_fastmcp_session_id,
+)
 
 # Try to import FastMCP dependencies (may not be available in all environments)
 try:
@@ -136,11 +148,15 @@ def save_credentials_to_session(session_id: str, credentials: Credentials):
             client_secret=credentials.client_secret,
             scopes=credentials.scopes,
             expiry=credentials.expiry,
-            mcp_session_id=session_id
+            mcp_session_id=session_id,
         )
-        logger.debug(f"Credentials saved to OAuth21SessionStore for session_id: {session_id}, user: {user_email}")
+        logger.debug(
+            f"Credentials saved to OAuth21SessionStore for session_id: {session_id}, user: {user_email}"
+        )
     else:
-        logger.warning(f"Could not save credentials to session store - no user email found for session: {session_id}")
+        logger.warning(
+            f"Could not save credentials to session store - no user email found for session: {session_id}"
+        )
 
 
 def load_credentials_from_session(session_id: str) -> Optional[Credentials]:
@@ -359,7 +375,9 @@ async def start_auth_flow(
         try:
             session_id = get_fastmcp_session_id()
         except Exception as e:
-            logger.debug(f"Could not retrieve FastMCP session ID for state binding: {e}")
+            logger.debug(
+                f"Could not retrieve FastMCP session ID for state binding: {e}"
+            )
 
         store = get_oauth21_session_store()
         store.store_oauth_state(oauth_state, session_id=session_id)
@@ -370,16 +388,23 @@ async def start_auth_flow(
 
         # Automatic browser opening for better UX
         browser_opened = False
-        auto_open_browser = os.getenv("GOOGLE_OAUTH_AUTO_OPEN_BROWSER", "true").lower() in ("true", "1", "yes")
+        auto_open_browser = os.getenv(
+            "GOOGLE_OAUTH_AUTO_OPEN_BROWSER", "true"
+        ).lower() in ("true", "1", "yes")
 
         if auto_open_browser:
             try:
                 import webbrowser
+
                 browser_opened = webbrowser.open(auth_url)
                 if browser_opened:
-                    logger.info(f"✅ Automatically opened browser for OAuth authorization")
+                    logger.info(
+                        f"✅ Automatically opened browser for OAuth authorization"
+                    )
                 else:
-                    logger.warning("⚠️ Could not automatically open browser (webbrowser.open returned False)")
+                    logger.warning(
+                        "⚠️ Could not automatically open browser (webbrowser.open returned False)"
+                    )
             except Exception as e:
                 logger.warning(f"⚠️ Could not automatically open browser: {e}")
                 browser_opened = False
@@ -405,10 +430,16 @@ async def start_auth_flow(
         # Add common instruction based on browser opening status
         if browser_opened:
             message_lines.append("**Steps:**")
-            message_lines.append("1. Complete the authorization in the opened browser window.")
+            message_lines.append(
+                "1. Complete the authorization in the opened browser window."
+            )
         else:
-            message_lines.append("**LLM, after presenting the link, instruct the user as follows:**")
-            message_lines.append("1. Click the link and complete the authorization in their browser.")
+            message_lines.append(
+                "**LLM, after presenting the link, instruct the user as follows:**"
+            )
+            message_lines.append(
+                "1. Click the link and complete the authorization in their browser."
+            )
         session_info_for_llm = ""
 
         if not initial_email_provided:
@@ -492,16 +523,16 @@ def handle_auth_callback(
         state_values = parse_qs(parsed_response.query).get("state")
         state = state_values[0] if state_values else None
 
-        state_info = store.validate_and_consume_oauth_state(state, session_id=session_id)
+        state_info = store.validate_and_consume_oauth_state(
+            state, session_id=session_id
+        )
         logger.debug(
             "Validated OAuth callback state %s for session %s",
             (state[:8] if state else "<missing>"),
             state_info.get("session_id") or "<unknown>",
         )
 
-        flow = create_oauth_flow(
-            scopes=scopes, redirect_uri=redirect_uri, state=state
-        )
+        flow = create_oauth_flow(scopes=scopes, redirect_uri=redirect_uri, state=state)
 
         # Exchange the authorization code for credentials
         # Note: fetch_token will use the redirect_uri configured in the flow
@@ -534,7 +565,7 @@ def handle_auth_callback(
             scopes=credentials.scopes,
             expiry=credentials.expiry,
             mcp_session_id=session_id,
-            issuer="https://accounts.google.com"  # Add issuer for Google tokens
+            issuer="https://accounts.google.com",  # Add issuer for Google tokens
         )
 
         # If session_id is provided, also save to session cache for compatibility
@@ -626,7 +657,9 @@ def get_credentials(
                 oauth21_store = get_oauth21_session_store()
                 credentials = oauth21_store.get_credentials_by_mcp_session(session_id)
                 if credentials:
-                    logger.info(f"[get_credentials] Found OAuth 2.1 credentials for MCP session {session_id}")
+                    logger.info(
+                        f"[get_credentials] Found OAuth 2.1 credentials for MCP session {session_id}"
+                    )
             except (ImportError, Exception) as e:
                 logger.debug(f"[get_credentials] Could not check OAuth 2.1 store: {e}")
 
@@ -690,7 +723,9 @@ def get_credentials(
                     credential_store = get_credential_store()
                     credential_store.store_credential(user_google_email, credentials)
                 else:
-                    logger.info(f"Skipping credential file save in stateless mode for {user_google_email}")
+                    logger.info(
+                        f"Skipping credential file save in stateless mode for {user_google_email}"
+                    )
 
                 # Also update OAuth21SessionStore
                 store = get_oauth21_session_store()
@@ -704,7 +739,7 @@ def get_credentials(
                     scopes=credentials.scopes,
                     expiry=credentials.expiry,
                     mcp_session_id=session_id,
-                    issuer="https://accounts.google.com"  # Add issuer for Google tokens
+                    issuer="https://accounts.google.com",  # Add issuer for Google tokens
                 )
 
             if session_id:  # Update session cache if it was the source or is active
@@ -793,9 +828,13 @@ async def get_authenticated_google_service(
             # First try context variable (works in async context)
             session_id = get_fastmcp_session_id()
             if session_id:
-                logger.debug(f"[{tool_name}] Got FastMCP session ID from context: {session_id}")
+                logger.debug(
+                    f"[{tool_name}] Got FastMCP session ID from context: {session_id}"
+                )
             else:
-                logger.debug(f"[{tool_name}] Context variable returned None/empty session ID")
+                logger.debug(
+                    f"[{tool_name}] Context variable returned None/empty session ID"
+                )
         except Exception as e:
             logger.debug(
                 f"[{tool_name}] Could not get FastMCP session from context: {e}"
@@ -805,17 +844,25 @@ async def get_authenticated_google_service(
         if not session_id and get_fastmcp_context:
             try:
                 fastmcp_ctx = get_fastmcp_context()
-                if fastmcp_ctx and hasattr(fastmcp_ctx, 'session_id'):
+                if fastmcp_ctx and hasattr(fastmcp_ctx, "session_id"):
                     session_id = fastmcp_ctx.session_id
-                    logger.debug(f"[{tool_name}] Got FastMCP session ID directly: {session_id}")
+                    logger.debug(
+                        f"[{tool_name}] Got FastMCP session ID directly: {session_id}"
+                    )
                 else:
-                    logger.debug(f"[{tool_name}] FastMCP context exists but no session_id attribute")
+                    logger.debug(
+                        f"[{tool_name}] FastMCP context exists but no session_id attribute"
+                    )
             except Exception as e:
-                logger.debug(f"[{tool_name}] Could not get FastMCP context directly: {e}")
+                logger.debug(
+                    f"[{tool_name}] Could not get FastMCP context directly: {e}"
+                )
 
         # Final fallback: log if we still don't have session_id
         if not session_id:
-            logger.warning(f"[{tool_name}] Unable to obtain FastMCP session ID from any source")
+            logger.warning(
+                f"[{tool_name}] Unable to obtain FastMCP session ID from any source"
+            )
 
     logger.info(
         f"[{tool_name}] Attempting to get authenticated {service_name} service. Email: '{user_google_email}', Session: '{session_id}'"
@@ -836,8 +883,12 @@ async def get_authenticated_google_service(
     )
 
     if not credentials or not credentials.valid:
-        logger.warning(f"[{tool_name}] No valid credentials. Email: '{user_google_email}'.")
-        logger.info(f"[{tool_name}] Valid email '{user_google_email}' provided, initiating auth flow.")
+        logger.warning(
+            f"[{tool_name}] No valid credentials. Email: '{user_google_email}'."
+        )
+        logger.info(
+            f"[{tool_name}] Valid email '{user_google_email}' provided, initiating auth flow."
+        )
 
         # Ensure OAuth callback is available
         from .oauth_callback_server import ensure_oauth_callback_available

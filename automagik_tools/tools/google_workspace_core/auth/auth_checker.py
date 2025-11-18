@@ -44,7 +44,9 @@ async def check_if_auth_required(
     try:
         async with httpx.AsyncClient(**httpx_kwargs) as client:
             # Try a simple GET request to the MCP endpoint
-            response = await client.get(mcp_url, timeout=timeout, follow_redirects=False)
+            response = await client.get(
+                mcp_url, timeout=timeout, follow_redirects=False
+            )
 
             # Check status code for auth requirements
             if response.status_code == 401:
@@ -57,12 +59,16 @@ async def check_if_auth_required(
 
             # Check for WWW-Authenticate header (indicates auth required)
             if "www-authenticate" in [h.lower() for h in response.headers.keys()]:
-                logger.debug(f"Auth required for {mcp_url}: WWW-Authenticate header present")
+                logger.debug(
+                    f"Auth required for {mcp_url}: WWW-Authenticate header present"
+                )
                 return True
 
             # Check for Proxy-Authenticate header
             if "proxy-authenticate" in [h.lower() for h in response.headers.keys()]:
-                logger.debug(f"Auth required for {mcp_url}: Proxy-Authenticate header present")
+                logger.debug(
+                    f"Auth required for {mcp_url}: Proxy-Authenticate header present"
+                )
                 return True
 
             # Successful response, no auth needed
@@ -111,7 +117,9 @@ def check_if_auth_required_sync(
                 return True
 
             if "www-authenticate" in [h.lower() for h in response.headers.keys()]:
-                logger.debug(f"Auth required for {mcp_url}: WWW-Authenticate header present")
+                logger.debug(
+                    f"Auth required for {mcp_url}: WWW-Authenticate header present"
+                )
                 return True
 
             logger.debug(f"No auth required for {mcp_url}: {response.status_code}")
@@ -166,7 +174,9 @@ def require_auth_if_needed(auth_url: str, check_timeout: float = 5.0):
                 user_email = _extract_user_email(args, kwargs)
 
                 if not user_email:
-                    raise ValueError(f"Authentication required for {auth_url}, but no user_email provided")
+                    raise ValueError(
+                        f"Authentication required for {auth_url}, but no user_email provided"
+                    )
 
                 # Check if we have valid credentials
                 from .token_storage_adapter import get_token_storage_adapter
@@ -177,7 +187,9 @@ def require_auth_if_needed(auth_url: str, check_timeout: float = 5.0):
                     # Prompt for authentication
                     from .error_messages import AuthErrorMessages
 
-                    guidance = AuthErrorMessages.token_expired(user_email, "MCP Service")
+                    guidance = AuthErrorMessages.token_expired(
+                        user_email, "MCP Service"
+                    )
 
                     from .google_auth import GoogleAuthenticationError
 
@@ -199,7 +211,9 @@ def require_auth_if_needed(auth_url: str, check_timeout: float = 5.0):
                 user_email = _extract_user_email(args, kwargs)
 
                 if not user_email:
-                    raise ValueError(f"Authentication required for {auth_url}, but no user_email provided")
+                    raise ValueError(
+                        f"Authentication required for {auth_url}, but no user_email provided"
+                    )
 
                 from .token_storage_adapter import get_token_storage_adapter
 
@@ -208,7 +222,9 @@ def require_auth_if_needed(auth_url: str, check_timeout: float = 5.0):
                 if not adapter.has_valid_tokens(user_email):
                     from .error_messages import AuthErrorMessages
 
-                    guidance = AuthErrorMessages.token_expired(user_email, "MCP Service")
+                    guidance = AuthErrorMessages.token_expired(
+                        user_email, "MCP Service"
+                    )
 
                     from .google_auth import GoogleAuthenticationError
 
@@ -229,7 +245,9 @@ def require_auth_if_needed(auth_url: str, check_timeout: float = 5.0):
     return decorator
 
 
-async def check_multiple_endpoints(endpoints: Dict[str, str], timeout: float = 5.0) -> Dict[str, bool]:
+async def check_multiple_endpoints(
+    endpoints: Dict[str, str], timeout: float = 5.0
+) -> Dict[str, bool]:
     """
     Check multiple endpoints for auth requirements in parallel.
 
@@ -251,7 +269,9 @@ async def check_multiple_endpoints(endpoints: Dict[str, str], timeout: float = 5
     """
     import asyncio
 
-    tasks = {name: check_if_auth_required(url, timeout) for name, url in endpoints.items()}
+    tasks = {
+        name: check_if_auth_required(url, timeout) for name, url in endpoints.items()
+    }
 
     results = {}
     for name, task in tasks.items():

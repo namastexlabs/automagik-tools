@@ -173,7 +173,9 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
 
         self._store = LocalDirectoryCredentialStore(base_dir)
         self._client_info: Optional[OAuthClientInfo] = None
-        logger.debug(f"Initialized FileTokenStorageAdapter with base_dir: {self._store._base_dir}")
+        logger.debug(
+            f"Initialized FileTokenStorageAdapter with base_dir: {self._store._base_dir}"
+        )
 
     def get_tokens(self, user_id: str) -> Optional[OAuthToken]:
         """Load credentials from file and convert to OAuthToken"""
@@ -191,7 +193,9 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
                 scopes=list(creds.scopes) if creds.scopes else None,
             )
 
-            logger.debug(f"Loaded tokens for {user_id}, expires: {token.expires_at}, valid: {token.is_valid()}")
+            logger.debug(
+                f"Loaded tokens for {user_id}, expires: {token.expires_at}, valid: {token.is_valid()}"
+            )
             return token
 
         except Exception as e:
@@ -208,7 +212,9 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
                 refresh_token=tokens.refresh_token,
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=self._client_info.client_id if self._client_info else None,
-                client_secret=self._client_info.client_secret if self._client_info else None,
+                client_secret=(
+                    self._client_info.client_secret if self._client_info else None
+                ),
                 scopes=tokens.scopes,
             )
 
@@ -367,7 +373,9 @@ class MemoryTokenStorageAdapter(TokenStorageAdapter):
                 refresh_token=tokens.refresh_token,
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=self._client_info.client_id if self._client_info else None,
-                client_secret=self._client_info.client_secret if self._client_info else None,
+                client_secret=(
+                    self._client_info.client_secret if self._client_info else None
+                ),
                 scopes=tokens.scopes,
             )
 
