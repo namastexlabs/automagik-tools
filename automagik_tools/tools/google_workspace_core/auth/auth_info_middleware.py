@@ -28,6 +28,123 @@ class AuthInfoMiddleware(Middleware):
         super().__init__()
         self.auth_provider_type = "GoogleProvider"
 
+    def _store_unverified_google_token(self, context: MiddlewareContext, token_str: str):
+        """Persist minimal state for an unverified Google access token."""
+
+        access_token = SimpleNamespace(
+            token=token_str,
+            client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID", "google"),
+            scopes=[],
+            session_id=f"google_oauth_{token_str[:8]}",
+            expires_at=int(time.time()) + 3600,
+            sub="unknown",
+            email="",
+        )
+        context.fastmcp_context.set_state("access_token", access_token)
+        context.fastmcp_context.set_state("auth_provider_type", self.auth_provider_type)
+        context.fastmcp_context.set_state("token_type", "google_oauth")
+
+    def _decode_verified_claims(self, token_str: str):
+        try:
+            return jwt.decode(token_str, options={"verify_signature": False})
+        except jwt.DecodeError as exc:
+            logger.error(f"Failed to decode verified JWT payload: {exc}")
+        except Exception as exc:
+            logger.error(f"Error decoding verified JWT payload: {exc}")
+        return {}
+
+    def _store_verified_token(
+        self,
+        context: MiddlewareContext,
+        token_str: str,
+        verified_auth,
+        token_type: str,
+    ):
+        """Populate FastMCP state from a verified token."""
+
+        claims = {}
+        if hasattr(verified_auth, "claims") and isinstance(verified_auth.claims, dict):
+            claims = dict(verified_auth.claims)
+        elif token_type != "google_oauth":
+            claims = self._decode_verified_claims(token_str)
+
+        user_email = claims.get("email") or getattr(verified_auth, "email", None)
+        if not user_email:
+            logger.warning("Verified token missing email claim; skipping authentication state")
+            return
+
+        client_id = (
+            getattr(verified_auth, "client_id", None)
+            or claims.get("aud")
+            or claims.get("client_id")
+            or os.getenv("GOOGLE_OAUTH_CLIENT_ID", "google")
+        )
+
+        scope_claim = claims.get("scope") if isinstance(claims, dict) else None
+        scopes = getattr(verified_auth, "scopes", None)
+        if not scopes and scope_claim:
+            if isinstance(scope_claim, str):
+                scopes = scope_claim.split()
+            elif isinstance(scope_claim, (list, tuple, set)):
+                scopes = list(scope_claim)
+        if not scopes:
+            scopes = []
+
+        expires_at = (
+            getattr(verified_auth, "expires_at", None)
+            or claims.get("exp")
+            or (int(time.time()) + 3600)
+        )
+
+        session_id = (
+            getattr(verified_auth, "session_id", None)
+            or claims.get("sid")
+            or claims.get("jti")
+            or claims.get("session_id")
+            or f"{token_type}_{token_str[:8]}"
+        )
+
+        sub_claim = claims.get("sub") if isinstance(claims, dict) else None
+
+        access_token = SimpleNamespace(
+            token=token_str,
+            client_id=client_id,
+            scopes=scopes,
+            session_id=session_id,
+            expires_at=expires_at,
+            sub=sub_claim or getattr(verified_auth, "sub", None) or user_email,
+            email=user_email,
+        )
+
+        context.fastmcp_context.set_state("access_token", access_token)
+        mcp_session_id = getattr(context.fastmcp_context, "session_id", None)
+        ensure_session_from_access_token(verified_auth, user_email, mcp_session_id)
+        context.fastmcp_context.set_state("access_token_obj", verified_auth)
+        context.fastmcp_context.set_state("auth_provider_type", self.auth_provider_type)
+        context.fastmcp_context.set_state("token_type", token_type)
+        context.fastmcp_context.set_state("user_email", user_email)
+        context.fastmcp_context.set_state(
+            "username", claims.get("username") or user_email
+        )
+
+        if claims:
+            context.fastmcp_context.set_state("user_id", claims.get("sub"))
+            context.fastmcp_context.set_state("name", claims.get("name"))
+            context.fastmcp_context.set_state("auth_time", claims.get("auth_time"))
+            context.fastmcp_context.set_state("issuer", claims.get("iss"))
+            context.fastmcp_context.set_state(
+                "audience", claims.get("aud") or claims.get("client_id")
+            )
+            context.fastmcp_context.set_state("jti", claims.get("jti"))
+
+        context.fastmcp_context.set_state("authenticated_user_email", user_email)
+        context.fastmcp_context.set_state(
+            "authenticated_via",
+            "bearer_token" if token_type == "google_oauth" else "jwt_token",
+        )
+
+        logger.info(f"Authenticated via {token_type}: {user_email}")
+
     async def _process_request_for_auth(self, context: MiddlewareContext):
         """Helper to extract, verify, and store auth info from a request."""
         if not context.fastmcp_context:
@@ -52,230 +169,40 @@ class AuthInfoMiddleware(Middleware):
                     token_str = auth_header[7:]  # Remove "Bearer " prefix
                     logger.debug("Found Bearer token")
 
-                    # For Google OAuth tokens (ya29.*), we need to verify them differently
-                    if token_str.startswith("ya29."):
+                    token_is_google = token_str.startswith("ya29.")
+                    token_type = "google_oauth" if token_is_google else "jwt_token"
+
+                    if token_is_google:
                         logger.debug("Detected Google OAuth access token format")
 
-                        # Verify the token to get user info
-                        from ..core.server import get_auth_provider
+                    from ..core.server import get_auth_provider
 
-                        auth_provider = get_auth_provider()
+                    auth_provider = get_auth_provider()
+                    verified_auth = None
 
-                        if auth_provider:
-                            try:
-                                # Verify the token
-                                verified_auth = await auth_provider.verify_token(
-                                    token_str
-                                )
-                                if verified_auth:
-                                    # Extract user info from verified token
-                                    user_email = None
-                                    if hasattr(verified_auth, "claims"):
-                                        user_email = verified_auth.claims.get("email")
-
-                                    # Get expires_at, defaulting to 1 hour from now if not available
-                                    if hasattr(verified_auth, "expires_at"):
-                                        expires_at = verified_auth.expires_at
-                                    else:
-                                        expires_at = (
-                                            int(time.time()) + 3600
-                                        )  # Default to 1 hour
-
-                                    # Get client_id from verified auth or use default
-                                    client_id = (
-                                        getattr(verified_auth, "client_id", None)
-                                        or "google"
-                                    )
-
-                                    access_token = SimpleNamespace(
-                                        token=token_str,
-                                        client_id=client_id,
-                                        scopes=(
-                                            verified_auth.scopes
-                                            if hasattr(verified_auth, "scopes")
-                                            else []
-                                        ),
-                                        session_id=f"google_oauth_{token_str[:8]}",
-                                        expires_at=expires_at,
-                                        # Add other fields that might be needed
-                                        sub=(
-                                            verified_auth.sub
-                                            if hasattr(verified_auth, "sub")
-                                            else user_email
-                                        ),
-                                        email=user_email,
-                                    )
-
-                                    # Store in context state - this is the authoritative authentication state
-                                    context.fastmcp_context.set_state(
-                                        "access_token", access_token
-                                    )
-                                    mcp_session_id = getattr(
-                                        context.fastmcp_context, "session_id", None
-                                    )
-                                    ensure_session_from_access_token(
-                                        verified_auth,
-                                        user_email,
-                                        mcp_session_id,
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "access_token_obj", verified_auth
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "auth_provider_type", self.auth_provider_type
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "token_type", "google_oauth"
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "user_email", user_email
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "username", user_email
-                                    )
-                                    # Set the definitive authentication state
-                                    context.fastmcp_context.set_state(
-                                        "authenticated_user_email", user_email
-                                    )
-                                    context.fastmcp_context.set_state(
-                                        "authenticated_via", "bearer_token"
-                                    )
-
-                                    logger.info(
-                                        f"Authenticated via Google OAuth: {user_email}"
-                                    )
-                                else:
-                                    logger.error("Failed to verify Google OAuth token")
-                                # Don't set authenticated_user_email if verification failed
-                            except Exception as e:
-                                logger.error(f"Error verifying Google OAuth token: {e}")
-                                # Still store the unverified token - service decorator will handle verification
-                                access_token = SimpleNamespace(
-                                    token=token_str,
-                                    client_id=os.getenv(
-                                        "GOOGLE_OAUTH_CLIENT_ID", "google"
-                                    ),
-                                    scopes=[],
-                                    session_id=f"google_oauth_{token_str[:8]}",
-                                    expires_at=int(time.time())
-                                    + 3600,  # Default to 1 hour
-                                    sub="unknown",
-                                    email="",
-                                )
-                                context.fastmcp_context.set_state(
-                                    "access_token", access_token
-                                )
-                                context.fastmcp_context.set_state(
-                                    "auth_provider_type", self.auth_provider_type
-                                )
-                                context.fastmcp_context.set_state(
-                                    "token_type", "google_oauth"
-                                )
-                        else:
-                            logger.warning(
-                                "No auth provider available to verify Google token"
-                            )
-                            # Store unverified token
-                            access_token = SimpleNamespace(
-                                token=token_str,
-                                client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID", "google"),
-                                scopes=[],
-                                session_id=f"google_oauth_{token_str[:8]}",
-                                expires_at=int(time.time()) + 3600,  # Default to 1 hour
-                                sub="unknown",
-                                email="",
-                            )
-                            context.fastmcp_context.set_state(
-                                "access_token", access_token
-                            )
-                            context.fastmcp_context.set_state(
-                                "auth_provider_type", self.auth_provider_type
-                            )
-                            context.fastmcp_context.set_state(
-                                "token_type", "google_oauth"
-                            )
-
-                    else:
-                        # Decode JWT to get user info
+                    if auth_provider:
                         try:
-                            token_payload = jwt.decode(
-                                token_str, options={"verify_signature": False}
-                            )
-                            logger.debug(
-                                f"JWT payload decoded: {list(token_payload.keys())}"
-                            )
-
-                            # Create an AccessToken-like object
-                            access_token = SimpleNamespace(
-                                token=token_str,
-                                client_id=token_payload.get("client_id", "unknown"),
-                                scopes=(
-                                    token_payload.get("scope", "").split()
-                                    if token_payload.get("scope")
-                                    else []
-                                ),
-                                session_id=token_payload.get(
-                                    "sid",
-                                    token_payload.get(
-                                        "jti",
-                                        token_payload.get("session_id", "unknown"),
-                                    ),
-                                ),
-                                expires_at=token_payload.get("exp", 0),
-                            )
-
-                            # Store in context state
-                            context.fastmcp_context.set_state(
-                                "access_token", access_token
-                            )
-
-                            # Store additional user info
-                            context.fastmcp_context.set_state(
-                                "user_id", token_payload.get("sub")
-                            )
-                            context.fastmcp_context.set_state(
-                                "username",
-                                token_payload.get(
-                                    "username", token_payload.get("email")
-                                ),
-                            )
-                            context.fastmcp_context.set_state(
-                                "name", token_payload.get("name")
-                            )
-                            context.fastmcp_context.set_state(
-                                "auth_time", token_payload.get("auth_time")
-                            )
-                            context.fastmcp_context.set_state(
-                                "issuer", token_payload.get("iss")
-                            )
-                            context.fastmcp_context.set_state(
-                                "audience", token_payload.get("aud")
-                            )
-                            context.fastmcp_context.set_state(
-                                "jti", token_payload.get("jti")
-                            )
-                            context.fastmcp_context.set_state(
-                                "auth_provider_type", self.auth_provider_type
-                            )
-
-                            # Set the definitive authentication state for JWT tokens
-                            user_email = token_payload.get(
-                                "email", token_payload.get("username")
-                            )
-                            if user_email:
-                                context.fastmcp_context.set_state(
-                                    "authenticated_user_email", user_email
-                                )
-                                context.fastmcp_context.set_state(
-                                    "authenticated_via", "jwt_token"
-                                )
-
-                            logger.debug("JWT token processed successfully")
-
-                        except jwt.DecodeError as e:
-                            logger.error(f"Failed to decode JWT: {e}")
+                            verified_auth = await auth_provider.verify_token(token_str)
                         except Exception as e:
-                            logger.error(f"Error processing JWT: {e}")
+                            logger.error(f"Error verifying bearer token: {e}")
+                    else:
+                        logger.warning(
+                            "No auth provider available to verify bearer tokens"
+                        )
+
+                    if verified_auth:
+                        self._store_verified_token(
+                            context, token_str, verified_auth, token_type
+                        )
+                    elif token_is_google:
+                        logger.warning(
+                            "Storing unverified Google access token; authentication not granted"
+                        )
+                        self._store_unverified_google_token(context, token_str)
+                    else:
+                        logger.warning(
+                            "Rejected JWT bearer token because verification failed"
+                        )
                 else:
                     logger.debug("No Bearer token in Authorization header")
             else:
