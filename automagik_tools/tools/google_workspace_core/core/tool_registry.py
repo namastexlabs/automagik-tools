@@ -15,7 +15,21 @@ _enabled_tools: Optional[Set[str]] = None
 
 
 def set_enabled_tools(tool_names: Optional[Set[str]]):
-    """Set the globally enabled tools."""
+    """
+    Set the globally enabled MCP TOOL FUNCTIONS for tool registry filtering.
+
+    NOTE: This is different from auth.scopes.set_enabled_tools() which controls
+    which Google Workspace services are enabled for OAuth scopes. This function
+    controls which specific MCP tool functions (e.g., send_gmail_message, create_doc)
+    are registered and available to the MCP client.
+
+    Args:
+        tool_names: Set of enabled tool function names, or None to enable all tools.
+
+    Example:
+        set_enabled_tools({"send_gmail_message", "search_gmail_messages"})  # Only these tools
+        set_enabled_tools(None)  # Enable all tools
+    """
     global _enabled_tools
     _enabled_tools = tool_names
 
