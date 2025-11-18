@@ -27,6 +27,16 @@ mcp = FastMCP("genie-omni")
 _client: Optional[OmniClient] = None
 
 
+def initialize_client(config: OmniConfig) -> None:
+    """Initialize the global client with a specific config.
+
+    Args:
+        config: Configuration for the Omni client
+    """
+    global _client
+    _client = OmniClient(config)
+
+
 def get_client() -> OmniClient:
     """Get or create Omni client."""
     global _client
