@@ -2,7 +2,6 @@
 Authentication middleware to populate context state with user information
 """
 
-import jwt
 import logging
 import os
 import time
@@ -44,15 +43,6 @@ class AuthInfoMiddleware(Middleware):
         context.fastmcp_context.set_state("auth_provider_type", self.auth_provider_type)
         context.fastmcp_context.set_state("token_type", "google_oauth")
 
-    def _decode_verified_claims(self, token_str: str):
-        try:
-            return jwt.decode(token_str, options={"verify_signature": False})
-        except jwt.DecodeError as exc:
-            logger.error(f"Failed to decode verified JWT payload: {exc}")
-        except Exception as exc:
-            logger.error(f"Error decoding verified JWT payload: {exc}")
-        return {}
-
     def _store_verified_token(
         self,
         context: MiddlewareContext,
@@ -62,11 +52,18 @@ class AuthInfoMiddleware(Middleware):
     ):
         """Populate FastMCP state from a verified token."""
 
+        # SECURITY: Only use claims from the verified auth object
+        # Never decode JWT without signature verification
         claims = {}
         if hasattr(verified_auth, "claims") and isinstance(verified_auth.claims, dict):
             claims = dict(verified_auth.claims)
         elif token_type != "google_oauth":
-            claims = self._decode_verified_claims(token_str)
+            # If auth provider doesn't provide claims, log warning but continue
+            # We'll rely on attributes from verified_auth object instead
+            logger.warning(
+                f"Auth provider did not include claims in verified token; "
+                f"using only verified_auth attributes"
+            )
 
         user_email = claims.get("email") or getattr(verified_auth, "email", None)
         if not user_email:
