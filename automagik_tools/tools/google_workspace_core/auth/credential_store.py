@@ -77,23 +77,22 @@ class LocalDirectoryCredentialStore(CredentialStore):
         """
         Initialize the local JSON credential store.
 
+        This is a multi-user OAuth hub that stores credentials for all users who authenticate.
+        The default location is project-local, not user-specific.
+
         Args:
             base_dir: Base directory for credential files. If None, uses the directory
                      configured by the GOOGLE_MCP_CREDENTIALS_DIR environment variable,
-                     or defaults to ~/.google_workspace_mcp/credentials if the environment
-                     variable is not set.
+                     or defaults to .credentials/google-workspace (project-local) if the
+                     environment variable is not set.
         """
         if base_dir is None:
             if os.getenv("GOOGLE_MCP_CREDENTIALS_DIR"):
                 base_dir = os.getenv("GOOGLE_MCP_CREDENTIALS_DIR")
             else:
-                home_dir = os.path.expanduser("~")
-                if home_dir and home_dir != "~":
-                    base_dir = os.path.join(
-                        home_dir, ".google_workspace_mcp", "credentials"
-                    )
-                else:
-                    base_dir = os.path.join(os.getcwd(), ".credentials")
+                # Default to project-local directory for multi-user OAuth hub
+                # This stores credentials for ALL users who authenticate through this tool
+                base_dir = os.path.join(os.getcwd(), ".credentials", "google-workspace")
 
         self.base_dir = base_dir
         logger.info(f"LocalJsonCredentialStore initialized with base_dir: {base_dir}")

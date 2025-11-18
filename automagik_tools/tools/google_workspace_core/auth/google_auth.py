@@ -49,18 +49,19 @@ logger = logging.getLogger(__name__)
 
 # Constants
 def get_default_credentials_dir():
-    """Get the default credentials directory path, preferring user-specific locations."""
+    """
+    Get the default credentials directory path for multi-user OAuth hub.
+
+    This is a multi-user OAuth hub that stores credentials for all users who authenticate.
+    The default location is project-local, not user-specific.
+    """
     # Check for explicit environment variable override
     if os.getenv("GOOGLE_MCP_CREDENTIALS_DIR"):
         return os.getenv("GOOGLE_MCP_CREDENTIALS_DIR")
 
-    # Use user home directory for credentials storage
-    home_dir = os.path.expanduser("~")
-    if home_dir and home_dir != "~":  # Valid home directory found
-        return os.path.join(home_dir, ".google_workspace_mcp", "credentials")
-
-    # Fallback to current working directory if home directory is not accessible
-    return os.path.join(os.getcwd(), ".credentials")
+    # Default to project-local directory for multi-user OAuth hub
+    # This stores credentials for ALL users who authenticate through this tool
+    return os.path.join(os.getcwd(), ".credentials", "google-workspace")
 
 
 DEFAULT_CREDENTIALS_DIR = get_default_credentials_dir()

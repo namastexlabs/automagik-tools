@@ -4,6 +4,7 @@ Google Workspace Core Configuration
 Base configuration class inherited by all Google Workspace tools.
 """
 
+from pathlib import Path
 from typing import Optional
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
@@ -21,8 +22,12 @@ class GoogleWorkspaceBaseConfig(BaseSettings):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
 
-    # Credentials storage
-    credentials_dir: str = "/home/namastex/.credentials/personal-genie/google-workspace"
+    # Credentials storage (for multi-user OAuth hub)
+    # Default to project-local directory, not user-specific home directory
+    # NOTE: This field is currently not used by the credential storage system.
+    # The actual implementation uses GOOGLE_MCP_CREDENTIALS_DIR environment variable.
+    # Override with GOOGLE_WORKSPACE_CREDENTIALS_DIR environment variable (if this field is used in future).
+    credentials_dir: str = ".credentials/google-workspace"
 
     # User settings
     user_email: Optional[str] = None
