@@ -71,7 +71,7 @@ If you want to avoid any conflicts entirely, you can use port 8001 instead:
 Once you've updated the Google Cloud Console, test with:
 ```bash
 # Clear cached credentials (optional but recommended)
-rm -rf ~/.credentials/personal-genie/google-workspace/
+rm -rf ~/.google_workspace_mcp/credentials/
 
 # Test a Google Workspace tool
 # The MCP tools will automatically pick up the new configuration
@@ -93,7 +93,7 @@ The OAuth client was likely configured when:
 
 ## Additional Notes
 
-- The `.env` file has been created in `/home/namastex/genie/automagik-tools/.env`
+- The `.env` file lives in the project root (e.g., `$HOME/genie/automagik-tools/.env`)
 - Port 8000 is now free and ready to use
 - All Google Workspace tools will work once redirect URIs are updated
 - The fix is permanent - no need to repeat after restarts
