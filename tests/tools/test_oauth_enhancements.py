@@ -419,8 +419,8 @@ async def test_check_if_auth_required_www_authenticate():
 
 def test_validate_bearer_token_valid():
     """Test validating valid bearer tokens"""
-    assert validate_bearer_token("Bearer abc123def456ghi789jkl012") is True
-    assert validate_bearer_token("abc123def456ghi789jkl012") is True
+    assert validate_bearer_token("Bearer FAKE_TEST_TOKEN_NOT_REAL") is True
+    assert validate_bearer_token("FAKE_TEST_TOKEN_NOT_REAL") is True
 
 
 def test_validate_bearer_token_invalid():
@@ -434,12 +434,12 @@ def test_validate_bearer_token_invalid():
 def test_extract_bearer_token():
     """Test extracting bearer token from header"""
     # With Bearer prefix
-    token = extract_bearer_token("Bearer abc123def456ghi789jkl012")
-    assert token == "abc123def456ghi789jkl012"
+    token = extract_bearer_token("Bearer FAKE_TEST_TOKEN_NOT_REAL")
+    assert token == "FAKE_TEST_TOKEN_NOT_REAL"
 
     # Without Bearer prefix
-    token = extract_bearer_token("abc123def456ghi789jkl012")
-    assert token == "abc123def456ghi789jkl012"
+    token = extract_bearer_token("FAKE_TEST_TOKEN_NOT_REAL")
+    assert token == "FAKE_TEST_TOKEN_NOT_REAL"
 
     # Invalid format
     token = extract_bearer_token("Basic xyz")
