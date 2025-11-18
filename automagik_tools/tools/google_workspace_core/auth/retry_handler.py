@@ -6,7 +6,7 @@ Provides decorators and utilities for gracefully handling expired/revoked tokens
 """
 
 from functools import wraps
-from typing import Callable, TypeVar, ParamSpec, Optional, Any
+from typing import Callable, TypeVar, ParamSpec, Optional
 import asyncio
 import logging
 from google.auth.exceptions import RefreshError

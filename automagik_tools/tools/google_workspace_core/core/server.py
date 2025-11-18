@@ -31,7 +31,6 @@ from automagik_tools.tools.google_workspace_core.auth.auth_info_middleware impor
     AuthInfoMiddleware,
 )
 from automagik_tools.tools.google_workspace_core.auth.scopes import (
-    SCOPES,
     get_current_scopes,
 )  # noqa
 from automagik_tools.tools.google_workspace_core.core.config import (

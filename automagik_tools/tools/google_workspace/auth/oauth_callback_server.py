@@ -17,7 +17,6 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from automagik_tools.tools.google_workspace.auth.scopes import (
-    SCOPES,
     get_current_scopes,
 )  # noqa
 from automagik_tools.tools.google_workspace.auth.oauth_responses import (

@@ -10,20 +10,13 @@ Tests the new FastMCP-inspired OAuth features:
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 from google.auth.exceptions import RefreshError
-from google.oauth2.credentials import Credentials
 
 # Import modules to test
 from automagik_tools.tools.google_workspace_core.auth.token_storage_adapter import (
     OAuthToken,
-    OAuthClientInfo,
-    TokenStorageAdapter,
-    FileTokenStorageAdapter,
-    MemoryTokenStorageAdapter,
-    get_token_storage_adapter,
 )
 
 from automagik_tools.tools.google_workspace_core.auth.retry_handler import (
@@ -36,9 +29,7 @@ from automagik_tools.tools.google_workspace_core.auth.retry_handler import (
 )
 
 from automagik_tools.tools.google_workspace_core.auth.error_messages import (
-    AuthErrorGuidance,
     AuthErrorMessages,
-    ErrorType,
 )
 
 from automagik_tools.tools.google_workspace_core.auth.session_manager import (
@@ -51,7 +42,6 @@ from automagik_tools.tools.google_workspace_core.auth.session_manager import (
 
 from automagik_tools.tools.google_workspace_core.auth.auth_checker import (
     check_if_auth_required,
-    check_if_auth_required_sync,
     validate_bearer_token,
     extract_bearer_token,
     AuthCheckCache,

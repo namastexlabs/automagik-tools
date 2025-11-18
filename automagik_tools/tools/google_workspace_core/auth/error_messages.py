@@ -147,7 +147,7 @@ class AuthErrorMessages:
             "Security concerns detected by Google",
         ]
 
-        reason_text = f"Common reasons:\n" + "\n".join(f"  • {r}" for r in reasons)
+        reason_text = "Common reasons:\n" + "\n".join(f"  • {r}" for r in reasons)
 
         if reason:
             reason_text = f"Reason: {reason}\n\n" + reason_text
@@ -157,13 +157,13 @@ class AuthErrorMessages:
             title="Token Revoked",
             message=f"Your authentication token for {user_email} has been revoked and is no longer valid.\n\n{reason_text}",
             user_action=(
-                f"You need to reauthenticate completely:\n"
-                f"\n"
-                f"1. Call start_google_auth with your email\n"
-                f"2. Follow the browser link\n"
-                f"3. Grant permissions again\n"
-                f"\n"
-                f"Your previous sessions and data are safe, only authentication needs renewal."
+                "You need to reauthenticate completely:\n"
+                "\n"
+                "1. Call start_google_auth with your email\n"
+                "2. Follow the browser link\n"
+                "3. Grant permissions again\n"
+                "\n"
+                "Your previous sessions and data are safe, only authentication needs renewal."
             ),
             code_example=(
                 f"# Complete reauthentication\n"
@@ -214,13 +214,13 @@ class AuthErrorMessages:
                 f"{missing_text}"
             ),
             user_action=(
-                f"Reauthenticate to grant additional permissions:\n"
-                f"\n"
-                f"1. Call start_google_auth (same as before)\n"
-                f"2. On the Google consent screen, you'll see the new permissions\n"
-                f"3. Grant all requested permissions\n"
-                f"\n"
-                f"This is safe - you're just giving the same app more permissions."
+                "Reauthenticate to grant additional permissions:\n"
+                "\n"
+                "1. Call start_google_auth (same as before)\n"
+                "2. On the Google consent screen, you'll see the new permissions\n"
+                "3. Grant all requested permissions\n"
+                "\n"
+                "This is safe - you're just giving the same app more permissions."
             ),
             code_example=(
                 f"# Reauthenticate with broader permissions\n"
