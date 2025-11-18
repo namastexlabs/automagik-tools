@@ -151,7 +151,7 @@ class AuthErrorMessages:
         return AuthErrorGuidance(
             error_type=ErrorType.TOKEN_REVOKED,
             title="Token Revoked",
-            message=f"Your authentication token has been revoked and is no longer valid.\n\n{reason_text}",
+            message=f"Your authentication token for {user_email} has been revoked and is no longer valid.\n\n{reason_text}",
             user_action=(
                 f"You need to reauthenticate completely:\n"
                 f"\n"
