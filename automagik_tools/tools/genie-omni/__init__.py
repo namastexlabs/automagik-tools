@@ -28,6 +28,19 @@ def get_config_class():
     return OmniConfig
 
 
-def create_server():
-    """Return the MCP server instance."""
+def create_server(server_config: OmniConfig | None = None):
+    """Return the MCP server instance.
+
+    Args:
+        server_config: Optional configuration for the Omni client
+
+    Returns:
+        The MCP server instance
+    """
+    from .server import initialize_client
+
+    # Initialize client with config if provided
+    if server_config:
+        initialize_client(server_config)
+
     return mcp
