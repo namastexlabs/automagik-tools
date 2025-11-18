@@ -14,10 +14,8 @@ import uvicorn
 
 from fastapi import FastAPI, Request
 from typing import Optional
-from urllib.parse import urlparse
 
 from automagik_tools.tools.google_workspace_core.auth.scopes import (
-    SCOPES,
     get_current_scopes,
 )  # noqa
 from automagik_tools.tools.google_workspace_core.auth.oauth_responses import (

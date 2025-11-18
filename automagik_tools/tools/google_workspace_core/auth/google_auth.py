@@ -16,7 +16,6 @@ from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from automagik_tools.tools.google_workspace_core.auth.scopes import (
-    SCOPES,
     get_current_scopes,
 )  # noqa
 from automagik_tools.tools.google_workspace_core.auth.oauth21_session_store import (
@@ -399,7 +398,7 @@ async def start_auth_flow(
                 browser_opened = webbrowser.open(auth_url)
                 if browser_opened:
                     logger.info(
-                        f"✅ Automatically opened browser for OAuth authorization"
+                        "✅ Automatically opened browser for OAuth authorization"
                     )
                 else:
                     logger.warning(
@@ -414,7 +413,7 @@ async def start_auth_flow(
             message_lines = [
                 f"**✅ Browser Opened: Google Authentication for {user_display_name}**\n",
                 f"🌐 A browser window has been automatically opened for you to authorize {service_name} access.",
-                f"**Please check your browser and complete the authorization.**\n",
+                "**Please check your browser and complete the authorization.**\n",
                 "If the browser did not open, you can manually click this link:",
                 f"[Click here to authorize {service_name} access]({auth_url})\n",
             ]
@@ -709,7 +708,7 @@ def get_credentials(
         )
         try:
             logger.debug(
-                f"[get_credentials] Refreshing token using refresh_token (credentials have client_id/secret)"
+                "[get_credentials] Refreshing token using refresh_token (credentials have client_id/secret)"
             )
             # client_config = load_client_secrets(client_secrets_path) # Not strictly needed if creds have client_id/secret
             credentials.refresh(Request())

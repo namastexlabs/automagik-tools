@@ -4,7 +4,6 @@ Tests for google_workspace_core utilities and configuration.
 These tests cover the shared components used by all Google Workspace tools.
 """
 
-import os
 import pytest
 from automagik_tools.tools.google_workspace_core.auth.scopes import (
     SCOPES,
@@ -68,8 +67,16 @@ class TestGoogleWorkspaceScopes:
     def test_all_tools_in_scope_map(self):
         """Test that all expected tools are in the scope map."""
         expected_tools = [
-            "gmail", "drive", "calendar", "docs",
-            "sheets", "chat", "forms", "slides", "tasks", "search"
+            "gmail",
+            "drive",
+            "calendar",
+            "docs",
+            "sheets",
+            "chat",
+            "forms",
+            "slides",
+            "tasks",
+            "search",
         ]
         for tool in expected_tools:
             assert tool in TOOL_SCOPES_MAP, f"Tool {tool} missing from TOOL_SCOPES_MAP"

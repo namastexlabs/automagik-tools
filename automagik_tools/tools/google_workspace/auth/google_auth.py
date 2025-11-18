@@ -16,7 +16,6 @@ from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from automagik_tools.tools.google_workspace.auth.scopes import (
-    SCOPES,
     get_current_scopes,
 )  # noqa
 from automagik_tools.tools.google_workspace.auth.oauth21_session_store import (

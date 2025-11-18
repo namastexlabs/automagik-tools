@@ -267,7 +267,6 @@ async def check_multiple_endpoints(
         >>> print(results)
         {'gmail': True, 'drive': True, 'calendar': False}
     """
-    import asyncio
 
     tasks = {
         name: check_if_auth_required(url, timeout) for name, url in endpoints.items()
@@ -443,4 +442,3 @@ def get_auth_check_cache() -> AuthCheckCache:
     return _auth_check_cache
 
 
-import threading

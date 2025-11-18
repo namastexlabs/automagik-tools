@@ -129,7 +129,9 @@ def set_enabled_tools(enabled_tools):
     """
     global _ENABLED_TOOLS
     _ENABLED_TOOLS = enabled_tools
-    logger.info(f"Enabled Google Workspace services for scope management: {enabled_tools}")
+    logger.info(
+        f"Enabled Google Workspace services for scope management: {enabled_tools}"
+    )
 
 
 def get_current_scopes():

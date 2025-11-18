@@ -149,8 +149,6 @@ class LocalDirectoryCredentialStore(CredentialStore):
 
     def store_credential(self, user_email: str, credentials: Credentials) -> bool:
         """Store credentials to local JSON file, merging scopes with existing credentials."""
-        from google.auth.transport.requests import Request
-        from google.auth.exceptions import RefreshError
 
         creds_path = self._get_credential_path(user_email)
 
