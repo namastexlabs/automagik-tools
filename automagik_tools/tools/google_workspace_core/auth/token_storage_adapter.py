@@ -467,16 +467,25 @@ class MemoryTokenStorageAdapter(TokenStorageAdapter):
             return 0
 
 
-def get_token_storage_adapter(stateless: bool = False) -> TokenStorageAdapter:
+def get_token_storage_adapter(stateless: Optional[bool] = None) -> TokenStorageAdapter:
     """
     Factory function to get the appropriate token storage adapter.
 
     Args:
         stateless: If True, use in-memory storage. If False, use file-based storage.
+                  If None (default), reads from WORKSPACE_MCP_STATELESS_MODE config.
 
     Returns:
         TokenStorageAdapter implementation
     """
+    if stateless is None:
+        from .oauth_config import is_stateless_mode
+
+        stateless = is_stateless_mode()
+        logger.debug(
+            f"Stateless mode not specified, using config value: {stateless}"
+        )
+
     if stateless:
         logger.info("Using MemoryTokenStorageAdapter (stateless mode)")
         return MemoryTokenStorageAdapter()
