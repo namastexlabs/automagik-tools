@@ -8,6 +8,7 @@ to detect if an endpoint requires authentication before making requests.
 from typing import Optional, Dict, Any
 import httpx
 import logging
+import threading
 from functools import wraps
 
 logger = logging.getLogger(__name__)
