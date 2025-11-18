@@ -48,7 +48,7 @@ class TestCLIQuick:
             ["python", "-c", "from automagik_tools.cli import app; app(['--help'])"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=10,  # Increased for CI stability
         )
         # Note: help typically exits with code 0 in some CLI frameworks
         assert "MCP Tools Framework" in result.stdout or "Usage:" in result.stdout
@@ -63,7 +63,7 @@ class TestCLIQuick:
             ["python", "-c", "from automagik_tools.cli import app; app(['version'])"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=10,  # Increased for CI stability
         )
         assert result.returncode == 0
         assert "automagik-tools v" in result.stdout
@@ -73,12 +73,17 @@ class TestCLIQuick:
         reason="subprocess python -c doesn't use venv on Windows",
     )
     def test_list_command_direct(self):
-        """Test list command directly"""
+        """Test list command directly
+
+        Note: This test can be slow in CI environments due to tool discovery overhead
+        (21 tools including 10 Google Workspace tools need to be imported).
+        Timeout increased from 5s to 15s to accommodate slower CI runners.
+        """
         result = subprocess.run(
             ["python", "-c", "from automagik_tools.cli import app; app(['list'])"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=15,  # Increased from 5s - tool discovery for 21 tools can be slow in CI
         )
         assert result.returncode == 0
         assert "evolution-api" in result.stdout
