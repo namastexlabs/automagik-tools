@@ -174,13 +174,13 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
         self._store = LocalDirectoryCredentialStore(base_dir)
         self._client_info: Optional[OAuthClientInfo] = None
         logger.debug(
-            f"Initialized FileTokenStorageAdapter with base_dir: {self._store._base_dir}"
+            f"Initialized FileTokenStorageAdapter with base_dir: {self._store.base_dir}"
         )
 
     def get_tokens(self, user_id: str) -> Optional[OAuthToken]:
         """Load credentials from file and convert to OAuthToken"""
         try:
-            creds = self._store.load_credentials(user_id)
+            creds = self._store.get_credential(user_id)
             if not creds:
                 logger.debug(f"No credentials found for user: {user_id}")
                 return None
@@ -222,7 +222,7 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
             if tokens.expires_at:
                 creds.expiry = tokens.expires_at
 
-            self._store.save_credentials(user_id, creds)
+            self._store.store_credential(user_id, creds)
             logger.info(f"Saved tokens for {user_id}")
 
         except Exception as e:
@@ -232,21 +232,13 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
     def clear_tokens(self, user_id: str) -> bool:
         """Remove credential file for user"""
         try:
-            # Check if credentials exist
-            if not self._store.load_credentials(user_id):
-                logger.debug(f"No credentials to clear for {user_id}")
-                return False
-
-            # Delete credential file
-            import os
-
-            cred_file = self._store._get_credentials_path(user_id)
-            if os.path.exists(cred_file):
-                os.remove(cred_file)
+            # Use the store's delete_credential method
+            result = self._store.delete_credential(user_id)
+            if result:
                 logger.info(f"Cleared credentials for {user_id}")
-                return True
-
-            return False
+            else:
+                logger.debug(f"No credentials to clear for {user_id}")
+            return result
 
         except Exception as e:
             logger.error(f"Error clearing tokens for {user_id}: {e}")
@@ -285,20 +277,8 @@ class FileTokenStorageAdapter(TokenStorageAdapter):
     def list_users(self) -> List[str]:
         """List all users with credential files"""
         try:
-            import os
-
-            base_dir = self._store._base_dir
-            if not os.path.exists(base_dir):
-                return []
-
-            # Find all .json files in credentials directory
-            users = []
-            for filename in os.listdir(base_dir):
-                if filename.endswith(".json"):
-                    # Extract email from filename (email.json -> email)
-                    user_id = filename[:-5]  # Remove .json extension
-                    users.append(user_id)
-
+            # Delegate to the store's list_users method
+            users = self._store.list_users()
             logger.debug(f"Found {len(users)} users with stored credentials")
             return users
 
