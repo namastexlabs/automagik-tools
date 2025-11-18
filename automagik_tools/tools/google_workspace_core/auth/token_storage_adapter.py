@@ -338,9 +338,9 @@ class MemoryTokenStorageAdapter(TokenStorageAdapter):
 
     def __init__(self):
         """Initialize in-memory token storage"""
-        from .oauth21_session_store import get_oauth_store
+        from .oauth21_session_store import get_oauth21_session_store
 
-        self._store = get_oauth_store()
+        self._store = get_oauth21_session_store()
         self._client_info: Optional[OAuthClientInfo] = None
         logger.debug("Initialized MemoryTokenStorageAdapter")
 
