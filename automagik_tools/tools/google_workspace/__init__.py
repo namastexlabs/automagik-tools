@@ -118,24 +118,28 @@ def _register_tools(tier: str):
 
     Args:
         tier: Tool tier (core, extended, complete)
+
+    Note:
+        Imports are used for side-effects (tool registration via @server.tool decorators).
+        The modules self-register when imported, so we don't use the imported names directly.
     """
-    # Core tools (always loaded)
-    from .services import gmail_tools
-    from .services import drive_tools
-    from .services import calendar_tools
-    from .services import docs_tools
-    from .services import sheets_tools
-    from .services import chat_tools
-    from .services import search_tools
+    # Core tools (always loaded) - imported for side-effects (tool registration)
+    from .services import gmail_tools  # noqa: F401
+    from .services import drive_tools  # noqa: F401
+    from .services import calendar_tools  # noqa: F401
+    from .services import docs_tools  # noqa: F401
+    from .services import sheets_tools  # noqa: F401
+    from .services import chat_tools  # noqa: F401
+    from .services import search_tools  # noqa: F401
 
     # Extended tools
     if tier in ["extended", "complete"]:
-        from .services import forms_tools
-        from .services import tasks_tools
+        from .services import forms_tools  # noqa: F401
+        from .services import tasks_tools  # noqa: F401
 
     # Complete tools
     if tier == "complete":
-        from .services import slides_tools
+        from .services import slides_tools  # noqa: F401
 
 
 def get_config_class():
