@@ -943,6 +943,125 @@ async def modify_event(
 
 
 @server.tool()
+@handle_http_errors("respond_to_event", service_type="calendar")
+@require_google_service("calendar", "calendar_events")
+async def respond_to_event(
+    service,
+    user_google_email: str,
+    event_id: str,
+    response: str,
+    calendar_id: str = "primary",
+    send_updates: str = "all",
+) -> str:
+    """
+    Respond to a calendar event invitation (accept, decline, or mark as tentative).
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        event_id (str): The ID of the event to respond to.
+        response (str): Your response - must be one of: "accepted", "declined", "tentative", "needsAction"
+        calendar_id (str): Calendar ID (default: 'primary').
+        send_updates (str): Whether to send update notifications to other attendees. Options: 'all' (default), 'externalOnly', 'none'
+
+    Returns:
+        str: Confirmation message of your response to the event.
+    """
+    valid_responses = ["accepted", "declined", "tentative", "needsAction"]
+    if response not in valid_responses:
+        raise ValueError(
+            f"Invalid response '{response}'. Must be one of: {', '.join(valid_responses)}"
+        )
+
+    logger.info(
+        f"[respond_to_event] Invoked. Email: '{user_google_email}', Event ID: {event_id}, Response: {response}"
+    )
+
+    # Get the existing event
+    try:
+        existing_event = await asyncio.to_thread(
+            lambda: service.events()
+            .get(calendarId=calendar_id, eventId=event_id)
+            .execute()
+        )
+        logger.info("[respond_to_event] Successfully retrieved existing event")
+    except HttpError as get_error:
+        if get_error.resp.status == 404:
+            logger.error(
+                f"[respond_to_event] Event not found: {get_error}"
+            )
+            raise Exception(
+                f"Event not found. The event with ID '{event_id}' could not be found in calendar '{calendar_id}'."
+            )
+        else:
+            raise
+
+    # Find and update the user's attendee status
+    attendees = existing_event.get("attendees", [])
+    user_found = False
+
+    for attendee in attendees:
+        if attendee.get("email", "").lower() == user_google_email.lower():
+            attendee["responseStatus"] = response
+            user_found = True
+            logger.info(
+                f"[respond_to_event] Updated response status for {user_google_email} to {response}"
+            )
+            break
+
+    if not user_found:
+        logger.warning(
+            f"[respond_to_event] User {user_google_email} not found in attendee list, adding them"
+        )
+        # Add the user as an attendee if they're not already listed
+        attendees.append({"email": user_google_email, "responseStatus": response})
+
+    # Update the event with the modified attendees list
+    event_body = {
+        "summary": existing_event.get("summary"),
+        "start": existing_event.get("start"),
+        "end": existing_event.get("end"),
+        "attendees": attendees,
+    }
+
+    # Preserve other important fields
+    for field in ["description", "location", "reminders", "conferenceData"]:
+        if field in existing_event:
+            event_body[field] = existing_event[field]
+
+    updated_event = await asyncio.to_thread(
+        lambda: service.events()
+        .update(
+            calendarId=calendar_id,
+            eventId=event_id,
+            body=event_body,
+            sendUpdates=send_updates,
+            conferenceDataVersion=1,
+        )
+        .execute()
+    )
+
+    event_title = updated_event.get("summary", "Untitled Event")
+    link = updated_event.get("htmlLink", "No link available")
+
+    response_text = {
+        "accepted": "accepted",
+        "declined": "declined",
+        "tentative": "marked as tentative",
+        "needsAction": "marked as needs action",
+    }[response]
+
+    confirmation_message = (
+        f"Successfully {response_text} event '{event_title}' (ID: {event_id}) for {user_google_email}. "
+        f"Link: {link}"
+    )
+
+    logger.info(
+        f"Event response updated successfully for {user_google_email}. ID: {event_id}, Response: {response}"
+    )
+    return confirmation_message
+
+
+@server.tool()
 @handle_http_errors("delete_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
 async def delete_event(
