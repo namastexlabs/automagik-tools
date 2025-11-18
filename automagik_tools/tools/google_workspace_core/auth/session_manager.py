@@ -208,7 +208,7 @@ class SessionManager:
 
             # Check expiry
             now = datetime.utcnow()
-            if now > binding.expires_at:
+            if now >= binding.expires_at:
                 logger.debug(f"Session {session_id} expired at {binding.expires_at}")
                 binding.status = SessionStatus.EXPIRED
                 return None
@@ -307,7 +307,7 @@ class SessionManager:
             expired = [
                 sid
                 for sid, binding in self._bindings.items()
-                if now > binding.expires_at
+                if now >= binding.expires_at
             ]
 
             for sid in expired:
@@ -445,7 +445,7 @@ class SessionManager:
 
                 if binding.status == SessionStatus.REVOKED:
                     revoked += 1
-                elif now > binding.expires_at:
+                elif now >= binding.expires_at:
                     expired += 1
                 else:
                     active += 1
