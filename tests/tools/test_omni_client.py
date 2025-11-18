@@ -447,11 +447,11 @@ class TestClientTraceOperations:
         """Test get trace payloads HTTP call"""
         mock_response_data = [
             {
-                "id": "payload_123",
+                "id": 123,
                 "trace_id": "trace_123",
                 "payload_type": "request",
-                "direction": "inbound",
-                "created_at": datetime.now().isoformat(),
+                "stage": "inbound",
+                "timestamp": datetime.now().isoformat(),
             }
         ]
 
