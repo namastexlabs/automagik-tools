@@ -147,8 +147,10 @@ class SendMediaRequest(BaseModel):
     phone_number: str = Field(
         ..., description="Phone number with country code", alias="phone"
     )
-    media_url: str = Field(..., description="URL of the media file")
+    media_url: Optional[str] = Field(None, description="URL of the media file")
+    media_base64: Optional[str] = Field(None, description="Base64 encoded media for local files")
     media_type: Literal["image", "video", "document"] = "image"
+    mime_type: Optional[str] = None
     caption: Optional[str] = None
     filename: Optional[str] = None
     quoted_message_id: Optional[str] = None
@@ -163,7 +165,8 @@ class SendAudioRequest(BaseModel):
     phone_number: str = Field(
         ..., description="Phone number with country code", alias="phone"
     )
-    audio_url: str = Field(..., description="URL of the audio file")
+    audio_url: Optional[str] = Field(None, description="URL of the audio file")
+    audio_base64: Optional[str] = Field(None, description="Base64 encoded audio for local files")
     ptt: bool = Field(True, description="Send as voice note")
     quoted_message_id: Optional[str] = None
     delay: Optional[int] = None
