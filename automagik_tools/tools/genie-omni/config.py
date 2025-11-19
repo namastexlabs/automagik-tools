@@ -53,6 +53,12 @@ class OmniConfig(BaseSettings):
         alias="OMNI_MODE",
     )
 
+    media_download_folder: str = Field(
+        default="/tmp/genie-omni-media",
+        description="Folder for downloaded media files (images, videos, audio, documents)",
+        alias="OMNI_MEDIA_DOWNLOAD_FOLDER",
+    )
+
     model_config = {
         "env_prefix": "OMNI_",
         "env_file": ".env",
