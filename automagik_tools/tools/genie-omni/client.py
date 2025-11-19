@@ -150,7 +150,7 @@ class OmniClient:
         data = await self._request(
             "POST",
             f"/api/v1/instance/{instance_name}/send-text",
-            json=request.model_dump(exclude_none=True),
+            json=request.model_dump(exclude_none=True, by_alias=True),
         )
         return MessageResponse(**data)
 
@@ -161,7 +161,7 @@ class OmniClient:
         data = await self._request(
             "POST",
             f"/api/v1/instance/{instance_name}/send-media",
-            json=request.model_dump(exclude_none=True),
+            json=request.model_dump(exclude_none=True, by_alias=True),
         )
         return MessageResponse(**data)
 
@@ -183,7 +183,7 @@ class OmniClient:
         data = await self._request(
             "POST",
             f"/api/v1/instance/{instance_name}/send-sticker",
-            json=request.model_dump(exclude_none=True),
+            json=request.model_dump(exclude_none=True, by_alias=True),
         )
         return MessageResponse(**data)
 
@@ -194,7 +194,7 @@ class OmniClient:
         data = await self._request(
             "POST",
             f"/api/v1/instance/{instance_name}/send-contact",
-            json=request.model_dump(exclude_none=True),
+            json=request.model_dump(exclude_none=True, by_alias=True),
         )
         return MessageResponse(**data)
 
@@ -205,7 +205,7 @@ class OmniClient:
         data = await self._request(
             "POST",
             f"/api/v1/instance/{instance_name}/send-reaction",
-            json=request.model_dump(exclude_none=True),
+            json=request.model_dump(exclude_none=True, by_alias=True),
         )
         return MessageResponse(**data)
 
@@ -368,3 +368,563 @@ class OmniClient:
 
         data = await self._request("GET", "/api/v1/instances/", params=params)
         return ChannelListResponse(**data)
+
+    # Evolution API Direct Access
+    async def evolution_send_text(
+        self, instance_name: str, remote_jid: str, text: str,
+        quoted_msg_id: Optional[str] = None, from_me: bool = False,
+        delay: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Send text message via Evolution API directly (with optional quote)"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                payload: Dict[str, Any] = {
+                    "number": remote_jid,
+                    "text": text
+                }
+
+                if delay:
+                    payload["delay"] = delay
+
+                if quoted_msg_id:
+                    payload["quoted"] = {
+                        "key": {
+                            "remoteJid": remote_jid,
+                            "fromMe": from_me,
+                            "id": quoted_msg_id
+                        }
+                    }
+
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendText/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_text_quoted(
+        self, instance_name: str, remote_jid: str, text: str, quoted_msg_id: str, from_me: bool = False
+    ) -> Dict[str, Any]:
+        """Legacy method - use evolution_send_text instead"""
+        return await self.evolution_send_text(
+            instance_name=instance_name,
+            remote_jid=remote_jid,
+            text=text,
+            quoted_msg_id=quoted_msg_id,
+            from_me=from_me
+        )
+
+    async def evolution_send_reaction(
+        self, instance_name: str, remote_jid: str, message_id: str, emoji: str, from_me: bool = False
+    ) -> Dict[str, Any]:
+        """Send reaction via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendReaction/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "key": {
+                            "remoteJid": remote_jid,
+                            "fromMe": from_me,
+                            "id": message_id
+                        },
+                        "reaction": emoji
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_find_messages(
+        self, instance_name: str, remote_jid: str, limit: int = 50
+    ) -> Dict[str, Any]:
+        """Call Evolution API findMessages directly for message history"""
+        # First get instance to get Evolution credentials
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        # Call Evolution API directly
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/findMessages/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "where": {"key": {"remoteJid": remote_jid}},
+                        "limit": limit,
+                        "sort": {"messageTimestamp": -1}  # Newest first
+                    }
+                )
+                response.raise_for_status()
+                result = response.json()
+                logger.info(f"Evolution API response: {result}")
+                return result
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_location(
+        self, instance_name: str, remote_jid: str, latitude: float, longitude: float,
+        name: Optional[str] = None, address: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Send location via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        payload = {
+            "number": remote_jid,
+            "latitude": latitude,
+            "longitude": longitude
+        }
+
+        if name:
+            payload["name"] = name
+        if address:
+            payload["address"] = address
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendLocation/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_delete_message(
+        self, instance_name: str, remote_jid: str, message_id: str, from_me: bool = True
+    ) -> Dict[str, Any]:
+        """Delete message for everyone via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.request(
+                    method="DELETE",
+                    url=f"{instance.evolution_url}/chat/deleteMessageForEveryone/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "id": message_id,
+                        "remoteJid": remote_jid,
+                        "fromMe": from_me
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_presence(
+        self, instance_name: str, remote_jid: str, presence: str, delay: int = 3000
+    ) -> Dict[str, Any]:
+        """Send presence status (typing, recording, etc) via Evolution API directly
+
+        Available presence types:
+        - composing: Typing... (default 3 seconds)
+        - recording: Recording audio... (default 3 seconds)
+        """
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/sendPresence/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "number": remote_jid,
+                        "options": {
+                            "delay": delay,
+                            "presence": presence,
+                            "number": remote_jid
+                        }
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_update_message(
+        self, instance_name: str, remote_jid: str, message_id: str, new_text: str, from_me: bool = True
+    ) -> Dict[str, Any]:
+        """Update (edit) a message via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/updateMessage/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "number": remote_jid,
+                        "text": new_text,
+                        "key": {
+                            "remoteJid": remote_jid,
+                            "fromMe": from_me,
+                            "id": message_id
+                        }
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_check_is_whatsapp(
+        self, instance_name: str, phone_numbers: List[str]
+    ) -> Dict[str, Any]:
+        """Check if phone numbers are registered on WhatsApp via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/whatsappNumbers/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "numbers": phone_numbers
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_poll(
+        self, instance_name: str, remote_jid: str, name: str, options: List[str], selectable_count: int = 1
+    ) -> Dict[str, Any]:
+        """Send poll via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendPoll/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "number": remote_jid,
+                        "name": name,
+                        "selectableCount": selectable_count,
+                        "values": options
+                    }
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_sticker(
+        self, instance_name: str, remote_jid: str, sticker_url: str,
+        quoted_message_id: Optional[str] = None, delay: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Send sticker via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                payload: Dict[str, Any] = {
+                    "number": remote_jid,
+                    "sticker": sticker_url
+                }
+
+                if delay:
+                    payload["delay"] = delay
+                if quoted_message_id:
+                    payload["quoted"] = {"key": {"id": quoted_message_id}}
+
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendSticker/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_send_contact(
+        self, instance_name: str, remote_jid: str, contacts: List[Dict[str, Any]],
+        quoted_message_id: Optional[str] = None, delay: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Send contact(s) via Evolution API directly"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                # Convert contact fields from snake_case to camelCase for Evolution API
+                evolution_contacts = []
+                for contact in contacts:
+                    evolution_contact = {}
+                    if "full_name" in contact:
+                        evolution_contact["fullName"] = contact["full_name"]
+                    if "phone_number" in contact:
+                        evolution_contact["phoneNumber"] = contact["phone_number"]
+                    if "email" in contact:
+                        evolution_contact["email"] = contact["email"]
+                    if "organization" in contact:
+                        evolution_contact["organization"] = contact["organization"]
+                    if "url" in contact:
+                        evolution_contact["url"] = contact["url"]
+                    evolution_contacts.append(evolution_contact)
+
+                payload: Dict[str, Any] = {
+                    "number": remote_jid,
+                    "contact": evolution_contacts
+                }
+
+                if delay:
+                    payload["delay"] = delay
+                if quoted_message_id:
+                    payload["quoted"] = {"key": {"id": quoted_message_id}}
+
+                response = await client.post(
+                    f"{instance.evolution_url}/message/sendContact/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_find_chats(
+        self, instance_name: str
+    ) -> Dict[str, Any]:
+        """Find all chats via Evolution API"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/findChats/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json={}
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_fetch_all_groups(
+        self, instance_name: str, get_participants: bool = True
+    ) -> Dict[str, Any]:
+        """Fetch all groups via Evolution API"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.get(
+                    f"{instance.evolution_url}/group/fetchAllGroups/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key
+                    },
+                    params={"getParticipants": str(get_participants).lower()}
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_find_group_members(
+        self, instance_name: str, group_jid: str
+    ) -> Dict[str, Any]:
+        """Find group members via Evolution API"""
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                response = await client.get(
+                    f"{instance.evolution_url}/group/participants/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key
+                    },
+                    params={"groupJid": group_jid}
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
+    async def evolution_get_base64_media(
+        self, instance_name: str, message_id: str, convert_to_mp4: bool = False
+    ) -> Dict[str, Any]:
+        """Get media from message as base64 via Evolution API directly
+
+        This is an internal method used to abstract media downloading.
+        Media is saved to tmp folder automatically, not exposed directly.
+        """
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                payload = {
+                    "message": {
+                        "key": {
+                            "id": message_id
+                        }
+                    },
+                    "convertToMp4": convert_to_mp4
+                }
+
+                response = await client.post(
+                    f"{instance.evolution_url}/chat/getBase64FromMediaMessage/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
