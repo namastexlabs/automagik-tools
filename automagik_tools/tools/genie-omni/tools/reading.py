@@ -23,7 +23,8 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         - Check message history
 
         Args:
-            from_phone: Phone number to read messages from
+            from_phone: Phone number (e.g., "5511999999999") or group ID (e.g., "120363xxx")
+                       Auto-detects format - no need for @s.whatsapp.net or @g.us
             instance_name: Your WhatsApp instance (default: "genie")
             limit: Maximum messages to return (default: 50)
 
