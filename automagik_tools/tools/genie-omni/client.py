@@ -32,6 +32,33 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+def normalize_jid(phone_or_jid: str) -> str:
+    """
+    Convert phone number to WhatsApp JID format automatically.
+
+    Handles:
+    - Individual numbers: "5511999999999" -> "5511999999999@s.whatsapp.net"
+    - Group numbers: "120363421396472428" -> "120363421396472428@g.us"
+    - Already formatted JIDs: returned unchanged
+
+    Args:
+        phone_or_jid: Phone number or JID
+
+    Returns:
+        Properly formatted WhatsApp JID
+    """
+    # Already a JID - return as-is
+    if "@" in phone_or_jid:
+        return phone_or_jid
+
+    # Group numbers start with 120363
+    if phone_or_jid.startswith("120363"):
+        return f"{phone_or_jid}@g.us"
+
+    # Individual phone number
+    return f"{phone_or_jid}@s.whatsapp.net"
+
+
 class OmniClient:
     """Async HTTP client for OMNI API"""
 
@@ -376,6 +403,7 @@ class OmniClient:
         delay: Optional[int] = None
     ) -> Dict[str, Any]:
         """Send text message via Evolution API directly (with optional quote)"""
+       remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -421,6 +449,7 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, text: str, quoted_msg_id: str, from_me: bool = False
     ) -> Dict[str, Any]:
         """Legacy method - use evolution_send_text instead"""
+        remote_jid = normalize_jid(remote_jid)
         return await self.evolution_send_text(
             instance_name=instance_name,
             remote_jid=remote_jid,
@@ -433,6 +462,7 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, message_id: str, emoji: str, from_me: bool = False
     ) -> Dict[str, Any]:
         """Send reaction via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -468,6 +498,8 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, limit: int = 50
     ) -> Dict[str, Any]:
         """Call Evolution API findMessages directly for message history"""
+        remote_jid = normalize_jid(remote_jid)
+
         # First get instance to get Evolution credentials
         instance = await self.get_instance(instance_name, include_status=False)
 
@@ -505,6 +537,7 @@ class OmniClient:
         name: Optional[str] = None, address: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send location via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -544,6 +577,7 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, message_id: str, from_me: bool = True
     ) -> Dict[str, Any]:
         """Delete message for everyone via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -582,6 +616,7 @@ class OmniClient:
         - composing: Typing... (default 3 seconds)
         - recording: Recording audio... (default 3 seconds)
         """
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -617,6 +652,7 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, message_id: str, new_text: str, from_me: bool = True
     ) -> Dict[str, Any]:
         """Update (edit) a message via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -683,6 +719,7 @@ class OmniClient:
         self, instance_name: str, remote_jid: str, name: str, options: List[str], selectable_count: int = 1
     ) -> Dict[str, Any]:
         """Send poll via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -717,6 +754,7 @@ class OmniClient:
         quoted_message_id: Optional[str] = None, delay: Optional[int] = None
     ) -> Dict[str, Any]:
         """Send sticker via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
@@ -756,6 +794,7 @@ class OmniClient:
         quoted_message_id: Optional[str] = None, delay: Optional[int] = None
     ) -> Dict[str, Any]:
         """Send contact(s) via Evolution API directly"""
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
