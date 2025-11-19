@@ -403,7 +403,7 @@ class OmniClient:
         delay: Optional[int] = None
     ) -> Dict[str, Any]:
         """Send text message via Evolution API directly (with optional quote)"""
-       remote_jid = normalize_jid(remote_jid)
+        remote_jid = normalize_jid(remote_jid)
         instance = await self.get_instance(instance_name, include_status=False)
 
         if not instance.evolution_url or not instance.evolution_key:
