@@ -172,10 +172,16 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             if not contacts.contacts:
                 return f"📱 No contacts found matching '{search}'"
 
-            result = [f"📱 CONTACTS MATCHING '{search}' ({contacts.total_count} total)"]
+            # Filter out group IDs (ending in @g.us) - only show individual contacts
+            individual_contacts = [c for c in contacts.contacts if not c.id.endswith("@g.us")]
+
+            if not individual_contacts:
+                return f"📱 No individual contacts found matching '{search}' (found only groups)"
+
+            result = [f"📱 CONTACTS MATCHING '{search}' ({len(individual_contacts)} total)"]
             result.append("")
 
-            for contact in contacts.contacts:
+            for contact in individual_contacts:
                 result.append(f"👤 {contact.name}")
                 result.append(f"  Phone: {contact.id}")
                 result.append("")
