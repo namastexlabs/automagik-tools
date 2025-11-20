@@ -55,17 +55,36 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             # Decode base64
             media_data = base64.b64decode(response["base64"])
 
-            # Ensure download folder exists
-            download_folder = Path(config.media_download_folder)
+            # Determine media type and subdirectory from mimetype
+            mimetype = response.get("mimetype", "")
+            if mimetype.startswith("image/"):
+                media_subdir = "media/images"
+                ext = mimetype.split("/")[-1] if "/" in mimetype else "jpg"
+            elif mimetype.startswith("video/"):
+                media_subdir = "media/videos"
+                ext = mimetype.split("/")[-1] if "/" in mimetype else "mp4"
+            elif mimetype.startswith("audio/"):
+                media_subdir = "media/audio"
+                ext = mimetype.split("/")[-1] if "/" in mimetype else "mp3"
+            elif "sticker" in mimetype.lower():
+                media_subdir = "media/stickers"
+                ext = "webp"
+            elif mimetype.startswith("application/") or mimetype.startswith("text/"):
+                media_subdir = "media/documents"
+                ext = mimetype.split("/")[-1] if "/" in mimetype else "bin"
+            else:
+                media_subdir = "downloads"
+                ext = "bin"
+
+            # Ensure download folder exists with subdirectory
+            download_folder = Path(config.media_download_folder) / media_subdir
             download_folder.mkdir(parents=True, exist_ok=True)
 
             # Generate filename
             if filename:
                 final_filename = filename
             else:
-                # Use message ID + extension from mimetype if available
-                mimetype = response.get("mimetype", "")
-                ext = mimetype.split("/")[-1] if "/" in mimetype else "bin"
+                # Use message ID + extension
                 final_filename = f"{message_id}.{ext}"
 
             # Save file
