@@ -111,8 +111,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if similarity_boost is None:
             similarity_boost = 0.75
 
-        # Create output directory
-        output_dir = Path("/tmp/genie-tts")
+        # Create output directory (use configured folder + voice-messages subdirectory)
+        output_dir = Path(config.media_download_folder) / "voice-messages"
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate temporary filename
