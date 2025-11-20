@@ -373,6 +373,9 @@ class OAuth21SessionStore:
         """
         Get Google credentials for a user from OAuth 2.1 session.
 
+        IMPORTANT: This method reloads credentials from disk before returning them
+        to ensure scope changes made by other MCP server processes are picked up.
+
         Args:
             user_email: User's email address
 
@@ -380,6 +383,35 @@ class OAuth21SessionStore:
             Google Credentials object or None
         """
         with self._lock:
+            # BUGFIX: Reload credentials from disk first to pick up scope merges from other processes
+            try:
+                from .credential_store import get_credential_store
+                from ..core.config import is_stateless_mode
+
+                # Only reload from disk if not in stateless mode
+                if not is_stateless_mode():
+                    store = get_credential_store()
+                    fresh_creds = store.get_credential(user_email)
+
+                    if fresh_creds:
+                        # Update in-memory session with fresh scopes from disk
+                        session_info = self._sessions.get(user_email)
+                        if session_info:
+                            # Preserve in-memory session metadata, but update scopes
+                            session_info["scopes"] = fresh_creds.scopes
+                            logger.debug(
+                                f"Reloaded credentials for {user_email} from disk with {len(fresh_creds.scopes or [])} scopes"
+                            )
+                        else:
+                            # No in-memory session, but we have file credentials - use them
+                            logger.info(
+                                f"No in-memory session for {user_email}, using file credentials with {len(fresh_creds.scopes or [])} scopes"
+                            )
+                            return fresh_creds
+            except Exception as e:
+                # Log but don't fail - fall back to in-memory credentials
+                logger.debug(f"Could not reload credentials from disk for {user_email}: {e}")
+
             session_info = self._sessions.get(user_email)
             if not session_info:
                 logger.debug(f"No OAuth 2.1 session found for {user_email}")
