@@ -634,6 +634,7 @@ def get_credentials(
         )
 
         # PRIORITY 1: File store (shared across all MCP sessions, has merged scopes)
+        # CRITICAL: Always check file store FIRST to pick up scope merges from other MCP servers
         if user_google_email:
             if not is_stateless_mode():
                 logger.debug(
@@ -645,6 +646,13 @@ def get_credentials(
                     logger.info(
                         f"[get_credentials] Loaded credentials from file store for user '{user_google_email}' with {len(credentials.scopes)} scopes"
                     )
+                    # BUGFIX: Update session cache with fresh scopes from file
+                    # This ensures other MCP servers' scope merges are picked up immediately
+                    if session_id:
+                        logger.debug(
+                            f"[get_credentials] Updating session cache '{session_id}' with fresh file credentials"
+                        )
+                        save_credentials_to_session(session_id, credentials)
             else:
                 logger.debug(
                     f"[get_credentials] Skipping file store in stateless mode for user_google_email '{user_google_email}'."
