@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automagik-tools"
-version = "0.9.14"
+version = "0.9.15"
 description = "A monorepo package for MCP tools with dynamic loading capabilities - featuring Evolution API v2 WhatsApp integration"
 authors = [
     {name = "Felipe Rosa", email = "felipe@namastex.ai"},
