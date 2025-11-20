@@ -455,6 +455,21 @@ ENABLE_JSON_PROCESSING=true
 JSON_PROCESSOR_MODEL=gpt-4.1-nano
 ```
 
+### MCP Client Configuration
+
+For MCP clients like Claude Desktop, Cline, or Cursor:
+
+1. **Copy the example configuration:**
+   ```bash
+   cp .mcp.json.example ~/.mcp.json
+   ```
+
+2. **Configure your tools** - Edit the file and add your API keys
+
+3. **Restart your MCP client**
+
+📖 **[Complete MCP Configuration Guide](./MCP_CONFIGURATION.md)** - Detailed setup instructions for all tools
+
 ---
 
 ## 🛠️ Built-in Tools

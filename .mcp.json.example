@@ -1,0 +1,496 @@
+{
+  "mcpServers": {
+    "// ============================================================": "",
+    "// GOOGLE WORKSPACE TOOLS": "",
+    "// Complete suite of Google Workspace integrations": "",
+    "// ============================================================": "",
+
+    "google-gmail": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-gmail",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_GMAIL_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_GMAIL_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_GMAIL_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_GMAIL_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_GMAIL_ENABLE_OAUTH21": "false",
+        "GOOGLE_GMAIL_SINGLE_USER_MODE": "true",
+        "GOOGLE_GMAIL_STATELESS_MODE": "false",
+        "GOOGLE_GMAIL_BASE_URI": "http://localhost",
+        "GOOGLE_GMAIL_PORT": "8001",
+        "GOOGLE_GMAIL_LOG_LEVEL": "INFO",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8001/oauth2callback"
+      }
+    },
+
+    "google-drive": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-drive",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_DRIVE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_DRIVE_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_DRIVE_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_DRIVE_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_DRIVE_PORT": "8002",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8002/oauth2callback"
+      }
+    },
+
+    "google-calendar": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-calendar",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_CALENDAR_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_CALENDAR_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_CALENDAR_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_CALENDAR_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_CALENDAR_PORT": "8003",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8003/oauth2callback"
+      }
+    },
+
+    "google-docs": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-docs",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_DOCS_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_DOCS_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_DOCS_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_DOCS_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_DOCS_PORT": "8004",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8004/oauth2callback"
+      }
+    },
+
+    "google-sheets": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-sheets",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_SHEETS_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_SHEETS_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_SHEETS_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_SHEETS_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_SHEETS_PORT": "8005",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8005/oauth2callback"
+      }
+    },
+
+    "google-slides": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-slides",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_SLIDES_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_SLIDES_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_SLIDES_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_SLIDES_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_SLIDES_PORT": "8006",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8006/oauth2callback"
+      }
+    },
+
+    "google-forms": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-forms",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_FORMS_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_FORMS_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_FORMS_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_FORMS_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_FORMS_PORT": "8007",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8007/oauth2callback"
+      }
+    },
+
+    "google-tasks": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-tasks",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_TASKS_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_TASKS_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_TASKS_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_TASKS_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_TASKS_PORT": "8008",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8008/oauth2callback"
+      }
+    },
+
+    "google-chat": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-chat",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_CHAT_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_CHAT_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_CHAT_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_CHAT_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_CHAT_PORT": "8009",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8009/oauth2callback"
+      }
+    },
+
+    "google-search": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "google-search",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_SEARCH_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "GOOGLE_SEARCH_CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "GOOGLE_SEARCH_CREDENTIALS_DIR": "/path/to/.credentials/google-workspace",
+        "GOOGLE_SEARCH_USER_EMAIL": "your-email@example.com",
+        "GOOGLE_SEARCH_PORT": "8010",
+        "GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8010/oauth2callback"
+      }
+    },
+
+    "// ============================================================": "",
+    "// MESSAGING & COMMUNICATION TOOLS": "",
+    "// WhatsApp, Discord, Slack integrations": "",
+    "// ============================================================": "",
+
+    "genie-omni": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "genie-omni",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "OMNI_API_KEY": "your_api_key_here",
+        "OMNI_BASE_URL": "http://localhost:8882",
+        "OMNI_DEFAULT_INSTANCE": "genie",
+        "OMNI_TIMEOUT": "30",
+        "OMNI_MAX_RETRIES": "3",
+        "OMNI_MODE": "agent_owned",
+        "OMNI_MEDIA_DOWNLOAD_FOLDER": "/tmp/genie-omni-media",
+        "// Security: Context Isolation (RECOMMENDED!)": "",
+        "// Set one of these to limit agent to specific contact/group": "",
+        "OMNI_MASTER_PHONE": "",
+        "OMNI_MASTER_GROUP": ""
+      }
+    },
+
+    "omni": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "omni",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "OMNI_API_KEY": "your_api_key_here",
+        "OMNI_BASE_URL": "http://localhost:8882",
+        "OMNI_DEFAULT_INSTANCE": "default",
+        "OMNI_TIMEOUT": "30",
+        "OMNI_MAX_RETRIES": "3"
+      }
+    },
+
+    "evolution-api": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "evolution-api",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "EVOLUTION_API_KEY": "your_evolution_api_key_here",
+        "EVOLUTION_API_BASE_URL": "https://api.evolution.com",
+        "EVOLUTION_API_INSTANCE": "my_whatsapp_instance",
+        "EVOLUTION_API_TIMEOUT": "30",
+        "EVOLUTION_API_MAX_RETRIES": "3",
+        "// Optional: Set a fixed recipient for security": "",
+        "EVOLUTION_API_FIXED_RECIPIENT": ""
+      }
+    },
+
+    "// ============================================================": "",
+    "// AI & AGENT ORCHESTRATION TOOLS": "",
+    "// Genie, Gemini, Automagik workflows": "",
+    "// ============================================================": "",
+
+    "genie": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "genie",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "OPENAI_API_KEY": "your_openai_api_key",
+        "GENIE_MODEL": "gpt-4.1",
+        "GENIE_MEMORY_DB": "genie_memory.db",
+        "GENIE_STORAGE_DB": "genie_storage.db",
+        "GENIE_SESSION_ID": "global_genie_session",
+        "GENIE_HISTORY_RUNS": "3",
+        "GENIE_SHOW_TOOL_CALLS": "true",
+        "// MCP Server Management": "",
+        "GENIE_MCP_CLEANUP_TIMEOUT": "2.0",
+        "GENIE_SSE_CLEANUP_DELAY": "0.2",
+        "GENIE_AGGRESSIVE_CLEANUP": "true",
+        "// Configure MCP servers for Genie to orchestrate": "",
+        "// Example: GENIE_MCP_CONFIGS": "{\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/tmp\"]}}"
+      }
+    },
+
+    "gemini-assistant": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "gemini-assistant",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GEMINI_API_KEY": "your_gemini_api_key_here",
+        "GEMINI_MODEL": "gemini-2.0-flash-exp",
+        "GEMINI_SESSION_TIMEOUT": "3600",
+        "GEMINI_MAX_TOKENS": "8192",
+        "GEMINI_TEMPERATURE": "0.7",
+        "GEMINI_MAX_SESSIONS": "10"
+      }
+    },
+
+    "automagik": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "automagik",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "AUTOMAGIK_API_KEY": "your-api-key-here",
+        "AUTOMAGIK_BASE_URL": "http://localhost:8881",
+        "AUTOMAGIK_TIMEOUT": "30",
+        "AUTOMAGIK_ENABLE_MARKDOWN": "true",
+        "AUTOMAGIK_OPENAPI_URL": "http://localhost:8881/api/v1/openapi.json"
+      }
+    },
+
+    "spark": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "spark",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "SPARK_API_KEY": "your_api_key_here",
+        "SPARK_BASE_URL": "http://localhost:8883",
+        "SPARK_TIMEOUT": "30",
+        "SPARK_MAX_RETRIES": "3"
+      }
+    },
+
+    "// ============================================================": "",
+    "// UTILITY & HELPER TOOLS": "",
+    "// Wait, Hive testing, JSON conversion": "",
+    "// ============================================================": "",
+
+    "wait": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "wait",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "WAIT_MAX_DURATION": "3600",
+        "WAIT_DEFAULT_PROGRESS_INTERVAL": "1.0"
+      }
+    },
+
+    "automagik-hive": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "automagik-hive",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "HIVE_API_BASE_URL": "http://localhost:8886",
+        "HIVE_API_KEY": "",
+        "HIVE_TIMEOUT": "30"
+      }
+    },
+
+    "json-to-google-docs": {
+      "command": "uvx",
+      "args": [
+        "automagik-tools@latest",
+        "tool",
+        "json-to-google-docs",
+        "--transport",
+        "stdio"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["call_tool"],
+      "env": {
+        "GOOGLE_DOCS_SERVICE_ACCOUNT_JSON": "/path/to/service-account.json",
+        "// Or use JSON content directly": "",
+        "GOOGLE_DOCS_SERVICE_ACCOUNT_JSON_CONTENT": "",
+        "GOOGLE_DOCS_DEFAULT_FOLDER_ID": "",
+        "GOOGLE_DOCS_ENABLE_MARKDOWN_CONVERSION": "true",
+        "GOOGLE_DOCS_DEFAULT_SHARE_TYPE": "reader",
+        "GOOGLE_DOCS_TIMEOUT": "300"
+      }
+    },
+
+    "// ============================================================": "",
+    "// EXTERNAL MCP SERVERS": "",
+    "// Third-party integrations": "",
+    "// ============================================================": "",
+
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "your_context7_api_key"
+      }
+    },
+
+    "posthog": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp.posthog.com/sse",
+        "--header",
+        "Authorization:${POSTHOG_AUTH_HEADER}"
+      ],
+      "env": {
+        "POSTHOG_AUTH_HEADER": "Bearer your_posthog_api_key"
+      }
+    },
+
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+
+    "forge": {
+      "command": "npx",
+      "args": ["-y", "automagik-forge@latest", "--mcp"]
+    },
+
+    "elevenlabs": {
+      "command": "uvx",
+      "args": ["elevenlabs-mcp"],
+      "env": {
+        "ELEVENLABS_API_KEY": "your_elevenlabs_api_key"
+      }
+    }
+  }
+}
