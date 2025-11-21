@@ -818,7 +818,7 @@ class OmniClient:
 
                 # Add media (URL or base64)
                 if media_base64:
-                    payload["mediaBase64"] = media_base64
+                    payload["media"] = media_base64  # Evolution API uses "media" for both URL and base64
                     if filename:
                         payload["fileName"] = filename
                 elif media_url:
