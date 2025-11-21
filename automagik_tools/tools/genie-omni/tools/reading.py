@@ -21,6 +21,27 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         client = get_client()
 
         try:
+            # Load contacts cache for name/phone lookup
+            contacts_cache = {}
+            try:
+                contacts_response = await client.list_contacts(instance_name, page_size=500)
+                for contact in contacts_response.contacts:
+                    contact_data = {
+                        "name": contact.name or contact.push_name or "Unknown",
+                        "phone": contact.phone
+                    }
+                    # Cache by phone number
+                    if contact.phone:
+                        # Clean phone (remove @s.whatsapp.net suffix if present)
+                        clean_phone = contact.phone.split("@")[0] if "@" in contact.phone else contact.phone
+                        contacts_cache[clean_phone] = contact_data
+                    # Also cache by contact_id (might be LID)
+                    if hasattr(contact, 'contact_id') and contact.contact_id:
+                        clean_id = contact.contact_id.split("@")[0] if "@" in contact.contact_id else contact.contact_id
+                        contacts_cache[clean_id] = contact_data
+            except Exception as e:
+                logger.warning(f"Failed to load contacts cache: {e}")
+
             # Use Evolution API directly for message history (Omni traces don't support groups)
             response = await client.evolution_find_messages(instance_name, from_phone, limit=limit)
 
@@ -82,8 +103,20 @@ def register_tools(mcp: FastMCP, get_client: Callable):
                 if phone_number and "@" in phone_number:
                     phone_number = phone_number.split("@")[0]
 
-                # Format sender - show phone number instead of name
-                sender_label = "You" if from_me else phone_number
+                # Lookup in contacts cache
+                if from_me:
+                    sender_label = "You"
+                else:
+                    contact_info = contacts_cache.get(phone_number)
+                    if contact_info and contact_info["phone"]:
+                        # Show: Name (phone)
+                        sender_label = f"{contact_info['name']} ({contact_info['phone']})"
+                    elif contact_info:
+                        # Has name but no phone - show: Name (LID)
+                        sender_label = f"{contact_info['name']} ({phone_number})"
+                    else:
+                        # Not in contacts - show: pushName (LID/phone)
+                        sender_label = f"{sender_name} ({phone_number})"
                 message_id = key.get("id", "?")
 
                 # Build compact message line
