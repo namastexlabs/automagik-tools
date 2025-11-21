@@ -129,28 +129,21 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                         else:
                             detected_media_type = "document"
 
-                # Build request with all parameters
-                request_data = {
-                    "phone": to,
-                    "caption": message,
-                    "media_type": detected_media_type,
-                    "quoted_message_id": quoted_message_id,
-                    "delay": delay,
-                }
-
-                # Add media_url OR media_base64
-                if media_base64_data:
-                    request_data["media_base64"] = media_base64_data
-                    request_data["filename"] = Path(media_url).name
-                else:
-                    request_data["media_url"] = actual_media_url
-
-                # Add mime_type if provided or detected
-                if detected_mime:
-                    request_data["mime_type"] = detected_mime
-
-                request = SendMediaRequest(**request_data)
-                response = await client.send_media(instance_name, request)
+                # Use Evolution API directly for media (supports all features)
+                response_data = await client.evolution_send_media(
+                    instance_name=instance_name,
+                    remote_jid=to,
+                    media_url=actual_media_url,
+                    media_base64=media_base64_data,
+                    media_type=detected_media_type,
+                    caption=message,
+                    filename=Path(media_url).name if media_base64_data else None,
+                    mime_type=detected_mime,
+                    quoted_message_id=quoted_message_id,
+                    delay=delay
+                )
+                message_id = response_data.get('key', {}).get('id', 'Unknown')
+                return f"✅ Media sent to {to}\nMessage ID: {message_id}"
             elif message_type == "audio":
                 if not audio_url:
                     return "❌ Error: audio_url required for audio messages"
