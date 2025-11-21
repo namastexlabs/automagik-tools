@@ -78,6 +78,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                 import base64
                 from pathlib import Path
                 import mimetypes
+                from urllib.parse import urlparse
 
                 detected_mime = mime_type
                 detected_media_type = media_type or "image"
@@ -110,8 +111,23 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     except Exception as e:
                         return f"❌ Error reading file {media_url}: {str(e)}"
                 else:
-                    # It's a URL
+                    # It's a URL - try to detect mime_type from URL path
                     actual_media_url = media_url
+
+                    # Auto-detect mime type from URL if not provided
+                    if not detected_mime:
+                        parsed_url = urlparse(media_url)
+                        url_path = parsed_url.path
+                        detected_mime, _ = mimetypes.guess_type(url_path)
+
+                    # Auto-detect media_type from mime_type for URLs too
+                    if not media_type and detected_mime:
+                        if detected_mime.startswith("image/"):
+                            detected_media_type = "image"
+                        elif detected_mime.startswith("video/"):
+                            detected_media_type = "video"
+                        else:
+                            detected_media_type = "document"
 
                 # Build request with all parameters
                 request_data = {
@@ -203,9 +219,9 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def react_with(
-        emoji: str, to_message_id: str, phone: str, instance_name: str = "genie"
+        emoji: str, to_message_id: str, phone: str, instance_name: str = "genie", from_me: bool = True
 ) -> str:
-        """React to message with emoji. Args: emoji, to_message_id, phone, instance_name. Returns: confirmation."""
+        """React to message with emoji. Args: emoji, to_message_id, phone, instance_name, from_me (default: True). Returns: confirmation."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(phone)
@@ -227,7 +243,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                 remote_jid=phone,
                 message_id=to_message_id,
                 emoji=emoji,
-                from_me=False  # Reacting to messages from others
+                from_me=from_me
             )
 
             return f"✅ Reacted with {emoji} to message {to_message_id}"
