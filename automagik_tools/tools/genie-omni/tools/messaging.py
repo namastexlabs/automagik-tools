@@ -231,7 +231,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
         try:
             # Auto-detect from_me by checking message in Evolution API
-            from ...omni.client import normalize_jid
+            from ..client import normalize_jid
             remote_jid = normalize_jid(phone)
 
             # Fetch messages to find the target message
