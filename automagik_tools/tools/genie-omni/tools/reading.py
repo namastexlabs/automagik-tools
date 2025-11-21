@@ -67,8 +67,14 @@ def register_tools(mcp: FastMCP, get_client: Callable):
                     context_info = ext_msg.get("contextInfo", {})
                     mentions = context_info.get("mentionedJid", [])
 
-                # Format sender
-                sender_label = "You" if from_me else sender_name
+                # Extract phone number: for groups, use participant; for DMs, use remoteJid
+                phone_number = key.get("participant") or key.get("remoteJid") or "Unknown"
+                # Clean phone number (remove @s.whatsapp.net or @lid suffix)
+                if "@" in phone_number:
+                    phone_number = phone_number.split("@")[0]
+
+                # Format sender - show phone number instead of name
+                sender_label = "You" if from_me else phone_number
                 message_id = key.get("id", "?")
 
                 # Build compact message line
