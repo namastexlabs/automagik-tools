@@ -454,7 +454,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def get_group_members(group_jid: str, instance_name: str = "genie") -> str:
-        """Get members of a WhatsApp group. Args: group_jid (from list_all_groups), instance_name. Returns: members with roles (admin/super admin)."""
+        """Get members of a WhatsApp group with real phone numbers. Args: group_jid (from list_all_groups), instance_name. Returns: members with roles, LID, and real phone numbers."""
         client = get_client()
 
         try:
@@ -474,9 +474,15 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
             for participant in participants:
                 # Extract participant info
-                user_id = participant.get("id") or participant.get("jid") or "Unknown"
-                is_admin = participant.get("admin") or participant.get("isAdmin", False)
-                is_super_admin = participant.get("isSuperAdmin", False)
+                lid = participant.get("id", "Unknown")
+                phone = participant.get("phoneNumber", "Unknown")
+                name = participant.get("name", "")
+                is_admin = participant.get("admin") == "admin"
+                is_super_admin = participant.get("admin") == "superadmin"
+
+                # Clean phone number (remove @s.whatsapp.net suffix)
+                if phone and "@" in phone:
+                    phone = phone.split("@")[0]
 
                 # Determine role
                 if is_super_admin:
@@ -486,7 +492,15 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                 else:
                     role = "👤 Member"
 
-                result.append(f"{role} {user_id}")
+                # Format output with real phone number
+                if name:
+                    result.append(f"{role} {name}")
+                    result.append(f"  LID: {lid}")
+                    result.append(f"  Phone: {phone}")
+                else:
+                    result.append(f"{role} LID: {lid}")
+                    result.append(f"  Phone: {phone}")
+                result.append("")
 
             return "\n".join(result)
 
