@@ -789,6 +789,75 @@ class OmniClient:
                 logger.error(f"Evolution API request failed: {str(e)}")
                 raise
 
+    async def evolution_send_media(
+        self, instance_name: str, remote_jid: str,
+        media_url: Optional[str] = None, media_base64: Optional[str] = None,
+        media_type: str = "image", caption: Optional[str] = None,
+        filename: Optional[str] = None, mime_type: Optional[str] = None,
+        quoted_message_id: Optional[str] = None, delay: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Send media (image/video/document) via Evolution API directly
+
+        Supports both URL and base64 media.
+        """
+        remote_jid = normalize_jid(remote_jid)
+        instance = await self.get_instance(instance_name, include_status=False)
+
+        if not instance.evolution_url or not instance.evolution_key:
+            raise Exception("Evolution API not configured for this instance")
+
+        if not media_url and not media_base64:
+            raise Exception("Either media_url or media_base64 must be provided")
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                payload: Dict[str, Any] = {
+                    "number": remote_jid
+                }
+
+                # Add media (URL or base64)
+                if media_base64:
+                    payload["mediaBase64"] = media_base64
+                    if filename:
+                        payload["fileName"] = filename
+                elif media_url:
+                    payload["media"] = media_url
+
+                # Add optional fields
+                if caption:
+                    payload["caption"] = caption
+                if mime_type:
+                    payload["mimetype"] = mime_type
+                if delay:
+                    payload["delay"] = delay
+                if quoted_message_id:
+                    payload["quoted"] = {"key": {"id": quoted_message_id}}
+
+                # Determine endpoint based on media type
+                endpoint_map = {
+                    "image": "sendMedia",
+                    "video": "sendMedia",
+                    "document": "sendMedia"
+                }
+                endpoint = endpoint_map.get(media_type, "sendMedia")
+
+                response = await client.post(
+                    f"{instance.evolution_url}/message/{endpoint}/{instance_name}",
+                    headers={
+                        "apikey": instance.evolution_key,
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Evolution API error {e.response.status_code}: {e.response.text}")
+                raise Exception(f"Evolution API error: {e.response.status_code} - {e.response.text}")
+            except Exception as e:
+                logger.error(f"Evolution API request failed: {str(e)}")
+                raise
+
     async def evolution_send_contact(
         self, instance_name: str, remote_jid: str, contacts: List[Dict[str, Any]],
         quoted_message_id: Optional[str] = None, delay: Optional[int] = None
