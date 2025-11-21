@@ -51,6 +51,7 @@ dependencies = [
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.2",
     "pyjwt>=2.10.1",
+    "pydub>=0.25.1",
 ]
 
 [project.optional-dependencies]
