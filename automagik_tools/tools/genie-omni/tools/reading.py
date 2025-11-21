@@ -68,9 +68,18 @@ def register_tools(mcp: FastMCP, get_client: Callable):
                     mentions = context_info.get("mentionedJid", [])
 
                 # Extract phone number: for groups, use participant; for DMs, use remoteJid
-                phone_number = key.get("participant") or key.get("remoteJid") or "Unknown"
+                # Priority: participant (group member) > remoteJid (DM or group ID)
+                phone_number = key.get("participant")
+                if not phone_number:
+                    remote_jid = key.get("remoteJid", "")
+                    # Don't use group ID as phone number (groups end with @g.us)
+                    if not remote_jid.endswith("@g.us"):
+                        phone_number = remote_jid
+                    else:
+                        phone_number = "Unknown"
+
                 # Clean phone number (remove @s.whatsapp.net or @lid suffix)
-                if "@" in phone_number:
+                if phone_number and "@" in phone_number:
                     phone_number = phone_number.split("@")[0]
 
                 # Format sender - show phone number instead of name
