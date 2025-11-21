@@ -30,37 +30,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         delay: Optional[int] = None,
         split_message: Optional[bool] = None,
 ) -> str:
-        """
-        Send a WhatsApp message to someone.
-
-        This is YOUR primary way to communicate with humans via WhatsApp.
-
-        Use this when you need to:
-        - Reply to someone
-        - Start a conversation
-        - Send information proactively
-
-        Args:
-            to: Phone number with country code (e.g., "5511999999999") or contact ID
-            message: Text message to send (or caption for media)
-            instance_name: Your WhatsApp instance (default: "genie")
-            message_type: Type of message (text/media/audio, default: text)
-            media_url: URL or local file path for media (if sending media)
-            media_type: Type of media (image/video/document, default: image if not specified)
-            mime_type: MIME type for media (e.g., "image/png", "video/mp4", auto-detected for local files)
-            audio_url: URL or local file path for audio (if sending audio)
-            quoted_message_id: Message ID to quote/reply to (optional)
-            delay: Delay in milliseconds before sending (optional)
-            split_message: Whether to split long messages on \\n\\n (optional, uses instance config by default)
-
-        Returns:
-            Confirmation that message was sent with message ID
-
-        Examples:
-            send_whatsapp(to="5511999999999", message="Hello!")
-            send_whatsapp(to="5511999999999", message="Check this out", message_type="media", media_url="https://...")
-            send_whatsapp(to="5511999999999", message="Replying to you!", quoted_message_id="ABC123")
-        """
+        """Send WhatsApp message (text/media/audio). Args: to (phone or contact ID), message (text or caption), instance_name, message_type, media_url, media_type, mime_type, audio_url, quoted_message_id, delay, split_message. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(to)
@@ -235,26 +205,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     async def react_with(
         emoji: str, to_message_id: str, phone: str, instance_name: str = "genie"
 ) -> str:
-        """
-        React to a WhatsApp message with an emoji.
-
-        Use this when you need to:
-        - Acknowledge a message quickly
-        - Show emotion/reaction
-        - Respond non-verbally
-
-        Args:
-            emoji: Emoji to react with (e.g., "👍", "❤️", "😂")
-            to_message_id: ID of the message to react to
-            phone: Phone number of the conversation
-            instance_name: Your WhatsApp instance (default: "genie")
-
-        Returns:
-            Confirmation that reaction was sent
-
-        Example:
-            react_with(emoji="👍", to_message_id="ABC123", phone="5511999999999")
-        """
+        """React to message with emoji. Args: emoji, to_message_id, phone, instance_name. Returns: confirmation."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(phone)
@@ -294,27 +245,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         quoted_message_id: Optional[str] = None,
         delay: Optional[int] = None,
 ) -> str:
-        """
-        Send a WhatsApp sticker to someone.
-
-        Use this when you need to:
-        - Send a sticker (fun, expressive communication)
-        - React visually to a message
-        - Add personality to your messages
-
-        Args:
-            to: Phone number with country code (e.g., "5511999999999") or contact ID
-            sticker_url: URL of the sticker file (WebP format recommended)
-            instance_name: Your WhatsApp instance (default: "genie")
-            quoted_message_id: Message ID to quote/reply to (optional)
-            delay: Delay in milliseconds before sending (optional)
-
-        Returns:
-            Confirmation that sticker was sent with message ID
-
-        Example:
-            send_sticker(to="5511999999999", sticker_url="https://example.com/sticker.webp")
-        """
+        """Send WhatsApp sticker. Args: to, sticker_url, instance_name, quoted_message_id, delay. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(to)
@@ -351,45 +282,13 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     @mcp.tool()
     async def send_contact(
         to: str,
-        contacts: List[Dict[str, Any]],
+        contacts: Optional[List[Dict[str, Any]]] = None,
+        contact_name: Optional[str] = None,
         instance_name: str = "genie",
         quoted_message_id: Optional[str] = None,
         delay: Optional[int] = None,
 ) -> str:
-        """
-        Send WhatsApp contact(s) (vCard) to someone.
-
-        Use this when you need to:
-        - Share someone's contact information
-        - Send business contacts
-        - Share multiple contacts at once
-
-        Args:
-            to: Phone number with country code (e.g., "5511999999999") or contact ID
-            contacts: List of contact dictionaries with fields:
-                     - full_name (required): Contact's full name
-                     - phone_number (optional): Contact's phone number
-                     - email (optional): Contact's email
-                     - organization (optional): Contact's company/org
-                     - url (optional): Contact's website
-            instance_name: Your WhatsApp instance (default: "genie")
-            quoted_message_id: Message ID to quote/reply to (optional)
-            delay: Delay in milliseconds before sending (optional)
-
-        Returns:
-            Confirmation that contact(s) were sent with message ID
-
-        Example:
-            send_contact(
-                to="5511999999999",
-                contacts=[{
-                    "full_name": "John Doe",
-                    "phone_number": "5511888888888",
-                    "email": "john@example.com",
-                    "organization": "Example Corp"
-                }]
-            )
-        """
+        """Send vCard contact. Use contacts= for custom data OR contact_name= to send saved contact by name. Args: to, contacts (list of dicts: full_name, phone_number, email, organization, url), contact_name (search saved contacts), instance_name, quoted_message_id, delay. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(to)
@@ -405,6 +304,57 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         client = get_client()
 
         try:
+            # If contact_name is provided, search for the contact first
+            if contact_name:
+                import sqlite3
+                import os
+                from thefuzz import fuzz
+                import unicodedata
+
+                def _normalize(text: str) -> str:
+                    if not text:
+                        return ""
+                    text = unicodedata.normalize('NFD', text)
+                    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+                    return text.lower().strip()
+
+                # Search local contacts database
+                db_path = os.getenv("AUTOMAGIK_OMNI_SQLITE_DATABASE_PATH", "/home/namastex/data/automagik-omni.db")
+                db = sqlite3.connect(db_path)
+                cursor = db.cursor()
+                cursor.execute("SELECT phone_number, name, nickname FROM contacts")
+
+                best_match = None
+                best_score = 0
+                normalized_search = _normalize(contact_name)
+
+                for phone, name, nickname in cursor.fetchall():
+                    norm_name = _normalize(name)
+                    norm_nickname = _normalize(nickname) if nickname else ""
+
+                    name_score = fuzz.partial_ratio(normalized_search, norm_name)
+                    nickname_score = fuzz.partial_ratio(normalized_search, norm_nickname) if norm_nickname else 0
+                    score = max(name_score, nickname_score)
+
+                    if score > best_score:
+                        best_score = score
+                        best_match = {"phone_number": phone, "name": name}
+
+                db.close()
+
+                if not best_match or best_score < 60:
+                    return f"❌ No contact found matching '{contact_name}'"
+
+                # Build contacts list from found contact
+                contacts = [{
+                    "full_name": best_match["name"],
+                    "phone_number": best_match["phone_number"]
+                }]
+
+            elif not contacts:
+                return "❌ Must provide either 'contacts' or 'contact_name' parameter"
+
+            # Continue with normal send logic
             # Use Evolution API directly to get proper message IDs
             response_data = await client.evolution_send_contact(
                 instance_name=instance_name,
@@ -435,34 +385,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         name: Optional[str] = None,
         address: Optional[str] = None,
 ) -> str:
-        """
-        Send a location to someone via WhatsApp.
-
-        Use this when you need to:
-        - Share a specific location (restaurant, office, meeting point)
-        - Send coordinates for navigation
-        - Show where something is located
-
-        Args:
-            to: Phone number with country code (e.g., "5511999999999") or contact ID
-            latitude: Location latitude (e.g., -23.550520)
-            longitude: Location longitude (e.g., -46.633308)
-            instance_name: Your WhatsApp instance (default: "genie")
-            name: Optional location name (e.g., "Paulista Avenue")
-            address: Optional address text (e.g., "Av. Paulista, 1578 - São Paulo")
-
-        Returns:
-            Confirmation that location was sent with message ID
-
-        Example:
-            send_location(
-                to="5511999999999",
-                latitude=-23.550520,
-                longitude=-46.633308,
-                name="Paulista Avenue",
-                address="Av. Paulista, 1578 - São Paulo, SP"
-            )
-        """
+        """Send location. Args: to, latitude, longitude, instance_name, name, address. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(to)
@@ -506,33 +429,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         instance_name: str = "genie",
         from_me: bool = True,
 ) -> str:
-        """
-        Delete a WhatsApp message for everyone.
-
-        Use this when you need to:
-        - Remove a message you sent (within allowed time window)
-        - Correct a mistake immediately
-        - Retract something sent by accident
-
-        IMPORTANT: Only works for messages sent FROM you (from_me=True).
-        Messages from others cannot be deleted.
-        WhatsApp has time limits for deletion (~48 hours).
-
-        Args:
-            message_id: ID of the message to delete
-            phone: Phone number of the conversation (e.g., "5511999999999")
-            instance_name: Your WhatsApp instance (default: "genie")
-            from_me: Whether the message is from you (default: True)
-
-        Returns:
-            Confirmation that message was deleted
-
-        Example:
-            delete_message(
-                message_id="3EB0C1234567890ABCDEF",
-                phone="5511999999999"
-            )
-        """
+        """Delete message for everyone. Only works for messages from you (from_me=True), within ~48 hour window. Args: message_id, phone, instance_name, from_me. Returns: confirmation."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(phone)

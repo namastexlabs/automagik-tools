@@ -16,17 +16,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
     @mcp.tool()
     async def my_connections() -> str:
-        """
-        List all your WhatsApp connections (instances).
-
-        Use this when you need to:
-        - See available WhatsApp numbers
-        - Check connection status
-        - Switch between numbers
-
-        Returns:
-            List of your WhatsApp instances with status
-        """
+        """List WhatsApp instances. Returns: all instances with status."""
         client = get_client()
 
         try:
@@ -57,20 +47,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
     @mcp.tool()
     async def connection_status(instance_name: str = "genie") -> str:
-        """
-        Check connection status for a specific WhatsApp instance.
-
-        Use this when you need to:
-        - Verify you're connected
-        - Troubleshoot connection issues
-        - Check QR code status
-
-        Args:
-            instance_name: Your WhatsApp instance (default: "genie")
-
-        Returns:
-            Detailed connection status
-        """
+        """Check WhatsApp instance connection status. Args: instance_name. Returns: detailed status."""
         client = get_client()
 
         try:

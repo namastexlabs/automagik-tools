@@ -30,69 +30,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         mentioned: Optional[list] = None,
         mentions_every_one: bool = False,
     ) -> str:
-        """Talk to someone via WhatsApp - generate speech and send automatically.
-
-        This is YOUR voice assistant mode - speak naturally to contacts via WhatsApp.
-        Combines speech generation + automatic WhatsApp delivery with presence.
-
-        🎙️ HOW IT WORKS:
-        1. Generates natural speech from your text using ElevenLabs
-        2. Shows "recording" presence on WhatsApp
-        3. Automatically sends the audio message
-        4. All in one seamless action!
-
-        🎭 AUDIO TAGS (Eleven v3):
-        Use square brackets to add expression:
-        - Emotions: [happy], [sad], [excited], [angry], [whispers], [sarcastic]
-        - Sounds: [laughs], [sighs], [clears throat], [exhales]
-        - Delivery: [strong French accent], [singing], [mischievously]
-
-        📝 PROMPTING TIPS:
-        - Use CAPS for emphasis: "That was VERY funny"
-        - Add punctuation for rhythm: "Well... [sighs] I don't know"
-        - Combine tags: "[laughing] That's amazing! [excited]"
-
-        Args:
-            to: Phone number to send to (e.g., "5511999999999" or contact ID)
-            text: What you want to say (supports audio tags in [brackets])
-                 Example: "[excited] I can't believe it! [laughs]"
-            voice_id: Voice to use (default: from XI_VOICE_ID env var)
-                     Choose voices with emotional range for best results
-            model_id: TTS model (default: eleven_v3 - Eleven v3 alpha)
-                     Most expressive model with 70+ language support
-            stability: Voice delivery style 0-1 (default: 0.5 - Natural)
-                      0.0-0.3 = Creative (very expressive, responds to tags)
-                      0.4-0.6 = Natural (balanced, good tag response)
-                      0.7-1.0 = Robust (stable, less responsive to tags)
-            similarity_boost: Voice clarity 0-1 (default: 0.75)
-                             Higher = closer to original voice
-            instance_name: WhatsApp instance (default: "genie")
-            quoted_message_id: Message ID to reply to (optional)
-            delay: Delay in milliseconds before sending (optional)
-            mentioned: List of phone numbers to mention (optional)
-            mentions_every_one: Whether to mention everyone in group (default: False)
-
-        Returns:
-            Confirmation of speech generation and WhatsApp delivery
-
-        Examples:
-            # Simple voice message
-            talk(to="5511999999999", text="Hey! Just wanted to say hi!")
-
-            # Expressive delivery
-            talk(
-                to="5511999999999",
-                text="[excited] You won't BELIEVE what just happened! [laughs]",
-                stability=0.3  # More expressive
-            )
-
-            # Professional message
-            talk(
-                to="group_id",
-                text="Good morning team. Here's today's update.",
-                stability=0.7  # More stable
-            )
-        """
+        """Generate speech and send as WhatsApp voice message. Supports audio tags [happy], [laughs], etc. Shows "recording" presence automatically. Args: to, text (supports [tags]), voice_id, model_id (default: eleven_v3), stability (0-1, default 0.5), similarity_boost (0-1, default 0.75), instance_name, quoted_message_id, delay, mentioned, mentions_every_one. Returns: confirmation with delivery status."""
         config = get_config()
         client = get_client()
 
