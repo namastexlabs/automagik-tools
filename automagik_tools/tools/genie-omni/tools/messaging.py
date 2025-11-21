@@ -212,9 +212,9 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def react_with(
-        emoji: str, to_message_id: str, phone: str, instance_name: str = "genie", from_me: bool = True
+        emoji: str, to_message_id: str, phone: str, instance_name: str = "genie"
 ) -> str:
-        """React to message with emoji. Args: emoji, to_message_id, phone, instance_name, from_me (default: True). Returns: confirmation."""
+        """React to message with emoji (auto-detects sender). Args: emoji, to_message_id, phone, instance_name. Returns: confirmation."""
         # Safety check: validate recipient against master context
         config = get_config()
         is_allowed, validation_message = config.validate_recipient(phone)
@@ -230,6 +230,26 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         client = get_client()
 
         try:
+            # Auto-detect from_me by checking message in Evolution API
+            from ...omni.client import normalize_jid
+            remote_jid = normalize_jid(phone)
+
+            # Fetch messages to find the target message
+            messages_response = await client.evolution_find_messages(
+                instance_name=instance_name,
+                remote_jid=remote_jid,
+                limit=100  # Check last 100 messages
+            )
+
+            # Find the message and check if it's from me
+            from_me = True  # Default to True if not found
+            if isinstance(messages_response, list):
+                for msg in messages_response:
+                    msg_key = msg.get("key", {})
+                    if msg_key.get("id") == to_message_id:
+                        from_me = msg_key.get("fromMe", True)
+                        break
+
             # Use Evolution API directly for reactions (Omni doesn't support it properly)
             response = await client.evolution_send_reaction(
                 instance_name=instance_name,
