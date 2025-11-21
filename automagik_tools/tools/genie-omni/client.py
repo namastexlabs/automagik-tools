@@ -812,7 +812,8 @@ class OmniClient:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 payload: Dict[str, Any] = {
-                    "number": remote_jid
+                    "number": remote_jid,
+                    "mediatype": media_type  # Required: image, video, or document
                 }
 
                 # Add media (URL or base64)
