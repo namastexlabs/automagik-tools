@@ -147,7 +147,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     headers=headers,
                     json=body,
                     params=params,
-                    timeout=30.0,
+                    timeout=60.0,
                 )
 
                 if response.status_code != 200:
