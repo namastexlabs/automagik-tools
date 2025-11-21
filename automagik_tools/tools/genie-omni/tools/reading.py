@@ -12,25 +12,12 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
     @mcp.tool()
     async def read_messages(
-        from_phone: str, instance_name: str = "genie", limit: int = 50
+        from_phone: str,
+        instance_name: str = "genie",
+        limit: int = 50,
+        before_message_id: str = None
     ) -> str:
-        """
-        Read messages from a specific person or conversation.
-
-        Use this when you need to:
-        - See what someone said to me
-        - Get context for a conversation
-        - Check message history
-
-        Args:
-            from_phone: Phone number (e.g., "5511999999999") or group ID (e.g., "120363xxx")
-                       Auto-detects format - no need for @s.whatsapp.net or @g.us
-            instance_name: Your WhatsApp instance (default: "genie")
-            limit: Maximum messages to return (default: 50)
-
-        Returns:
-            Recent messages from that person, newest first
-        """
+        """Read messages from person or conversation. Args: from_phone (number or group ID), instance_name, limit, before_message_id (for pagination). Returns: messages newest first, with pagination info."""
         client = get_client()
 
         try:
@@ -46,7 +33,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
             if not records:
                 return f"📱 No messages found from {from_phone}"
 
-            result = [f"📱 MESSAGES FROM {from_phone} ({total} total, showing {len(records)})"]
+            result = [f"📱 MESSAGES: {from_phone} ({total} total, showing {len(records)})"]
             result.append("")
 
             for msg in records:
@@ -62,32 +49,39 @@ def register_tools(mcp: FastMCP, get_client: Callable):
                     dt = datetime.fromtimestamp(timestamp)
                     time_str = dt.strftime("%Y-%m-%d %H:%M")
                 else:
-                    time_str = "Unknown"
+                    time_str = "?"
 
                 # Get message content
                 msg_type = msg.get("messageType", "unknown")
                 message_content = msg.get("message", {})
 
-                # Extract text content
+                # Extract text content and mentions
                 text = ""
+                mentions = []
                 if "conversation" in message_content:
                     text = message_content["conversation"]
                 elif "extendedTextMessage" in message_content:
-                    text = message_content["extendedTextMessage"].get("text", "")
+                    ext_msg = message_content["extendedTextMessage"]
+                    text = ext_msg.get("text", "")
+                    # Check for mentions in contextInfo
+                    context_info = ext_msg.get("contextInfo", {})
+                    mentions = context_info.get("mentionedJid", [])
 
                 # Format sender
                 sender_label = "You" if from_me else sender_name
+                message_id = key.get("id", "?")
 
-                # Get message ID
-                message_id = key.get("id", "Unknown")
+                # Build compact message line
+                type_tag = f"[{msg_type}]" if msg_type != "conversation" else ""
+                mention_tag = f" @{len(mentions)}" if mentions else ""
+                result.append(f"[{time_str}] {sender_label}{mention_tag} {type_tag}")
 
-                result.append(f"[{time_str}] {sender_label}")
-                result.append(f"  ID: {message_id}")
-                result.append(f"  Type: {msg_type}")
                 if text:
                     # Truncate long messages
                     display_text = text[:100] + "..." if len(text) > 100 else text
-                    result.append(f"  Message: {display_text}")
+                    result.append(f"  {display_text}")
+
+                result.append(f"  ID: {message_id}")
                 result.append("")
 
             return "\n".join(result)
@@ -100,22 +94,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
     async def check_new_messages(
         instance_name: str = "genie", hours: int = 24, limit: int = 50
     ) -> str:
-        """
-        Check for new messages I've received recently.
-
-        Use this when you need to:
-        - See what's new
-        - Check for incoming messages
-        - Stay updated on conversations
-
-        Args:
-            instance_name: Your WhatsApp instance (default: "genie")
-            hours: Look back this many hours (default: 24)
-            limit: Maximum messages to show (default: 50)
-
-        Returns:
-            Recent messages received, grouped by sender
-        """
+        """Check recent incoming messages. Args: instance_name, hours (lookback), limit. Returns: messages grouped by sender."""
         client = get_client()
 
         try:
@@ -134,8 +113,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
             if not traces:
                 return f"📱 No new messages in the last {hours} hours"
 
-            result = [f"📱 NEW MESSAGES (last {hours} hours)"]
-            result.append(f"Found {len(traces)} messages")
+            result = [f"📱 NEW MESSAGES ({len(traces)} in last {hours}h)"]
             result.append("")
 
             # Group by sender
@@ -147,14 +125,13 @@ def register_tools(mcp: FastMCP, get_client: Callable):
                 by_sender[sender].append(trace)
 
             for sender, msgs in by_sender.items():
-                result.append(f"👤 {sender} ({len(msgs)} messages)")
+                result.append(f"👤 {sender} ({len(msgs)})")
                 for msg in msgs[:3]:  # Show max 3 per sender
-                    timestamp = (
-                        msg.received_at.strftime("%H:%M") if msg.received_at else "??"
-                    )
-                    result.append(f"  [{timestamp}] {msg.message_type or 'unknown'}")
+                    timestamp = msg.received_at.strftime("%H:%M") if msg.received_at else "?"
+                    msg_type = msg.message_type or "?"
+                    result.append(f"  [{timestamp}] {msg_type}")
                 if len(msgs) > 3:
-                    result.append(f"  ... and {len(msgs) - 3} more")
+                    result.append(f"  +{len(msgs) - 3} more")
                 result.append("")
 
             return "\n".join(result)

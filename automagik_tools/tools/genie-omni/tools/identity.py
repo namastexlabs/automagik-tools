@@ -12,20 +12,7 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
     @mcp.tool()
     async def my_whatsapp_info(instance_name: str = "genie") -> str:
-        """
-        Get MY WhatsApp identity and connection status.
-
-        Use this when you need to know:
-        - What's my WhatsApp number?
-        - Am I connected?
-        - What's my profile info?
-
-        Args:
-            instance_name: Your WhatsApp instance name (default: "genie" - your personal number)
-
-        Returns:
-            Your WhatsApp identity including number, status, and profile info
-        """
+        """Get WhatsApp identity and connection status. Args: instance_name. Returns: number, status, profile info."""
         client = get_client()
 
         try:

@@ -1,12 +1,31 @@
 """Discovery tools - Find and download information."""
 
 import logging
+import sqlite3
+import os
+import unicodedata
 from typing import Callable, Optional
 from pathlib import Path
 import base64
 from fastmcp import FastMCP
+from thefuzz import fuzz
 
 logger = logging.getLogger(__name__)
+
+def _get_db_path() -> str:
+    """Get the SQLite database path from environment."""
+    db_path = os.getenv("AUTOMAGIK_OMNI_SQLITE_DATABASE_PATH", "/home/namastex/data/automagik-omni.db")
+    return db_path
+
+def _normalize_search(text: str) -> str:
+    """Normalize search text: lowercase, remove accents, strip spaces."""
+    if not text:
+        return ""
+    # Remove accents
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+    # Lowercase and strip
+    return text.lower().strip()
 
 
 def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
@@ -15,26 +34,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     async def download_media(
         message_id: str, instance_name: str = "genie", filename: Optional[str] = None
 ) -> str:
-        """
-        Download media from a WhatsApp message (image, video, audio, document).
-
-        Use this when you need to:
-        - Download images from messages
-        - Save videos/audio files
-        - Get documents sent via WhatsApp
-        - Access media content locally
-
-        Args:
-            message_id: ID of the message containing media
-            instance_name: Your WhatsApp instance (default: "genie")
-            filename: Optional custom filename (auto-detected if not provided)
-
-        Returns:
-            Local file path where media was saved
-
-        Example:
-            download_media(message_id="3EB0ABC123...", filename="important_doc.pdf")
-        """
+        """Download media from WhatsApp message (image/video/audio/document). Args: message_id, instance_name, filename (optional, auto-detected). Returns: local file path where saved."""
         import base64
         import os
         from pathlib import Path
@@ -114,22 +114,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     async def find_message(
         trace_id: str, instance_name: str = "genie", include_payload: bool = False
 ) -> str:
-        """
-        Get details about a specific message by its trace ID.
-
-        Use this when you need to:
-        - See full details of a message
-        - Debug message delivery
-        - Check processing status
-
-        Args:
-            trace_id: Message trace ID to look up
-            instance_name: Your WhatsApp instance (default: "genie")
-            include_payload: Include full message payload (default: False)
-
-        Returns:
-            Detailed information about that specific message
-        """
+        """Get message details by trace ID. Args: trace_id, instance_name, include_payload. Returns: message details with status."""
         client = get_client()
 
         try:
@@ -166,68 +151,225 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def find_person(search: str, instance_name: str = "genie") -> str:
-        """
-        Find a person in your contacts by name.
+        """Find person by name with fuzzy search (handles typos, accents, case). Searches local DB + WhatsApp. Args: search (name), instance_name. Returns: matching contacts sorted by relevance."""
+        all_contacts = {}  # phone_number -> {name, source, original_name, score}
+        normalized_search = _normalize_search(search)
+        MIN_SCORE = 60  # Minimum fuzzy match score (0-100)
 
-        Use this when you need to:
-        - Look up someone's phone number
-        - Find a contact to message
-        - Check if someone is in your contacts
+        # 1. Search local contacts database first
+        try:
+            db = sqlite3.connect(_get_db_path())
+            cursor = db.cursor()
+            cursor.execute("SELECT phone_number, name, nickname FROM contacts")
 
-        Args:
-            search: Name to search for
-            instance_name: Your WhatsApp instance (default: "genie")
+            for phone, name, nickname in cursor.fetchall():
+                # Normalize for fuzzy matching
+                norm_name = _normalize_search(name)
+                norm_nickname = _normalize_search(nickname) if nickname else ""
 
-        Returns:
-            Matching contacts with their phone numbers
-        """
+                # Calculate fuzzy scores
+                name_score = fuzz.partial_ratio(normalized_search, norm_name)
+                nickname_score = fuzz.partial_ratio(normalized_search, norm_nickname) if norm_nickname else 0
+
+                # Use best score
+                best_score = max(name_score, nickname_score)
+
+                if best_score >= MIN_SCORE:
+                    display_name = f"{name}" + (f" ({nickname})" if nickname else "")
+                    all_contacts[phone] = {
+                        "name": display_name,
+                        "source": "local",
+                        "original_name": name,
+                        "score": best_score
+                    }
+
+            db.close()
+        except Exception as e:
+            logger.warning(f"Failed to search local contacts: {e}")
+
+        # 2. Search Evolution API contacts
         client = get_client()
-
         try:
             contacts = await client.list_contacts(
-                instance_name=instance_name, page=1, page_size=10, search_query=search
+                instance_name=instance_name, page=1, page_size=20, search_query=search
             )
 
-            if not contacts.contacts:
-                return f"📱 No contacts found matching '{search}'"
+            if contacts.contacts:
+                for contact in contacts.contacts:
+                    # Skip groups
+                    if contact.id.endswith("@g.us"):
+                        continue
 
-            # Filter out group IDs (ending in @g.us) - only show individual contacts
-            individual_contacts = [c for c in contacts.contacts if not c.id.endswith("@g.us")]
+                    phone = contact.id.replace("@s.whatsapp.net", "")
 
-            if not individual_contacts:
-                return f"📱 No individual contacts found matching '{search}' (found only groups)"
+                    # Normalize and score
+                    norm_contact_name = _normalize_search(contact.name)
+                    score = fuzz.partial_ratio(normalized_search, norm_contact_name)
 
-            result = [f"📱 CONTACTS MATCHING '{search}' ({len(individual_contacts)} total)"]
-            result.append("")
-
-            for contact in individual_contacts:
-                result.append(f"👤 {contact.name}")
-                result.append(f"  Phone: {contact.id}")
-                result.append("")
-
-            return "\n".join(result)
+                    if score >= MIN_SCORE:
+                        # Only add if not already in local contacts (local takes priority)
+                        if phone not in all_contacts:
+                            all_contacts[phone] = {
+                                "name": contact.name,
+                                "source": "whatsapp",
+                                "original_name": contact.name,
+                                "score": score
+                            }
 
         except Exception as e:
-            logger.error(f"Error finding person: {e}")
-            return f"❌ Failed to find person: {str(e)}"
+            logger.warning(f"Failed to search Evolution contacts: {e}")
+
+        # 3. Format results - SORTED BY SCORE (best match first)
+        if not all_contacts:
+            return f"📱 No contacts found matching '{search}'\n\n💡 Try: partial name, nickname, or phone number"
+
+        result = [f"🔍 CONTACTS MATCHING '{search}' ({len(all_contacts)} found)"]
+        result.append("")
+
+        # Sort by score (highest first), then by name
+        sorted_contacts = sorted(
+            all_contacts.items(),
+            key=lambda x: (-x[1]["score"], x[1]["original_name"].lower())
+        )
+
+        for phone, data in sorted_contacts:
+            source_icon = "💾" if data["source"] == "local" else "📱"
+            score_display = f"{data['score']}%" if data["score"] < 100 else ""
+            result.append(f"{source_icon} {data['name']} {score_display}".strip())
+            result.append(f"   📞 {phone}")
+            result.append("")
+
+        return "\n".join(result)
+
+
+    @mcp.tool()
+    async def search(query: str, instance_name: str = "genie") -> str:
+        """Universal search across people, groups, messages, and group members. Args: query (name/phone/keyword), instance_name. Returns: categorized results sorted by relevance."""
+        MIN_SCORE = 60
+        normalized_query = _normalize_search(query)
+
+        # Results containers
+        people_results = {}  # phone -> {name, source, score}
+        group_results = {}   # group_id -> {name, members, score}
+        message_results = [] # [{sender, text, time, mention}]
+
+        client = get_client()
+
+        # 1. Search People (Local + WhatsApp + Group Members)
+        try:
+            # Local contacts
+            db = sqlite3.connect(_get_db_path())
+            cursor = db.cursor()
+            cursor.execute("SELECT phone_number, name, nickname FROM contacts")
+
+            for phone, name, nickname in cursor.fetchall():
+                norm_name = _normalize_search(name)
+                norm_nickname = _normalize_search(nickname) if nickname else ""
+
+                name_score = fuzz.partial_ratio(normalized_query, norm_name)
+                nickname_score = fuzz.partial_ratio(normalized_query, norm_nickname) if norm_nickname else 0
+                best_score = max(name_score, nickname_score)
+
+                if best_score >= MIN_SCORE:
+                    display_name = f"{name}" + (f" ({nickname})" if nickname else "")
+                    people_results[phone] = {"name": display_name, "source": "local", "score": best_score}
+
+            db.close()
+        except Exception as e:
+            logger.warning(f"Local search failed: {e}")
+
+        try:
+            # WhatsApp contacts
+            contacts = await client.list_contacts(
+                instance_name=instance_name, page=1, page_size=20, search_query=query
+            )
+
+            if contacts.contacts:
+                for contact in contacts.contacts:
+                    if contact.id.endswith("@g.us"):
+                        continue
+
+                    phone = contact.id.replace("@s.whatsapp.net", "")
+                    norm_name = _normalize_search(contact.name)
+                    score = fuzz.partial_ratio(normalized_query, norm_name)
+
+                    if score >= MIN_SCORE and phone not in people_results:
+                        people_results[phone] = {"name": contact.name, "source": "whatsapp", "score": score}
+        except Exception as e:
+            logger.warning(f"WhatsApp contacts search failed: {e}")
+
+        # 2. Search Groups
+        try:
+            groups_response = await client.evolution_fetch_all_groups(
+                instance_name=instance_name, get_participants=True
+            )
+            groups = groups_response if isinstance(groups_response, list) else groups_response.get("groups", [])
+
+            for group in groups:
+                group_name = group.get("subject") or group.get("name") or ""
+                group_id = group.get("id") or group.get("remoteJid") or ""
+                participants = group.get("participants", [])
+
+                norm_group_name = _normalize_search(group_name)
+                score = fuzz.partial_ratio(normalized_query, norm_group_name)
+
+                if score >= MIN_SCORE:
+                    member_count = len(participants) if isinstance(participants, list) else 0
+                    group_results[group_id] = {"name": group_name, "members": member_count, "score": score}
+
+                # Search group members
+                if isinstance(participants, list):
+                    for participant in participants:
+                        participant_id = participant.get("id", "")
+                        participant_phone = participant_id.replace("@s.whatsapp.net", "")
+
+                        if participant_phone and participant_phone not in people_results:
+                            # Try to match participant ID with query
+                            score = fuzz.partial_ratio(normalized_query, participant_phone)
+                            if score >= MIN_SCORE:
+                                people_results[participant_phone] = {
+                                    "name": f"Member of {group_name}",
+                                    "source": "group",
+                                    "score": score
+                                }
+        except Exception as e:
+            logger.warning(f"Group search failed: {e}")
+
+        # 3. Format Results
+        if not people_results and not group_results and not message_results:
+            return f"🔍 No results for '{query}'"
+
+        result = [f"🔍 SEARCH: '{query}'", ""]
+
+        # People
+        if people_results:
+            result.append(f"👤 PEOPLE ({len(people_results)})")
+            sorted_people = sorted(people_results.items(), key=lambda x: (-x[1]["score"], x[1]["name"].lower()))
+            for phone, data in sorted_people[:10]:
+                icon = "💾" if data["source"] == "local" else "📱" if data["source"] == "whatsapp" else "👥"
+                score_str = f" {data['score']}%" if data["score"] < 100 else ""
+                result.append(f"{icon} {data['name']} - {phone}{score_str}")
+            if len(sorted_people) > 10:
+                result.append(f"... and {len(sorted_people) - 10} more")
+            result.append("")
+
+        # Groups
+        if group_results:
+            result.append(f"👥 GROUPS ({len(group_results)})")
+            sorted_groups = sorted(group_results.items(), key=lambda x: (-x[1]["score"], x[1]["name"].lower()))
+            for group_id, data in sorted_groups[:10]:
+                score_str = f" {data['score']}%" if data["score"] < 100 else ""
+                result.append(f"📱 {data['name']} - {group_id} ({data['members']} members){score_str}")
+            if len(sorted_groups) > 10:
+                result.append(f"... and {len(sorted_groups) - 10} more")
+            result.append("")
+
+        return "\n".join(result)
 
 
     @mcp.tool()
     async def find_chats(instance_name: str = "genie") -> str:
-        """
-        Find all chat conversations in your WhatsApp.
-
-        Use this when you need to:
-        - See all active conversations
-        - Discover chats you've had
-        - Get chat IDs for messaging
-
-        Args:
-            instance_name: Your WhatsApp instance (default: "genie")
-
-        Returns:
-            List of all chats with their details
-        """
+        """Find all chat conversations in WhatsApp. Args: instance_name. Returns: list of chats with details."""
         client = get_client()
 
         try:
@@ -268,20 +410,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def list_all_groups(instance_name: str = "genie") -> str:
-        """
-        List all WhatsApp groups you're a member of.
-
-        Use this when you need to:
-        - See all groups you belong to
-        - Get group IDs for messaging
-        - Check group membership
-
-        Args:
-            instance_name: Your WhatsApp instance (default: "genie")
-
-        Returns:
-            List of all groups with member counts
-        """
+        """List all WhatsApp groups you're a member of. Args: instance_name. Returns: groups with member counts."""
         client = get_client()
 
         try:
@@ -325,21 +454,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
     @mcp.tool()
     async def get_group_members(group_jid: str, instance_name: str = "genie") -> str:
-        """
-        Get members of a specific WhatsApp group.
-
-        Use this when you need to:
-        - See who's in a group
-        - Check admin status
-        - Get member phone numbers
-
-        Args:
-            group_jid: Group ID (JID) - get from list_all_groups
-            instance_name: Your WhatsApp instance (default: "genie")
-
-        Returns:
-            List of group members with their roles
-        """
+        """Get members of a WhatsApp group. Args: group_jid (from list_all_groups), instance_name. Returns: members with roles (admin/super admin)."""
         client = get_client()
 
         try:
