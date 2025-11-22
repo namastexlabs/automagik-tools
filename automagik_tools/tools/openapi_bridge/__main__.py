@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Standalone runner for Automagik Agents"""
+"""Standalone runner for OpenAPI Bridge"""
 
 import argparse
 import sys
@@ -10,7 +10,7 @@ def main():
     metadata = get_metadata()
     parser = argparse.ArgumentParser(
         description=metadata["description"],
-        prog="python -m automagik_tools.tools.automagik",
+        prog="python -m automagik_tools.tools.openapi_bridge",
     )
     parser.add_argument(
         "--transport", default="stdio", help="Transport type (stdio, sse)"
