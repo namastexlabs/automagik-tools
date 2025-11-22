@@ -61,11 +61,9 @@ evolution-api = [
     "python-dotenv>=1.1.0",
 ]
 
-automagik = [
+openapi = [
     "httpx>=0.28.1",
     "python-dotenv>=1.1.0",
-    "agno>=0.1.0",
-    "openai>=1.0.0",
 ]
 
 genie_tool = [
@@ -97,7 +95,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,automagik,hive]",
+    "automagik-tools[evolution-api,openapi,hive]",
 ]
 
 [project.urls]
