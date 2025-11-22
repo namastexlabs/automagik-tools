@@ -61,12 +61,6 @@ evolution-api = [
     "python-dotenv>=1.1.0",
 ]
 
-ask = [
-    "httpx>=0.28.1",
-    "python-dotenv>=1.1.0",
-    "openai>=1.84.0",
-]
-
 genie_tool = [
     "agno>=1.5.9",
     "openai>=1.84.0",
@@ -79,23 +73,8 @@ gemini-assistant = [
     "python-dotenv>=1.1.0",
 ]
 
-automagik-hive = [
+hive = [
     "httpx>=0.28.1",
-    "python-dotenv>=1.1.0",
-]
-
-discord = [
-    "discord.py>=2.3.0",
-    "python-dotenv>=1.1.0",
-]
-
-notion = [
-    "notion-client>=2.0.0",
-    "python-dotenv>=1.1.0",
-]
-
-github = [
-    "pygithub>=2.1.0",
     "python-dotenv>=1.1.0",
 ]
 
@@ -111,7 +90,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,ask,automagik-hive,discord,notion,github]",
+    "automagik-tools[evolution-api,hive]",
 ]
 
 [project.urls]
