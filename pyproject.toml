@@ -61,28 +61,13 @@ evolution-api = [
     "python-dotenv>=1.1.0",
 ]
 
-automagik = [
-    "httpx>=0.28.1",
-    "python-dotenv>=1.1.0",
-    "agno>=0.1.0",
-    "openai>=1.0.0",
-]
-
-automagik-enhanced = [
-    "httpx>=0.28.1",
-    "python-dotenv>=1.1.0",
-    "agno>=0.1.0",
-    "openai>=1.0.0",
-    "markdown>=3.0.0",
-]
-
 ask = [
     "httpx>=0.28.1",
     "python-dotenv>=1.1.0",
     "openai>=1.84.0",
 ]
 
-genie = [
+genie_tool = [
     "agno>=1.5.9",
     "openai>=1.84.0",
     "sqlalchemy>=2.0.41",
@@ -126,7 +111,7 @@ dev = [
 ]
 
 all = [
-    "automagik-tools[evolution-api,automagik,automagik-enhanced,ask,automagik-hive,discord,notion,github]",
+    "automagik-tools[evolution-api,ask,automagik-hive,discord,notion,github]",
 ]
 
 [project.urls]
