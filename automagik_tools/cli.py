@@ -4,7 +4,7 @@ CLI for automagik-tools
 
 import os
 import sys
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import importlib
 import importlib.metadata
@@ -13,7 +13,7 @@ from rich.console import Console
 from rich.table import Table
 from fastmcp import FastMCP
 import httpx
-from .hub import create_hub_server
+# from .hub import create_hub_server  # Removed in favor of multi-tenant hub
 
 console = Console()
 # For stdio transport, we need to use stderr to avoid polluting JSON-RPC
@@ -289,67 +289,66 @@ def list_tools():
 @app.command()
 def hub(
     host: Optional[str] = typer.Option(
-        None, help="Host to bind to (overrides HOST env var)"
+        None, help="Host to bind to (overrides HUB_HOST env var)"
     ),
     port: Optional[int] = typer.Option(
-        None, help="Port to bind to (overrides PORT env var)"
+        None, help="Port to bind to (overrides HUB_PORT env var)"
     ),
-    transport: str = typer.Option(
-        "stdio", "--transport", "-t", help="Transport type: stdio (default), http, sse"
+    env: Optional[List[str]] = typer.Option(
+        None, "--env", "-e", help="Environment variables in KEY=VALUE format"
     ),
+    env_file: Optional[Path] = typer.Option(
+        None, "--env-file", "-f", help="Path to .env file to load"
+    ),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload"),
 ):
-    """Serve all tools on a single server with path-based routing using the hub"""
+    """
+    Start the multi-tenant Hub HTTP server.
+
+    The Hub provides OAuth-authenticated per-user tool management.
+    Users can dynamically add/remove/configure tools via MCP.
+    """
+    import uvicorn
+    from dotenv import load_dotenv
+
+    # Load env file if provided
+    if env_file:
+        if env_file.exists():
+            console.print(f"[dim]Loading env file: {env_file}[/dim]")
+            load_dotenv(env_file)
+        else:
+            console.print(f"[yellow]Warning: Env file '{env_file}' not found[/yellow]")
+
+    # Parse and set environment variables from CLI (overrides env file)
+    if env:
+        for env_var in env:
+            if "=" in env_var:
+                key, value = env_var.split("=", 1)
+                os.environ[key] = value
+                console.print(f"[dim]Set env var: {key}[/dim]")
+            else:
+                console.print(f"[yellow]Warning: Invalid env var format '{env_var}'. Expected KEY=VALUE[/yellow]")
+
     # Get host and port from environment variables or defaults
-    serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
-    serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
+    serve_host = host or os.getenv("HUB_HOST", "0.0.0.0")
+    serve_port = port or int(os.getenv("HUB_PORT", "8000"))
 
-    # For stdio transport, we can't serve multiple tools
-    if transport == "stdio":
-        console.print("[red]❌ stdio transport cannot serve multiple tools[/red]")
-        console.print(
-            "[yellow]💡 Use 'serve --tool <tool-name> --transport stdio' for a single tool[/yellow]"
-        )
-        sys.exit(1)
-
-    if transport != "stdio":
-        console.print("[blue]Starting Automagik Tools Hub...[/blue]")
-        console.print(
-            f"[blue]Server config: HOST={serve_host}, PORT={serve_port}, Transport={transport}[/blue]"
-        )
+    console.print(f"[blue]Starting Automagik Tools Hub...[/blue]")
+    console.print(f"[blue]Server config: HOST={serve_host}, PORT={serve_port}[/blue]")
+    console.print("[yellow]Note: Hub runs in HTTP mode only[/yellow]")
 
     try:
-        # Create the hub server using the unified implementation from hub.py
-        hub_server = create_hub_server()
-
-        # Set environment variable
-        os.environ["MCP_TRANSPORT"] = transport
-
-        # Run the hub server
-        if transport == "stdio":
-            hub_server.run(transport="stdio", show_banner=False)
-        elif transport == "http":
-            console.print(
-                f"[green]🚀 Starting HTTP hub server on {serve_host}:{serve_port}[/green]"
-            )
-            hub_server.run(
-                transport="http", host=serve_host, port=serve_port, show_banner=False
-            )
-        elif transport == "sse":
-            console.print(
-                f"[green]🚀 Starting SSE hub server on {serve_host}:{serve_port}[/green]"
-            )
-            hub_server.run(
-                transport="sse", host=serve_host, port=serve_port, show_banner=False
-            )
-        else:
-            console.print(f"[red]❌ Unsupported transport: {transport}[/red]")
-            sys.exit(1)
+        uvicorn.run(
+            "automagik_tools.hub_http:app",
+            host=serve_host,
+            port=serve_port,
+            reload=reload,
+            log_level="info",
+            ws="wsproto"
+        )
 
     except Exception as e:
         console.print(f"[red]❌ Failed to start hub server: {e}[/red]")
-        import traceback
-
-        console.print(f"[red]{traceback.format_exc()}[/red]")
         sys.exit(1)
 
 
@@ -365,8 +364,39 @@ def tool(
     transport: str = typer.Option(
         "stdio", "--transport", "-t", help="Transport type: stdio (default), http, sse"
     ),
+    env: Optional[List[str]] = typer.Option(
+        None, "--env", "-e", help="Environment variables in KEY=VALUE format"
+    ),
+    env_file: Optional[Path] = typer.Option(
+        None, "--env-file", "-f", help="Path to .env file to load"
+    ),
 ):
     """Serve a specific tool"""
+    from dotenv import load_dotenv
+
+    # Load env file if provided
+    if env_file:
+        if env_file.exists():
+            if transport != "stdio":
+                console.print(f"[dim]Loading env file: {env_file}[/dim]")
+            load_dotenv(env_file)
+        else:
+            if transport != "stdio":
+                console.print(f"[yellow]Warning: Env file '{env_file}' not found[/yellow]")
+
+    # Parse and set environment variables from CLI
+    if env:
+        for env_var in env:
+            if "=" in env_var:
+                key, value = env_var.split("=", 1)
+                os.environ[key] = value
+                # Only print to console for non-stdio transports
+                if transport != "stdio":
+                    console.print(f"[dim]Set env var: {key}[/dim]")
+            else:
+                if transport != "stdio":
+                    console.print(f"[yellow]Warning: Invalid env var format '{env_var}'. Expected KEY=VALUE[/yellow]")
+
     # Set transport early so discover_tools can use it
     os.environ["MCP_TRANSPORT"] = transport
 

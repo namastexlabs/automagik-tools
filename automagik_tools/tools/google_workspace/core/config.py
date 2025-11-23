@@ -8,7 +8,7 @@ This module now imports from there for backward compatibility.
 """
 
 import os
-from automagik_tools.tools.google_workspace.auth.oauth_config import (
+from automagik_tools.hub.auth.google.oauth_config import (
     get_oauth_base_url,
     get_oauth_redirect_uri,
     set_transport_mode,

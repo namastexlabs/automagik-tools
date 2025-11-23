@@ -15,16 +15,16 @@ from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from automagik_tools.tools.google_workspace.auth.scopes import (
+from automagik_tools.hub.auth.google.scopes import (
     get_current_scopes,
 )  # noqa
-from automagik_tools.tools.google_workspace.auth.oauth21_session_store import (
+from automagik_tools.hub.auth.google.oauth21_session_store import (
     get_oauth21_session_store,
 )
-from automagik_tools.tools.google_workspace.auth.credential_store import (
+from automagik_tools.hub.auth.google.credential_store import (
     get_credential_store,
 )
-from automagik_tools.tools.google_workspace.auth.oauth_config import (
+from automagik_tools.hub.auth.google.oauth_config import (
     get_oauth_config,
     is_stateless_mode,
 )
@@ -413,7 +413,13 @@ async def start_auth_flow(
         return "\n".join(message_lines)
 
     except FileNotFoundError as e:
-        error_text = f"OAuth client credentials not found: {e}. Please either:\n1. Set environment variables: GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET\n2. Ensure '{CONFIG_CLIENT_SECRETS_PATH}' file exists"
+        error_text = (
+            f"OAuth client credentials not found: {e}.\n\n"
+            "**ACTION REQUIRED: Configure Google OAuth**\n"
+            "Please restart the Hub with the following arguments:\n"
+            "`automagik-tools hub --env GOOGLE_OAUTH_CLIENT_ID=your_client_id --env GOOGLE_OAUTH_CLIENT_SECRET=your_client_secret`\n\n"
+            "Or ensure the 'client_secret.json' file exists in the root directory."
+        )
         logger.error(error_text, exc_info=True)
         raise Exception(error_text)
     except Exception as e:

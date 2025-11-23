@@ -12,8 +12,9 @@ from typing import Any, Dict, List, Optional
 from googleapiclient.errors import HttpError  # type: ignore
 from mcp import Resource
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import (
-    require_google_service,
+from automagik_tools.hub.auth.google.google_auth import (
+    get_authenticated_google_service,
+    GoogleAuthenticationError,
 )
 from automagik_tools.tools.google_workspace.core.server import server
 from automagik_tools.tools.google_workspace.core.utils import handle_http_errors

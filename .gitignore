@@ -213,3 +213,9 @@ ask_master_memory.db
 # Temporary files
 *.pid
 nohup.out*.whl
+
+# Hub database and storage
+hub_data/
+hub_tokens/
+*.db
+*.db-journal

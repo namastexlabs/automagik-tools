@@ -12,9 +12,9 @@ from typing import List, Dict, Any
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 # Auth & server utilities
-from automagik_tools.tools.google_workspace.auth.service_decorator import (
-    require_google_service,
-    require_multiple_services,
+from automagik_tools.hub.auth.google.google_auth import (
+    get_authenticated_google_service,
+    GoogleAuthenticationError,
 )
 from automagik_tools.tools.google_workspace.core.utils import (
     extract_office_xml_text,

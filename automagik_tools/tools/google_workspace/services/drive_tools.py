@@ -16,8 +16,9 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 import io
 import httpx
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import (
-    require_google_service,
+from automagik_tools.hub.auth.google.google_auth import (
+    get_authenticated_google_service,
+    GoogleAuthenticationError,
 )
 from automagik_tools.tools.google_workspace.auth.oauth_config import is_stateless_mode
 from automagik_tools.tools.google_workspace.core.utils import (

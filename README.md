@@ -82,6 +82,52 @@ We flip the script completely:
 - **🏗️ Plugin Architecture**: Drop tools in a folder, auto-discovered instantly
 - **100% Open Source**: MIT license, self-hostable, no vendor lock-in
 
+- **100% Open Source**: MIT license, self-hostable, no vendor lock-in
+
+---
+
+## 🌐 Multi-Tenant Hub (New!)
+
+The Hub now supports **multi-tenant architecture** where each user gets their own isolated tool collection with OAuth authentication.
+
+### Features
+
+- **Per-User Tool Management**: Each user can add/remove/configure tools independently
+- **AuthKit Authentication**: WorkOS integration for secure user management
+- **Dynamic Tool Loading**: Tools are loaded on-demand per user
+- **HTTP Transport**: Production-ready HTTP server
+- **Encrypted Storage**: OAuth tokens encrypted at rest
+
+### Quick Start
+
+1. **Configure Environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your WorkOS credentials
+   ```
+
+2. **Run Database Migrations**:
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+3. **Start Hub Server**:
+   ```bash
+   uv run automagik-tools hub --port 8000
+   ```
+
+4. **Connect with MCP Client**:
+   Configure your MCP client (Claude Desktop, etc.) to connect to `http://localhost:8000`
+
+### User Workflow
+
+Once authenticated, users can manage their tools via assistant:
+
+```
+User: "I need to send WhatsApp messages. Can you set up Evolution API?"
+Assistant: "I can help with that. I'll add the Evolution API tool to your collection."
+```
+
 ---
 
 ## 🧞 Genie: Your Universal AI Conductor

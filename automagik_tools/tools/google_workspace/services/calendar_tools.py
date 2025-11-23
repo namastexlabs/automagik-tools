@@ -15,10 +15,10 @@ from typing import List, Optional, Dict, Any, Union
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 
-from automagik_tools.tools.google_workspace.auth.service_decorator import (
-    require_google_service,
-)
-from automagik_tools.tools.google_workspace.core.utils import handle_http_errors
+from automagik_tools.hub.auth.google.google_auth import (
+    get_authenticated_google_service,
+    GoogleAuthenticationError,
+)ls.tools.google_workspace.core.utils import handle_http_errors
 
 from automagik_tools.tools.google_workspace.core.server import server
 
