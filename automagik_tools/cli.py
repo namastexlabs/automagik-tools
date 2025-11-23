@@ -548,52 +548,7 @@ def info(tool_name: str):
 
 
 # Removed run command - use 'tool' command instead
-
-
-@app.command("create-tool")
-def create_tool(
-    url: str = typer.Option(..., "--url", "-u", help="OpenAPI specification URL"),
-    name: Optional[str] = typer.Option(
-        None, "--name", "-n", help="Tool name (optional)"
-    ),
-    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing tool"),
-):
-    """Create a new MCP tool from an OpenAPI specification"""
-    import subprocess
-
-    console.print("[blue]Creating tool from OpenAPI specification...[/blue]")
-    console.print(f"URL: {url}")
-
-    # Build the command
-    cmd = ["python", "scripts/create_tool_from_openapi_v2.py", "--url", url]
-    if name:
-        cmd.extend(["--name", name])
-    if force:
-        cmd.append("--force")
-
-    try:
-        # Run the script
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode == 0:
-            console.print("[green]✅ Tool created successfully![/green]")
-            if result.stdout:
-                console.print(result.stdout)
-        else:
-            console.print("[red]❌ Failed to create tool[/red]")
-            if result.stderr:
-                console.print(f"[red]{result.stderr}[/red]")
-            sys.exit(1)
-
-    except FileNotFoundError:
-        console.print("[red]❌ OpenAPI tool creation script not found[/red]")
-        console.print(
-            "[yellow]Make sure you're running from the automagik-tools repository root[/yellow]"
-        )
-        sys.exit(1)
-    except Exception as e:
-        console.print(f"[red]❌ Error creating tool: {e}[/red]")
-        sys.exit(1)
+# Removed create-tool command - use 'openapi' command for dynamic serving instead
 
 
 @app.command()
