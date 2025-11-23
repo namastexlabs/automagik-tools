@@ -372,9 +372,6 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
                 "GET", f"/playground/team/{team_id}/memories", params=params
             )
 
-    # 🚀 Quick Actions - NOTE: This endpoint doesn't exist in the API, removing it
-    # The /runs endpoint is not available according to the OpenAPI spec
-
     return mcp
 
 

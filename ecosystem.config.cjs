@@ -433,11 +433,11 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
 
-    // Note: hive tool directory does not exist - remove or create before enabling
+    // Note: Tool exists as 'automagik_hive' - rename directory to 'hive' or update module path before enabling
     // {
     //   name: 'hive',
     //   script: 'uv',
-    //   args: 'run python -m automagik_tools.tools.hive --transport sse --host 0.0.0.0 --port 11042',
+    //   args: 'run python -m automagik_tools.tools.automagik_hive --transport sse --host 0.0.0.0 --port 11042',
     //   cwd: '/home/namastex/workspace/automagik-tools',
     //   interpreter: 'none',
     //   env: {
