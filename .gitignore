@@ -11,6 +11,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+# Exception: Include hub UI dist files
+!automagik_tools/hub_ui/dist/
 downloads/
 eggs/
 .eggs/
