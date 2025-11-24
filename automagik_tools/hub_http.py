@@ -90,6 +90,7 @@ async def lifespan(server: FastMCP):
 
 # Create Hub with AuthKit
 from automagik_tools.tools.google_calendar import create_server as create_calendar_server
+from .hub.middleware import get_hub_middleware
 
 # Initialize AuthKit provider (FastMCP native integration)
 auth_provider = AuthKitProvider(
@@ -103,6 +104,10 @@ hub = FastMCP(
     lifespan=lifespan,
     auth=auth_provider,  # Native FastMCP AuthKit integration
 )
+
+# Add multi-tenant middleware
+for middleware in get_hub_middleware():
+    hub.add_middleware(middleware)
 
 
 # --- Hub Management Tools ---
