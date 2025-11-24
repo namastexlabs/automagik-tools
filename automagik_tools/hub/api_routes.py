@@ -45,8 +45,8 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     return user_id
 
 
-# Create router
-router = APIRouter(prefix="/api")
+# Create router (no prefix - will be mounted at /api in hub_http.py)
+router = APIRouter()
 
 
 # --- Tool Catalogue Endpoints ---
