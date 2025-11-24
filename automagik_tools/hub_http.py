@@ -22,6 +22,9 @@ async def lifespan(server: FastMCP):
     """Initialize tool registry on server startup."""
     print("🚀 Initializing Hub...")
 
+    # Initialize database tables
+    await init_database()
+
     # Import Google Calendar Tools
     # This registers all calendar tools onto the Hub instance
     print("📅 Importing Google Calendar tools...")
