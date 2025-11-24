@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from fastmcp.server.dependencies import get_access_token, AccessToken
 from . import registry, tools as hub_tools
 from .credentials import store_credential, get_credential, list_credentials, delete_credential
+from .tool_instances import get_instance_manager
 
 
 # Security scheme
@@ -218,7 +219,6 @@ async def test_tool_connection(
 
 
 # --- Tool Lifecycle Endpoints ---
-# TODO: Implement start/stop/refresh/logs endpoints
 
 
 @router.get("/user/tools/{tool_name}/status")
@@ -227,14 +227,8 @@ async def get_tool_status(
     user_id: str = Depends(get_current_user_id)
 ) -> Dict[str, Any]:
     """Get runtime status of a tool."""
-    # TODO: Implement tool instance tracking
-    # For now, return mock status
-
-    return {
-        "tool": tool_name,
-        "status": "unknown",  # running, stopped, error
-        "message": "Status tracking not yet implemented"
-    }
+    manager = get_instance_manager()
+    return await manager.get_tool_status(user_id, tool_name)
 
 
 @router.post("/user/tools/{tool_name}/start")
@@ -243,12 +237,20 @@ async def start_tool(
     user_id: str = Depends(get_current_user_id)
 ) -> Dict[str, Any]:
     """Start a tool instance."""
-    # TODO: Implement tool instance management
-    return {
-        "status": "success",
-        "message": "Tool lifecycle management not yet implemented",
-        "tool": tool_name
-    }
+    from fastmcp import Context
+
+    ctx = Context()
+    ctx.set_state("user_id", user_id)
+
+    # Get user's tool configuration
+    try:
+        config = await hub_tools.get_tool_config(tool_name, ctx)
+    except Exception:
+        # No config found, use empty config
+        config = {}
+
+    manager = get_instance_manager()
+    return await manager.start_tool(user_id, tool_name, config)
 
 
 @router.post("/user/tools/{tool_name}/stop")
@@ -257,12 +259,8 @@ async def stop_tool(
     user_id: str = Depends(get_current_user_id)
 ) -> Dict[str, Any]:
     """Stop a tool instance."""
-    # TODO: Implement tool instance management
-    return {
-        "status": "success",
-        "message": "Tool lifecycle management not yet implemented",
-        "tool": tool_name
-    }
+    manager = get_instance_manager()
+    return await manager.stop_tool(user_id, tool_name)
 
 
 @router.post("/user/tools/{tool_name}/refresh")
@@ -271,12 +269,19 @@ async def refresh_tool(
     user_id: str = Depends(get_current_user_id)
 ) -> Dict[str, Any]:
     """Refresh tool configuration/reload."""
-    # TODO: Implement tool instance management
-    return {
-        "status": "success",
-        "message": "Tool lifecycle management not yet implemented",
-        "tool": tool_name
-    }
+    from fastmcp import Context
+
+    ctx = Context()
+    ctx.set_state("user_id", user_id)
+
+    # Get user's latest tool configuration
+    try:
+        config = await hub_tools.get_tool_config(tool_name, ctx)
+    except Exception:
+        config = {}
+
+    manager = get_instance_manager()
+    return await manager.refresh_tool(user_id, tool_name, config)
 
 
 # --- Credential Management Endpoints ---
