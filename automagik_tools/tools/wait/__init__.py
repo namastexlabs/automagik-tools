@@ -89,9 +89,29 @@ async def wait_minutes(
         await ctx.info(f"Starting wait: {duration} minutes ({duration_seconds}s)")
 
     try:
-        await asyncio.sleep(duration_seconds)
+        # Report progress every 5 seconds for waits > 10 seconds
+        if duration_seconds > 10:
+            progress_interval = 5  # seconds
+            elapsed = 0
+
+            while elapsed < duration_seconds:
+                sleep_time = min(progress_interval, duration_seconds - elapsed)
+                await asyncio.sleep(sleep_time)
+                elapsed += sleep_time
+
+                # Report progress
+                if ctx:
+                    await ctx.report_progress(progress=elapsed, total=duration_seconds)
+        else:
+            # For short waits, just sleep without progress updates
+            await asyncio.sleep(duration_seconds)
+
         end_time = time.time()
         actual_duration = end_time - start_time
+
+        # Report 100% completion
+        if ctx:
+            await ctx.report_progress(progress=duration_seconds, total=duration_seconds)
 
         # Log completion
         if ctx:
