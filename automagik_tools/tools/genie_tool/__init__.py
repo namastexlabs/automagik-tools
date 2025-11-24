@@ -85,7 +85,16 @@ def _ensure_config(ctx: Optional[Context] = None):
     return _get_genie_config(ctx)
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Ask Genie",
+        "readOnlyHint": False,  # Creates memories
+        "destructiveHint": False,
+        "idempotentHint": False,  # Different responses based on memory
+        "openWorldHint": True  # Connects to MCP servers
+    },
+    exclude_args=["ctx"]
+)
 async def ask_genie(
     query: str,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -369,7 +378,16 @@ I can also manage my own memories - creating, updating, or deleting them as need
         return f"❌ {error_msg}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Genie Memory Stats",
+        "readOnlyHint": True,  # Only reads memory stats
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same stats for same state
+        "openWorldHint": False  # Pure memory lookup
+    },
+    exclude_args=["ctx"]
+)
 async def genie_memory_stats(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -430,7 +448,16 @@ async def genie_memory_stats(
         return f"❌ Error getting memory stats: {str(e)}"
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Clear Genie Memories",
+        "readOnlyHint": False,
+        "destructiveHint": True,  # Deletes all memories
+        "idempotentHint": True,  # Clearing twice = same result
+        "openWorldHint": False  # Pure memory operation
+    },
+    exclude_args=["ctx"]
+)
 async def genie_clear_memories(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
