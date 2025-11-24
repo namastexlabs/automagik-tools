@@ -14,6 +14,7 @@ from .hub import tools as hub_tools
 from .hub.registry import populate_tool_registry
 from .hub.database import init_database
 from .hub.api_routes import router as api_router
+from .hub.auth_routes import router as auth_router
 
 
 # Server lifespan: populate tool registry on startup
@@ -316,6 +317,7 @@ from starlette.routing import Mount
 
 api_app = FastAPI()
 api_app.include_router(api_router)
+api_app.include_router(auth_router)
 app.mount("/api", api_app)
 
 # Serve static UI files at /app

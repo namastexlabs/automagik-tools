@@ -1,0 +1,109 @@
+{
+  "mcpServers": {
+    "automagik-hub-stdio": {
+      "command": "uv",
+      "args": [
+        "run",
+        "automagik-tools",
+        "hub",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "HUB_MODE": "stdio"
+      }
+    },
+    "automagik-hub-http": {
+      "type": "http",
+      "url": "http://localhost:8884/mcp"
+    },
+    "namastex-oauth": {
+      "type": "http",
+      "url": "http://localhost:11000/mcp"
+    },
+    "google-calendar-test": {
+      "type": "http",
+      "url": "http://localhost:11001/mcp"
+    },
+    "google-calendar": {
+      "type": "http",
+      "url": "http://localhost:11002/mcp"
+    },
+    "google-gmail": {
+      "type": "http",
+      "url": "http://localhost:11003/mcp"
+    },
+    "google-drive": {
+      "type": "http",
+      "url": "http://localhost:11004/mcp"
+    },
+    "google-docs": {
+      "type": "http",
+      "url": "http://localhost:11005/mcp"
+    },
+    "google-sheets": {
+      "type": "http",
+      "url": "http://localhost:11006/mcp"
+    },
+    "google-slides": {
+      "type": "http",
+      "url": "http://localhost:11007/mcp"
+    },
+    "google-forms": {
+      "type": "http",
+      "url": "http://localhost:11008/mcp"
+    },
+    "google-tasks": {
+      "type": "http",
+      "url": "http://localhost:11009/mcp"
+    },
+    "google-chat": {
+      "type": "http",
+      "url": "http://localhost:11010/mcp"
+    },
+    "google-workspace": {
+      "type": "http",
+      "url": "http://localhost:11011/mcp"
+    },
+    "genie-omni": {
+      "type": "http",
+      "url": "http://localhost:11012/mcp"
+    },
+    "evolution-api": {
+      "type": "http",
+      "url": "http://localhost:11013/mcp"
+    },
+    "omni": {
+      "type": "http",
+      "url": "http://localhost:11014/mcp"
+    },
+    "openapi": {
+      "type": "http",
+      "url": "http://localhost:11021/mcp"
+    },
+    "wait": {
+      "type": "http",
+      "url": "http://localhost:11022/mcp"
+    },
+    "json-to-google-docs": {
+      "type": "http",
+      "url": "http://localhost:11023/mcp"
+    },
+    "genie-tool": {
+      "type": "http",
+      "url": "http://localhost:11031/mcp"
+    },
+    "gemini-assistant": {
+      "type": "http",
+      "url": "http://localhost:11032/mcp"
+    },
+    "spark": {
+      "type": "http",
+      "url": "http://localhost:11041/mcp"
+    },
+    "gofastmcp": {
+      "type": "http",
+      "url": "https://gofastmcp.com/mcp"
+    }
+  }
+}
