@@ -107,7 +107,16 @@ def _ensure_client(ctx: Optional[Context] = None) -> OmniClient:
     return _client
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Manage Messaging Instances",
+        "readOnlyHint": False,  # Can create/update/delete
+        "destructiveHint": True,  # Delete operation is destructive
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def manage_instances(
     operation: InstanceOperation,
     instance_name: Optional[str] = None,
@@ -328,7 +337,16 @@ async def manage_instances(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Send Omnichannel Message",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def send_message(
     message_type: MessageType,
     instance_name: Optional[str] = None,
@@ -519,7 +537,16 @@ async def send_message(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Manage Message Traces",
+        "readOnlyHint": False,  # Cleanup operation modifies data
+        "destructiveHint": True,  # Cleanup operation can delete traces
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def manage_traces(
     operation: TraceOperation,
     trace_id: Optional[str] = None,
@@ -677,7 +704,16 @@ async def manage_traces(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Manage User Profiles",
+        "readOnlyHint": False,  # Update operation modifies profile
+        "destructiveHint": False,  # Profile updates are non-destructive
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def manage_profiles(
     operation: ProfileOperation,
     instance_name: Optional[str] = None,
@@ -769,7 +805,16 @@ async def manage_profiles(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Manage Instance Chats",
+        "readOnlyHint": True,  # Only list/get operations
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same query returns same results
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def manage_chats(
     operation: str,  # "list" or "get"
     instance_name: str,
@@ -852,7 +897,16 @@ async def manage_chats(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Manage Instance Contacts",
+        "readOnlyHint": True,  # Only list/get operations
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same query returns same results
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def manage_contacts(
     operation: str,  # "list" or "get"
     instance_name: str,
@@ -937,7 +991,16 @@ async def manage_contacts(
         return json.dumps({"success": False, "error": str(e)})
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List All Channels",
+        "readOnlyHint": True,  # Only lists channels
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same query returns consistent results
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_all_channels(channel_type: Optional[str] = None, ctx: Optional[Context] = None,
 ) -> str:
     """
