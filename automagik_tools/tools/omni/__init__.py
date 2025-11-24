@@ -977,6 +977,79 @@ async def list_all_channels(channel_type: Optional[str] = None, ctx: Optional[Co
         return json.dumps({"success": False, "error": str(e)})
 
 
+# ========================================
+# RESOURCES - Expose data for LLM access
+# ========================================
+
+@mcp.resource(
+    "omni://instances",
+    name="Messaging Instances",
+    description="List all configured messaging instances with their status",
+    mime_type="application/json",
+    annotations={"readOnlyHint": True, "idempotentHint": True}
+)
+async def get_instances_resource(ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """Expose instances list as a resource for LLM access."""
+    client = _ensure_client(ctx)
+
+    try:
+        result = await client.list_instances(include_status=True)
+        return {
+            "timestamp": result.get("timestamp"),
+            "total_instances": len(result.get("instances", [])),
+            "instances": result.get("instances", [])
+        }
+    except Exception as e:
+        logger.error(f"Error fetching instances resource: {e}")
+        return {"error": str(e), "instances": []}
+
+
+@mcp.resource(
+    "omni://{instance_name}/chats",
+    name="Instance Chats",
+    description="List chats for a specific messaging instance",
+    mime_type="application/json",
+    annotations={"readOnlyHint": True, "idempotentHint": True}
+)
+async def get_chats_resource(instance_name: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """Expose chats list for an instance as a resource."""
+    client = _ensure_client(ctx)
+
+    try:
+        result = await client.list_chats(instance_name=instance_name, page=1, page_size=50)
+        return {
+            "instance": instance_name,
+            "total": result.get("total", 0),
+            "chats": result.get("chats", [])[:20]  # Limit to 20 recent chats
+        }
+    except Exception as e:
+        logger.error(f"Error fetching chats resource for {instance_name}: {e}")
+        return {"error": str(e), "instance": instance_name, "chats": []}
+
+
+@mcp.resource(
+    "omni://{instance_name}/contacts",
+    name="Instance Contacts",
+    description="List contacts for a specific messaging instance",
+    mime_type="application/json",
+    annotations={"readOnlyHint": True, "idempotentHint": True}
+)
+async def get_contacts_resource(instance_name: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    """Expose contacts list for an instance as a resource."""
+    client = _ensure_client(ctx)
+
+    try:
+        result = await client.list_contacts(instance_name=instance_name, page=1, page_size=100)
+        return {
+            "instance": instance_name,
+            "total": result.get("total", 0),
+            "contacts": result.get("contacts", [])[:50]  # Limit to 50 contacts
+        }
+    except Exception as e:
+        logger.error(f"Error fetching contacts resource for {instance_name}: {e}")
+        return {"error": str(e), "instance": instance_name, "contacts": []}
+
+
 def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
