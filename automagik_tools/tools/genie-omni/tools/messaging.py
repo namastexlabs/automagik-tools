@@ -46,10 +46,16 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
         client = get_client(ctx)
 
+        # Log send attempt
+        if ctx:
+            await ctx.info(f"Sending {message_type} message to {to} via {instance_name}")
+
         try:
             if message_type == "text":
                 # Send "composing" presence (typing indicator) before sending text
                 try:
+                    if ctx:
+                        await ctx.debug("Sending typing indicator")
                     await client.evolution_send_presence(
                         instance_name=instance_name,
                         remote_jid=to,
@@ -58,8 +64,13 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     )
                 except Exception as e:
                     logger.warning(f"Failed to send presence: {e}")
+                    if ctx:
+                        await ctx.warning("Could not send typing indicator")
 
                 # Use Evolution API directly for all text messages to get proper message IDs
+                if ctx:
+                    await ctx.debug(f"Sending text message ({len(message)} chars)")
+
                 response_data = await client.evolution_send_text(
                     instance_name=instance_name,
                     remote_jid=to,
@@ -69,6 +80,13 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     delay=delay
                 )
                 message_id = response_data.get('key', {}).get('id', 'Unknown')
+
+                if ctx:
+                    await ctx.info(
+                        f"Message delivered successfully",
+                        extra={"message_id": message_id, "recipient": to}
+                    )
+
                 return f"✅ Message sent to {to}\nMessage ID: {message_id}"
             elif message_type == "media":
                 if not media_url:
@@ -91,9 +109,14 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     # It's a local file - read and encode to base64
                     file_path = Path(media_url).absolute()
 
+                    if ctx:
+                        await ctx.debug(f"Detected local file: {file_path.name}")
+
                     # Auto-detect mime type if not provided
                     if not detected_mime:
                         detected_mime, _ = mimetypes.guess_type(str(file_path))
+                        if ctx and detected_mime:
+                            await ctx.debug(f"Auto-detected MIME type: {detected_mime}")
 
                     # Auto-detect media_type from mime_type
                     if not media_type and detected_mime:
@@ -104,22 +127,39 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                         else:
                             detected_media_type = "document"
 
+                        if ctx:
+                            await ctx.debug(f"Auto-detected media type: {detected_media_type}")
+
                     # Read file and encode to base64
                     try:
+                        if ctx:
+                            await ctx.debug(f"Reading and encoding file ({file_path.stat().st_size} bytes)")
+
                         with open(file_path, "rb") as f:
                             file_data = f.read()
                             media_base64_data = base64.b64encode(file_data).decode("utf-8")
+
+                        if ctx:
+                            await ctx.debug(f"File encoded successfully (base64 length: {len(media_base64_data)})")
                     except Exception as e:
+                        if ctx:
+                            await ctx.error(f"Failed to read file: {str(e)}", extra={"file_path": str(file_path)})
                         return f"❌ Error reading file {media_url}: {str(e)}"
                 else:
                     # It's a URL - try to detect mime_type from URL path
                     actual_media_url = media_url
+
+                    if ctx:
+                        await ctx.debug(f"Detected remote URL: {media_url}")
 
                     # Auto-detect mime type from URL if not provided
                     if not detected_mime:
                         parsed_url = urlparse(media_url)
                         url_path = parsed_url.path
                         detected_mime, _ = mimetypes.guess_type(url_path)
+
+                        if ctx and detected_mime:
+                            await ctx.debug(f"Auto-detected MIME type from URL: {detected_mime}")
 
                     # Auto-detect media_type from mime_type for URLs too
                     if not media_type and detected_mime:
@@ -129,6 +169,12 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                             detected_media_type = "video"
                         else:
                             detected_media_type = "document"
+
+                        if ctx:
+                            await ctx.debug(f"Auto-detected media type from MIME: {detected_media_type}")
+
+                if ctx:
+                    await ctx.debug(f"Sending {detected_media_type} media to Evolution API")
 
                 # Use Evolution API directly for media (supports all features)
                 response_data = await client.evolution_send_media(
@@ -144,6 +190,13 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     delay=delay
                 )
                 message_id = response_data.get('key', {}).get('id', 'Unknown')
+
+                if ctx:
+                    await ctx.info(
+                        f"Media delivered successfully",
+                        extra={"message_id": message_id, "recipient": to, "media_type": detected_media_type}
+                    )
+
                 return f"✅ Media sent to {to}\nMessage ID: {message_id}"
             elif message_type == "audio":
                 if not audio_url:
@@ -151,6 +204,9 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
                 # Send "recording" presence (recording indicator) before sending audio
                 try:
+                    if ctx:
+                        await ctx.debug("Sending recording indicator")
+
                     await client.evolution_send_presence(
                         instance_name=instance_name,
                         remote_jid=to,
@@ -158,6 +214,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                         delay=3000  # 3 seconds
                     )
                 except Exception as e:
+                    if ctx:
+                        await ctx.warning("Could not send recording indicator")
                     logger.warning(f"Failed to send presence: {e}")
 
                 # Detect if audio_url is a local file or URL
@@ -173,15 +231,29 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     # It's a local file - read and encode to base64
                     file_path = Path(audio_url).absolute()
 
+                    if ctx:
+                        await ctx.debug(f"Detected local audio file: {file_path.name}")
+
                     try:
+                        if ctx:
+                            await ctx.debug(f"Reading and encoding audio ({file_path.stat().st_size} bytes)")
+
                         with open(file_path, "rb") as f:
                             file_data = f.read()
                             audio_base64_data = base64.b64encode(file_data).decode("utf-8")
+
+                        if ctx:
+                            await ctx.debug(f"Audio encoded successfully (base64 length: {len(audio_base64_data)})")
                     except Exception as e:
+                        if ctx:
+                            await ctx.error(f"Failed to read audio file: {str(e)}", extra={"file_path": str(file_path)})
                         return f"❌ Error reading audio file {audio_url}: {str(e)}"
                 else:
                     # It's a URL
                     actual_audio_url = audio_url
+
+                    if ctx:
+                        await ctx.debug(f"Detected remote audio URL: {audio_url}")
 
                 # Build request
                 request_data = {
@@ -196,17 +268,36 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                 else:
                     request_data["audio_url"] = actual_audio_url
 
+                if ctx:
+                    await ctx.debug("Sending audio message to Omni API")
+
                 request = SendAudioRequest(**request_data)
                 response = await client.send_audio(instance_name, request)
+
+                if response.success and ctx:
+                    await ctx.info(
+                        f"Audio delivered successfully",
+                        extra={"message_id": response.message_id, "recipient": to}
+                    )
             else:
                 return f"❌ Error: Unknown message type '{message_type}'"
 
             if response.success:
                 return f"✅ Message sent to {to}\nMessage ID: {response.message_id}"
             else:
+                if ctx:
+                    await ctx.error(
+                        f"Message delivery failed: {response.error or 'Unknown error'}",
+                        extra={"recipient": to, "message_type": message_type}
+                    )
                 return f"❌ Failed to send message: {response.error or 'Unknown error'}"
 
         except Exception as e:
+            if ctx:
+                await ctx.error(
+                    f"WhatsApp message error: {str(e)}",
+                    extra={"recipient": to, "message_type": message_type}
+                )
             logger.error(f"Error sending WhatsApp message: {e}")
             return f"❌ Failed to send message: {str(e)}"
 
@@ -232,9 +323,15 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         client = get_client(ctx)
 
         try:
+            if ctx:
+                await ctx.info(f"Reacting with {emoji} to message {to_message_id}")
+
             # Auto-detect from_me by checking message in Evolution API
             from ..client import normalize_jid
             remote_jid = normalize_jid(phone)
+
+            if ctx:
+                await ctx.debug(f"Fetching messages to detect sender (limit 100)")
 
             # Fetch messages to find the target message
             messages_response = await client.evolution_find_messages(
@@ -250,7 +347,12 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                     msg_key = msg.get("key", {})
                     if msg_key.get("id") == to_message_id:
                         from_me = msg_key.get("fromMe", True)
+                        if ctx:
+                            await ctx.debug(f"Found message, from_me={from_me}")
                         break
+
+            if ctx:
+                await ctx.debug(f"Sending reaction to Evolution API")
 
             # Use Evolution API directly for reactions (Omni doesn't support it properly)
             response = await client.evolution_send_reaction(
@@ -261,9 +363,20 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
                 from_me=from_me
             )
 
+            if ctx:
+                await ctx.info(
+                    f"Reaction delivered successfully",
+                    extra={"emoji": emoji, "message_id": to_message_id}
+                )
+
             return f"✅ Reacted with {emoji} to message {to_message_id}"
 
         except Exception as e:
+            if ctx:
+                await ctx.error(
+                    f"Reaction error: {str(e)}",
+                    extra={"emoji": emoji, "message_id": to_message_id}
+                )
             logger.error(f"Error sending reaction: {e}")
             return f"❌ Failed to send reaction: {str(e)}"
 
@@ -293,6 +406,10 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         client = get_client(ctx)
 
         try:
+            if ctx:
+                await ctx.info(f"Sending sticker to {to}")
+                await ctx.debug(f"Sticker URL: {sticker_url}")
+
             response = await client.evolution_send_sticker(
                 instance_name=instance_name,
                 remote_jid=to,
@@ -304,9 +421,20 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             # Extract message ID from Evolution API response
             message_id = response.get("key", {}).get("id", "Unknown")
 
+            if ctx:
+                await ctx.info(
+                    f"Sticker delivered successfully",
+                    extra={"message_id": message_id, "recipient": to}
+                )
+
             return f"✅ Sticker sent to {to}\nMessage ID: {message_id}"
 
         except Exception as e:
+            if ctx:
+                await ctx.error(
+                    f"Sticker send error: {str(e)}",
+                    extra={"recipient": to, "sticker_url": sticker_url}
+                )
             logger.error(f"Error sending sticker: {e}")
             return f"❌ Failed to send sticker: {str(e)}"
 
