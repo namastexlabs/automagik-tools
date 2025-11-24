@@ -113,7 +113,16 @@ def create_server(tool_config: Optional[SparkConfig] = None):
 
 
 # Health and Status Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Health",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_health(ctx: Optional[Context] = None) -> str:
     """
     Get health status of Spark API and its services.
@@ -134,7 +143,16 @@ async def get_health(ctx: Optional[Context] = None) -> str:
 
 
 # Workflow Management Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Workflows",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_workflows(
     source: Optional[str] = None,
     limit: int = 100,
@@ -162,7 +180,16 @@ async def list_workflows(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Workflow",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific workflow.
@@ -185,7 +212,16 @@ async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Run Workflow",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def run_workflow(
     workflow_id: str, input_text: str, ctx: Optional[Context] = None
 ) -> str:
@@ -216,7 +252,16 @@ async def run_workflow(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Delete Workflow",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a synchronized workflow.
@@ -240,7 +285,16 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
 
 
 # Remote Workflow Discovery Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Remote Workflows",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_remote_workflows(
     source_url: str, simplified: bool = True, ctx: Optional[Context] = None
 ) -> str:
@@ -266,7 +320,16 @@ async def list_remote_workflows(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Remote Workflow",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_remote_workflow(
     workflow_id: str, source_url: str, ctx: Optional[Context] = None
 ) -> str:
@@ -292,7 +355,16 @@ async def get_remote_workflow(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Sync Workflow",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def sync_workflow(
     workflow_id: str,
     source_url: str,
@@ -327,7 +399,16 @@ async def sync_workflow(
 
 
 # Task Management Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Tasks",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_tasks(
     workflow_id: Optional[str] = None,
     status: Optional[str] = None,
@@ -377,7 +458,16 @@ async def list_tasks(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Task",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific task execution.
@@ -400,7 +490,16 @@ async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Delete Task",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a task execution.
@@ -424,7 +523,16 @@ async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
 
 
 # Schedule Management Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Schedules",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_schedules(
     workflow_id: Optional[str] = None, ctx: Optional[Context] = None
 ) -> str:
@@ -449,7 +557,16 @@ async def list_schedules(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Create Schedule",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def create_schedule(
     workflow_id: str,
     schedule_type: str,
@@ -485,7 +602,16 @@ async def create_schedule(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Schedule",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific schedule.
@@ -508,7 +634,16 @@ async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Update Schedule",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def update_schedule(
     schedule_id: str,
     workflow_id: str,
@@ -559,7 +694,16 @@ async def update_schedule(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Delete Schedule",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a schedule.
@@ -582,7 +726,16 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Enable Schedule",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Enable a disabled schedule.
@@ -605,7 +758,16 @@ async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Disable Schedule",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Disable an active schedule.
@@ -629,7 +791,16 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
 
 
 # Source Management Tools
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Sources",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def list_sources(
     status: Optional[str] = None, ctx: Optional[Context] = None
 ) -> str:
@@ -654,7 +825,16 @@ async def list_sources(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Get Source",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific workflow source.
@@ -677,7 +857,16 @@ async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Add Source",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def add_source(
     name: str,
     source_type: str,
@@ -712,7 +901,16 @@ async def add_source(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Update Source",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def update_source(
     source_id: str,
     name: Optional[str] = None,
@@ -744,7 +942,16 @@ async def update_source(
         raise
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Delete Source",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    exclude_args=["ctx"]
+)
 async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a workflow source.
