@@ -1,15 +1,19 @@
 """HTTP server for multi-tenant Hub."""
 import os
+import webbrowser
+import threading
+import time
 from typing import Dict, Any, List
 from contextlib import asynccontextmanager
-from fastmcp import FastMCP, Context
-from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from .hub.auth import get_current_user, get_auth_url, authenticate_with_code, get_logout_url
+from fastmcp import FastMCP, Context
+from fastmcp.server.auth.providers.workos import AuthKitProvider
 from .hub import tools as hub_tools
 from .hub.registry import populate_tool_registry
 from .hub.database import init_database
+from .hub.api_routes import router as api_router
 
 
 # Server lifespan: populate tool registry on startup
@@ -22,17 +26,17 @@ async def lifespan(server: FastMCP):
     # This registers all calendar tools onto the Hub instance
     print("📅 Importing Google Calendar tools...")
     from automagik_tools.hub.execution import HubToolWrapper
-    
+
     calendar_server = create_calendar_server()
-    
+
     # Wrap all tools in the calendar server before importing
     # Note: FastMCP.import_server iterates over server.tools
     # We need to intercept this or wrap them manually.
     # Since import_server just calls self.add_tool, we can iterate and add them manually with wrapping.
-    
+
     # But import_server is convenient. Let's see if we can wrap them in place.
     # FastMCP tools are stored in _tool_manager._tools
-    
+
     # Let's iterate and wrap
     # We need to access the private _tool_manager
     tool_manager = calendar_server._tool_manager
@@ -42,72 +46,58 @@ async def lifespan(server: FastMCP):
             original_fn = tool.fn
             wrapped_fn = HubToolWrapper.wrap(tool.name, original_fn)
             tool.fn = wrapped_fn
-            
+
     await hub.import_server(calendar_server)
 
     # Populate tool registry
     await populate_tool_registry()
-    
+
     # Re-inject credential store to be safe
     credential_store.set_credential_store(db_store)
 
     print("✅ Hub ready!")
+
+    # Auto-open browser after server is ready
+    host = os.getenv("HUB_HOST", "0.0.0.0")
+    port = int(os.getenv("HUB_PORT", 8884))
+
+    # Use localhost for browser open (0.0.0.0 won't work in browser)
+    browser_host = "localhost" if host == "0.0.0.0" else host
+    hub_url = f"http://{browser_host}:{port}"
+
+    def open_browser():
+        """Open browser after a short delay to ensure server is listening."""
+        time.sleep(2)  # Wait for server to fully start
+        print(f"🌐 Opening browser to {hub_url}")
+        webbrowser.open(hub_url)
+
+    # Start browser open in background thread
+    browser_thread = threading.Thread(target=open_browser, daemon=True)
+    browser_thread.start()
+
     yield
     print("👋 Hub shutting down...")
 
 
-# Create Hub
-from .hub.auth.middleware import AuthMiddleware
+# Create Hub with AuthKit
 from automagik_tools.tools.google_calendar import create_server as create_calendar_server
+
+# Initialize AuthKit provider (FastMCP native integration)
+auth_provider = AuthKitProvider(
+    authkit_domain=os.getenv("WORKOS_AUTHKIT_DOMAIN", "https://your-project.authkit.app"),
+    base_url=os.getenv("HUB_BASE_URL", "http://localhost:8000")
+)
 
 hub = FastMCP(
     name="Automagik Tools Hub",
     instructions="Multi-tenant MCP tool management hub. Use the available tools to manage your personal tool collection.",
     lifespan=lifespan,
-    middleware=[AuthMiddleware()],
+    auth=auth_provider,  # Native FastMCP AuthKit integration
 )
 
 
-# --- Auth Routes ---
-
-@hub.custom_route("/login", methods=["GET"])
-async def login(request: Request):
-    """Redirect to AuthKit login."""
-    redirect_uri = os.getenv("WORKOS_REDIRECT_URI", "http://localhost:8000/auth/callback")
-    return JSONResponse({"url": get_auth_url(redirect_uri)})
-
-@hub.custom_route("/auth/callback", methods=["GET"])
-async def auth_callback(request: Request):
-    """Handle AuthKit callback."""
-    code = request.query_params.get("code")
-    if not code:
-        return JSONResponse({"error": "Missing code parameter"}, status_code=400)
-        
-    try:
-        result = await authenticate_with_code(code)
-        # In a real app, you'd set the cookie here using FastAPI's Response
-        # For this simple example, we return the session data
-        # The client needs to handle setting the cookie 'wos_session'
-        return JSONResponse(result)
-    except Exception as e:
-        return JSONResponse({"detail": str(e)}, status_code=400)
-
-@hub.custom_route("/logout", methods=["GET"])
-async def logout(request: Request):
-    """Logout user."""
-    try:
-        # Manually call get_current_user dependency
-        user = await get_current_user(request)
-        # If successful, we can proceed with logout logic if any
-        # For now, just return success
-        return JSONResponse({"message": "Logged out"})
-    except HTTPException as e:
-        return JSONResponse({"detail": e.detail}, status_code=e.status_code)
-    except Exception as e:
-        return JSONResponse({"detail": str(e)}, status_code=500)
-
-
 # --- Hub Management Tools ---
+# Note: Auth routes are automatically handled by AuthKitProvider
 
 @hub.tool()
 async def get_available_tools() -> List[Dict[str, Any]]:
@@ -135,8 +125,8 @@ async def add_tool(tool_name: str, config: Dict[str, Any], ctx: Context) -> str:
         tool_name: Name of the tool to add (use get_available_tools to see options)
         config: Configuration dictionary with required keys (use get_tool_metadata to see schema)
     """
-    # Verify auth
-    # user = await get_current_user(ctx.request) # This requires ctx to have request
+    # User authentication is handled by AuthKitProvider
+    # ctx.get_state("user_id") will be available
     return await hub_tools.add_tool(tool_name, config, ctx)
 
 
@@ -297,7 +287,7 @@ if __name__ == "__main__":
     import uvicorn
 
     host = os.getenv("HUB_HOST", "0.0.0.0")
-    port = int(os.getenv("HUB_PORT", 8000))
+    port = int(os.getenv("HUB_PORT", 8884))
 
     print(f"🚀 Starting Hub HTTP server on http://{host}:{port}")
 
@@ -306,3 +296,40 @@ if __name__ == "__main__":
 
 # Expose app for Uvicorn CLI
 app = hub.http_app
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (needed for browser UI)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount REST API routes at /api
+app.include_router(api_router)
+
+# Serve static UI files at /app
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+from pathlib import Path
+
+ui_dist = Path(__file__).parent / "hub_ui" / "dist"
+if ui_dist.exists():
+    app.mount("/app", StaticFiles(directory=str(ui_dist), html=True), name="ui")
+
+    # Redirect root to /app
+    @app.get("/")
+    async def root():
+        return RedirectResponse(url="/app")
+else:
+    # UI not built - serve placeholder
+    @app.get("/")
+    @app.get("/app")
+    async def ui_placeholder():
+        return {
+            "message": "Hub UI not built yet",
+            "instructions": "Run: cd automagik_tools/hub_ui && npm install && npm run build",
+            "mcp_endpoint": "/mcp",
+            "api_endpoint": "/api"
+        }

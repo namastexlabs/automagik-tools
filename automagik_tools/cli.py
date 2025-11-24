@@ -288,11 +288,14 @@ def list_tools():
 
 @app.command()
 def hub(
+    transport: str = typer.Option(
+        "http", "--transport", "-t", help="Transport type: stdio or http (default)"
+    ),
     host: Optional[str] = typer.Option(
-        None, help="Host to bind to (overrides HUB_HOST env var)"
+        None, help="Host to bind to (HTTP mode only, overrides HUB_HOST env var)"
     ),
     port: Optional[int] = typer.Option(
-        None, help="Port to bind to (overrides HUB_PORT env var)"
+        None, help="Port to bind to (HTTP mode only, overrides HUB_PORT env var)"
     ),
     env: Optional[List[str]] = typer.Option(
         None, "--env", "-e", help="Environment variables in KEY=VALUE format"
@@ -300,15 +303,19 @@ def hub(
     env_file: Optional[Path] = typer.Option(
         None, "--env-file", "-f", help="Path to .env file to load"
     ),
-    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload (HTTP mode only)"),
 ):
     """
-    Start the multi-tenant Hub HTTP server.
+    Start the multi-tenant Hub server.
+
+    Two modes:
+    - HTTP (default): Standalone server for multi-user deployment
+    - stdio: Single-user mode for Claude Desktop integration
 
     The Hub provides OAuth-authenticated per-user tool management.
     Users can dynamically add/remove/configure tools via MCP.
+    Browser UI automatically opens at /app endpoint.
     """
-    import uvicorn
     from dotenv import load_dotenv
 
     # Load env file if provided
@@ -329,26 +336,54 @@ def hub(
             else:
                 console.print(f"[yellow]Warning: Invalid env var format '{env_var}'. Expected KEY=VALUE[/yellow]")
 
-    # Get host and port from environment variables or defaults
-    serve_host = host or os.getenv("HUB_HOST", "0.0.0.0")
-    serve_port = port or int(os.getenv("HUB_PORT", "8000"))
+    if transport == "http":
+        # HTTP mode - standalone multi-user server
+        import uvicorn
 
-    console.print(f"[blue]Starting Automagik Tools Hub...[/blue]")
-    console.print(f"[blue]Server config: HOST={serve_host}, PORT={serve_port}[/blue]")
-    console.print("[yellow]Note: Hub runs in HTTP mode only[/yellow]")
+        serve_host = host or os.getenv("HUB_HOST", "0.0.0.0")
+        serve_port = port or int(os.getenv("HUB_PORT", "8884"))
 
-    try:
-        uvicorn.run(
-            "automagik_tools.hub_http:app",
-            host=serve_host,
-            port=serve_port,
-            reload=reload,
-            log_level="info",
-            ws="wsproto"
-        )
+        console.print(f"[blue]Starting Automagik Tools Hub (HTTP mode)...[/blue]")
+        console.print(f"[blue]Server: http://{serve_host}:{serve_port}[/blue]")
+        console.print(f"[blue]MCP endpoint: http://{serve_host}:{serve_port}/mcp[/blue]")
+        console.print(f"[blue]UI: http://{serve_host}:{serve_port}/app[/blue]")
+        console.print(f"[blue]API: http://{serve_host}:{serve_port}/api[/blue]")
+        console.print("[dim]Browser will auto-open to UI...[/dim]")
 
-    except Exception as e:
-        console.print(f"[red]❌ Failed to start hub server: {e}[/red]")
+        try:
+            uvicorn.run(
+                "automagik_tools.hub_http:app",
+                host=serve_host,
+                port=serve_port,
+                reload=reload,
+                log_level="info",
+                ws="wsproto"
+            )
+        except Exception as e:
+            console.print(f"[red]❌ Failed to start hub server: {e}[/red]")
+            sys.exit(1)
+
+    elif transport == "stdio":
+        # stdio mode - single-user Claude Desktop integration
+        stderr_console.print("[blue]Starting Automagik Tools Hub (stdio mode)...[/blue]")
+        stderr_console.print("[dim]Mode: Single-user for Claude Desktop[/dim]")
+        stderr_console.print("[dim]Browser UI will auto-open on first connection[/dim]")
+
+        try:
+            from .hub_http import hub as hub_server
+
+            # Set stdio mode flag
+            os.environ["HUB_MODE"] = "stdio"
+
+            # Run in stdio mode
+            hub_server.run(transport="stdio")
+
+        except Exception as e:
+            stderr_console.print(f"[red]❌ Failed to start hub: {e}[/red]")
+            sys.exit(1)
+
+    else:
+        console.print(f"[red]❌ Invalid transport '{transport}'. Use 'stdio' or 'http'[/red]")
         sys.exit(1)
 
 
