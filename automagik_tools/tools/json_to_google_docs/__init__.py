@@ -83,7 +83,16 @@ def _ensure_client_and_processor(ctx: Optional[Context] = None):
     return client, processor
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Convert JSON to Google Docs",
+        "readOnlyHint": False,  # Creates new documents
+        "destructiveHint": False,  # Non-destructive creation
+        "idempotentHint": False,  # Each call creates new document
+        "openWorldHint": True  # Interacts with Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def convert_json_to_docs(
     json_data: str,
     template_id: str,
@@ -169,7 +178,16 @@ async def convert_json_to_docs(
         }
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Upload Template to Google Drive",
+        "readOnlyHint": False,  # Uploads file to Drive
+        "destructiveHint": False,  # Non-destructive upload
+        "idempotentHint": False,  # Each call creates new file
+        "openWorldHint": True  # Interacts with Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def upload_template(
     file_path: str,
     template_name: str,
@@ -225,7 +243,16 @@ async def upload_template(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Share Google Docs Document",
+        "readOnlyHint": False,  # Modifies sharing permissions
+        "destructiveHint": False,  # Non-destructive permission changes
+        "idempotentHint": True,  # Same sharing settings = same result
+        "openWorldHint": True  # Interacts with Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def share_document(
     file_id: str,
     emails: List[str],
@@ -284,7 +311,16 @@ async def share_document(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "List Google Docs Templates",
+        "readOnlyHint": True,  # Only lists files
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same query = same results
+        "openWorldHint": True  # Queries Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def list_templates(
     folder_id: Optional[str] = None,
     search_query: Optional[str] = None,
@@ -318,7 +354,16 @@ async def list_templates(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Download Google Docs Document",
+        "readOnlyHint": True,  # Only downloads, doesn't modify Drive
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same file = same download
+        "openWorldHint": True  # Downloads from Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def download_document(
     file_id: str,
     output_path: str,
@@ -357,7 +402,16 @@ async def download_document(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Extract Template Placeholders",
+        "readOnlyHint": True,  # Only reads template, doesn't modify
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same template = same placeholders
+        "openWorldHint": True  # Downloads from Google Drive
+    },
+    exclude_args=["ctx"]
+)
 async def extract_placeholders(
     template_id: str, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
@@ -399,7 +453,16 @@ async def extract_placeholders(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Validate JSON Data",
+        "readOnlyHint": True,  # Only validates, doesn't modify
+        "destructiveHint": False,
+        "idempotentHint": True,  # Same data = same validation result
+        "openWorldHint": False  # Pure validation logic
+    },
+    exclude_args=["ctx"]
+)
 async def validate_json_data(
     json_data: str,
     template_id: Optional[str] = None,
