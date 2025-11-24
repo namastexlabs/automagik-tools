@@ -5,6 +5,11 @@ import threading
 import time
 from typing import Dict, Any, List
 from contextlib import asynccontextmanager
+
+# Load environment variables before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
