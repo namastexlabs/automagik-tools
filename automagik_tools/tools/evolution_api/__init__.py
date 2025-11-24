@@ -93,9 +93,7 @@ def _get_target_number(provided_number: Optional[str] = None, ctx: Optional[Cont
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_text_message(
     instance: str,
     message: str,
@@ -157,9 +155,7 @@ async def send_text_message(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_media(
     instance: str,
     media: str,
@@ -239,9 +235,7 @@ async def send_media(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_audio(
     instance: str,
     audio: str,
@@ -308,9 +302,7 @@ async def send_audio(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_reaction(
     instance: str, remote_jid: str, from_me: bool, message_id: str, reaction: str
 ,
@@ -362,9 +354,7 @@ async def send_reaction(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_location(
     instance: str,
     latitude: float,
@@ -431,9 +421,7 @@ async def send_location(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_contact(
     instance: str,
     contact: List[Dict[str, str]],
@@ -493,9 +481,7 @@ async def send_contact(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_presence(
     instance: str,
     number: Optional[str] = None,
@@ -552,9 +538,7 @@ async def send_presence(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def create_instance(
     instance_name: str,
     token: Optional[str] = None,
@@ -606,9 +590,7 @@ async def create_instance(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_instance_info(instance_name: str,
     ctx: Optional[Context] = None,) -> Dict[str, Any]:
     """

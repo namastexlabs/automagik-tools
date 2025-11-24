@@ -92,9 +92,7 @@ def _ensure_config(ctx: Optional[Context] = None):
         "destructiveHint": False,
         "idempotentHint": False,  # Different responses based on memory
         "openWorldHint": True  # Connects to MCP servers
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def ask_genie(
     query: str,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -385,9 +383,7 @@ I can also manage my own memories - creating, updating, or deleting them as need
         "destructiveHint": False,
         "idempotentHint": True,  # Same stats for same state
         "openWorldHint": False  # Pure memory lookup
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def genie_memory_stats(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -455,9 +451,7 @@ async def genie_memory_stats(
         "destructiveHint": True,  # Deletes all memories
         "idempotentHint": True,  # Clearing twice = same result
         "openWorldHint": False  # Pure memory operation
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def genie_clear_memories(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -477,7 +471,15 @@ async def genie_clear_memories(
     Returns:
         Confirmation message
     """
-    if not confirm:
+    # Elicit user confirmation for destructive action
+    if not confirm and ctx:
+        response = await ctx.elicit(
+            message="⚠️ This will permanently delete all Genie memories. Are you sure?",
+            options=["Yes, clear memories", "No, cancel"]
+        )
+        if response != "Yes, clear memories":
+            return "❌ Memory clear cancelled by user"
+    elif not confirm:
         return "❌ To clear memories, set confirm=True. This action cannot be undone!"
 
     config = _ensure_config(ctx)
@@ -512,6 +514,20 @@ async def genie_clear_memories(
 
     except Exception as e:
         return f"❌ Error clearing memories: {str(e)}"
+
+
+# ===================================
+# MCP Resources
+# ===================================
+
+
+@mcp.resource("genie://memory-stats")
+async def genie_memory_stats_resource(
+    session_id: Optional[str] = None,
+    ctx: Optional[Context] = None,
+) -> str:
+    """Get Genie memory statistics as a resource."""
+    return await genie_memory_stats(session_id=session_id, ctx=ctx)
 
 
 def get_metadata() -> Dict[str, Any]:

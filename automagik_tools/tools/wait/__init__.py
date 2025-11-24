@@ -78,9 +78,7 @@ def _get_iso_timestamp(timestamp: Optional[float] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": True,  # Multiple waits of same duration are equivalent
         "openWorldHint": False  # Pure timing operation, no external interactions
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def wait_minutes(
     duration: float, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:

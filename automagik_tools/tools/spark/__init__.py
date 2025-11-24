@@ -120,9 +120,7 @@ def create_server(tool_config: Optional[SparkConfig] = None):
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_health(ctx: Optional[Context] = None) -> str:
     """
     Get health status of Spark API and its services.
@@ -150,9 +148,7 @@ async def get_health(ctx: Optional[Context] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_workflows(
     source: Optional[str] = None,
     limit: int = 100,
@@ -187,9 +183,7 @@ async def list_workflows(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific workflow.
@@ -219,9 +213,7 @@ async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def run_workflow(
     workflow_id: str, input_text: str, ctx: Optional[Context] = None
 ) -> str:
@@ -259,9 +251,7 @@ async def run_workflow(
         "destructiveHint": True,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a synchronized workflow.
@@ -271,6 +261,15 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
 
     Returns confirmation of deletion.
     """
+    # Elicit user confirmation for destructive action
+    if ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ Delete workflow {workflow_id}? This cannot be undone.",
+            options=["Yes, delete", "No, cancel"]
+        )
+        if response != "Yes, delete":
+            return json.dumps({"success": False, "message": "Deletion cancelled by user"})
+
     api_client = _ensure_client(ctx)
     if not api_client:
         raise ValueError("Tool not configured")
@@ -292,9 +291,7 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_remote_workflows(
     source_url: str, simplified: bool = True, ctx: Optional[Context] = None
 ) -> str:
@@ -327,9 +324,7 @@ async def list_remote_workflows(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_remote_workflow(
     workflow_id: str, source_url: str, ctx: Optional[Context] = None
 ) -> str:
@@ -362,9 +357,7 @@ async def get_remote_workflow(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def sync_workflow(
     workflow_id: str,
     source_url: str,
@@ -406,9 +399,7 @@ async def sync_workflow(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_tasks(
     workflow_id: Optional[str] = None,
     status: Optional[str] = None,
@@ -465,9 +456,7 @@ async def list_tasks(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific task execution.
@@ -497,9 +486,7 @@ async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
         "destructiveHint": True,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a task execution.
@@ -509,6 +496,15 @@ async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns confirmation of deletion.
     """
+    # Elicit user confirmation for destructive action
+    if ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ Delete task {task_id}? This cannot be undone.",
+            options=["Yes, delete", "No, cancel"]
+        )
+        if response != "Yes, delete":
+            return json.dumps({"success": False, "message": "Deletion cancelled by user"})
+
     api_client = _ensure_client(ctx)
     if not api_client:
         raise ValueError("Tool not configured")
@@ -530,9 +526,7 @@ async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_schedules(
     workflow_id: Optional[str] = None, ctx: Optional[Context] = None
 ) -> str:
@@ -564,9 +558,7 @@ async def list_schedules(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def create_schedule(
     workflow_id: str,
     schedule_type: str,
@@ -609,9 +601,7 @@ async def create_schedule(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific schedule.
@@ -641,9 +631,7 @@ async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def update_schedule(
     schedule_id: str,
     workflow_id: str,
@@ -701,9 +689,7 @@ async def update_schedule(
         "destructiveHint": True,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a schedule.
@@ -713,6 +699,15 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
 
     Returns confirmation of deletion.
     """
+    # Elicit user confirmation for destructive action
+    if ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ Delete schedule {schedule_id}? This cannot be undone.",
+            options=["Yes, delete", "No, cancel"]
+        )
+        if response != "Yes, delete":
+            return json.dumps({"success": False, "message": "Deletion cancelled by user"})
+
     api_client = _ensure_client(ctx)
     if not api_client:
         raise ValueError("Tool not configured")
@@ -733,9 +728,7 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Enable a disabled schedule.
@@ -765,9 +758,7 @@ async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
         "destructiveHint": True,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
     """
     Disable an active schedule.
@@ -777,6 +768,15 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
 
     Returns the updated schedule details.
     """
+    # Elicit user confirmation for destructive action
+    if ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ Disable schedule {schedule_id}? This will stop automated executions.",
+            options=["Yes, disable", "No, cancel"]
+        )
+        if response != "Yes, disable":
+            return json.dumps({"success": False, "message": "Disable cancelled by user"})
+
     api_client = _ensure_client(ctx)
     if not api_client:
         raise ValueError("Tool not configured")
@@ -798,9 +798,7 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_sources(
     status: Optional[str] = None, ctx: Optional[Context] = None
 ) -> str:
@@ -832,9 +830,7 @@ async def list_sources(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
     """
     Get detailed information about a specific workflow source.
@@ -864,9 +860,7 @@ async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def add_source(
     name: str,
     source_type: str,
@@ -908,9 +902,7 @@ async def add_source(
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def update_source(
     source_id: str,
     name: Optional[str] = None,
@@ -949,9 +941,7 @@ async def update_source(
         "destructiveHint": True,
         "idempotentHint": True,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
     """
     Delete a workflow source.
@@ -961,6 +951,15 @@ async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns confirmation of deletion.
     """
+    # Elicit user confirmation for destructive action
+    if ctx:
+        response = await ctx.elicit(
+            message=f"⚠️ Delete source {source_id}? This cannot be undone.",
+            options=["Yes, delete", "No, cancel"]
+        )
+        if response != "Yes, delete":
+            return json.dumps({"success": False, "message": "Deletion cancelled by user"})
+
     api_client = _ensure_client(ctx)
     if not api_client:
         raise ValueError("Tool not configured")
@@ -972,3 +971,38 @@ async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
         if ctx:
             ctx.error(f"Failed to delete source: {str(e)}")
         raise
+
+
+# ===================================
+# MCP Resources
+# ===================================
+
+
+@mcp.resource("spark://health")
+async def spark_health_resource(ctx: Optional[Context] = None) -> str:
+    """Get Spark server health status as a resource."""
+    return await get_health(ctx)
+
+
+@mcp.resource("spark://workflows")
+async def spark_workflows_resource(ctx: Optional[Context] = None) -> str:
+    """List all workflows as a resource."""
+    return await list_workflows(ctx=ctx)
+
+
+@mcp.resource("spark://tasks")
+async def spark_tasks_resource(ctx: Optional[Context] = None) -> str:
+    """List all tasks as a resource."""
+    return await list_tasks(ctx=ctx)
+
+
+@mcp.resource("spark://schedules")
+async def spark_schedules_resource(ctx: Optional[Context] = None) -> str:
+    """List all schedules as a resource."""
+    return await list_schedules(ctx=ctx)
+
+
+@mcp.resource("spark://sources")
+async def spark_sources_resource(ctx: Optional[Context] = None) -> str:
+    """List all workflow sources as a resource."""
+    return await list_sources(ctx=ctx)

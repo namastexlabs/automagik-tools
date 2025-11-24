@@ -204,7 +204,7 @@ class TestWaitIntegration:
         """Test tool can be discovered through hub"""
         from automagik_tools.hub import create_hub_server
 
-        hub_server = create_hub_server()
+        hub_server = await create_hub_server()
         tools = await hub_server.get_tools()
 
         # Should have wait_minutes from wait tool

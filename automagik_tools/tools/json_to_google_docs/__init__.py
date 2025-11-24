@@ -90,9 +90,7 @@ def _ensure_client_and_processor(ctx: Optional[Context] = None):
         "destructiveHint": False,  # Non-destructive creation
         "idempotentHint": False,  # Each call creates new document
         "openWorldHint": True  # Interacts with Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def convert_json_to_docs(
     json_data: str,
     template_id: str,
@@ -185,9 +183,7 @@ async def convert_json_to_docs(
         "destructiveHint": False,  # Non-destructive upload
         "idempotentHint": False,  # Each call creates new file
         "openWorldHint": True  # Interacts with Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def upload_template(
     file_path: str,
     template_name: str,
@@ -250,9 +246,7 @@ async def upload_template(
         "destructiveHint": False,  # Non-destructive permission changes
         "idempotentHint": True,  # Same sharing settings = same result
         "openWorldHint": True  # Interacts with Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def share_document(
     file_id: str,
     emails: List[str],
@@ -318,9 +312,7 @@ async def share_document(
         "destructiveHint": False,
         "idempotentHint": True,  # Same query = same results
         "openWorldHint": True  # Queries Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_templates(
     folder_id: Optional[str] = None,
     search_query: Optional[str] = None,
@@ -361,9 +353,7 @@ async def list_templates(
         "destructiveHint": False,
         "idempotentHint": True,  # Same file = same download
         "openWorldHint": True  # Downloads from Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def download_document(
     file_id: str,
     output_path: str,
@@ -409,9 +399,7 @@ async def download_document(
         "destructiveHint": False,
         "idempotentHint": True,  # Same template = same placeholders
         "openWorldHint": True  # Downloads from Google Drive
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def extract_placeholders(
     template_id: str, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
@@ -460,9 +448,7 @@ async def extract_placeholders(
         "destructiveHint": False,
         "idempotentHint": True,  # Same data = same validation result
         "openWorldHint": False  # Pure validation logic
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def validate_json_data(
     json_data: str,
     template_id: Optional[str] = None,

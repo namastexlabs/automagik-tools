@@ -1,14 +1,27 @@
 """
 Main hub server that composes all automagik tools using FastMCP mount pattern
 with automatic discovery of all tools in the tools directory.
+
+Supports mounting:
+- Local tools from automagik_tools/tools/
+- Remote stdio MCP servers
+- Remote HTTP MCP servers
 """
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Client
+from fastmcp.server.middleware import (
+    ErrorHandlingMiddleware,
+    LoggingMiddleware,
+    RateLimitingMiddleware,
+    TimingMiddleware,
+)
 import importlib
 import importlib.metadata
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
+import os
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -92,21 +105,131 @@ def discover_and_load_tools() -> Dict[str, Any]:
     return tools
 
 
-def create_hub_server() -> FastMCP:
+def load_external_mcp_servers() -> Dict[str, Dict[str, Any]]:
+    """
+    Load external MCP server configurations from environment variables.
+
+    Expects MCP_SERVERS_CONFIG environment variable with JSON format:
+    {
+        "server_name": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"],
+            "env": {"KEY": "value"}  # optional
+        },
+        "another_server": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp"
+        }
+    }
+    """
+    external_servers = {}
+
+    config_json = os.getenv("MCP_SERVERS_CONFIG")
+    if not config_json:
+        return external_servers
+
+    try:
+        config = json.loads(config_json)
+        for server_name, server_config in config.items():
+            external_servers[server_name] = {
+                "config": server_config,
+                "source": "external_mcp",
+            }
+            print(f"🌐 Discovered external MCP server: {server_name}")
+    except json.JSONDecodeError as e:
+        print(f"⚠️  Failed to parse MCP_SERVERS_CONFIG: {e}")
+    except Exception as e:
+        print(f"⚠️  Error loading external MCP servers: {e}")
+
+    return external_servers
+
+
+async def create_proxy_server(server_name: str, server_config: Dict[str, Any]) -> Optional[FastMCP]:
+    """
+    Create a proxy server for an external MCP server (stdio or HTTP).
+
+    Args:
+        server_name: Name for the mounted server
+        server_config: Configuration dict with 'type' and connection details
+
+    Returns:
+        FastMCP proxy server or None if creation fails
+    """
+    try:
+        server_type = server_config.get("type")
+
+        if server_type == "stdio":
+            # Create stdio client
+            from mcp.client.stdio import StdioServerParameters, stdio_client
+
+            command = server_config.get("command")
+            args = server_config.get("args", [])
+            env = server_config.get("env")
+
+            if not command:
+                print(f"⚠️  No command specified for stdio server {server_name}")
+                return None
+
+            # Create server parameters
+            server_params = StdioServerParameters(
+                command=command,
+                args=args,
+                env=env
+            )
+
+            # Create client and proxy
+            read, write = await stdio_client(server_params)
+            client = Client(read, write)
+
+            proxy = FastMCP.as_proxy(client, name=server_name)
+            return proxy
+
+        elif server_type == "http":
+            # Create HTTP client
+            url = server_config.get("url")
+
+            if not url:
+                print(f"⚠️  No URL specified for HTTP server {server_name}")
+                return None
+
+            client = Client(url)
+            proxy = FastMCP.as_proxy(client, name=server_name)
+            return proxy
+
+        else:
+            print(f"⚠️  Unknown server type '{server_type}' for {server_name}")
+            return None
+
+    except Exception as e:
+        print(f"❌ Failed to create proxy for {server_name}: {e}")
+        return None
+
+
+async def create_hub_server() -> FastMCP:
     """
     Create the main hub server that automatically discovers and mounts all tools.
-    No manual configuration needed - just add a tool to the tools directory!
+    Supports:
+    - Local tools from automagik_tools/tools/ directory
+    - External stdio MCP servers via MCP_SERVERS_CONFIG
+    - External HTTP MCP servers via MCP_SERVERS_CONFIG
     """
-    # Discover all available tools
+    # Discover local tools
     discovered_tools = discover_and_load_tools()
+
+    # Discover external MCP servers
+    external_servers = load_external_mcp_servers()
 
     # Build instructions dynamically
     tool_list = []
     for name, info in discovered_tools.items():
         desc = info["metadata"].get("description", "No description")
-        # Use correct prefix format without leading slash
         mount_name = info["metadata"]["name"].replace("-", "_")
         tool_list.append(f"- {mount_name}_* - {desc}")
+
+    for server_name in external_servers.keys():
+        mount_name = server_name.replace("-", "_")
+        tool_list.append(f"- {mount_name}_* - External MCP server")
 
     instructions = f"""
     This is the main hub for all Automagik tools. Each tool is mounted
@@ -120,6 +243,12 @@ def create_hub_server() -> FastMCP:
         instructions=instructions,
         resource_prefix_format="path",  # Use recommended path format
     )
+
+    # Add production middleware for monitoring, error handling, and rate limiting
+    hub.add_middleware(ErrorHandlingMiddleware(include_traceback=True))
+    hub.add_middleware(RateLimitingMiddleware(max_requests_per_second=50))
+    hub.add_middleware(TimingMiddleware())
+    hub.add_middleware(LoggingMiddleware(include_payloads=False))  # Set True for debugging
 
     # Mount each discovered tool
     mounted_tools = []
@@ -151,9 +280,9 @@ def create_hub_server() -> FastMCP:
 
             # Mount with proper syntax and consider proxy mounting
             if has_custom_lifespan:
-                hub.mount(mount_name, server, as_proxy=True)
+                hub.mount(server=server, prefix=mount_name, as_proxy=True)
             else:
-                hub.mount(mount_name, server)
+                hub.mount(server=server, prefix=mount_name)
 
             status = "✅" if is_configured else "⚠️"
             mounted_tools.append(mount_name)
@@ -161,6 +290,23 @@ def create_hub_server() -> FastMCP:
 
         except Exception as e:
             print(f"❌ Failed to mount {tool_name}: {e}")
+
+    # Mount external MCP servers as proxies
+    for server_name, server_info in external_servers.items():
+        try:
+            server_config = server_info["config"]
+            proxy_server = await create_proxy_server(server_name, server_config)
+
+            if proxy_server:
+                mount_name = server_name.replace("-", "_")
+                hub.mount(server=proxy_server, prefix=mount_name, as_proxy=True)
+                mounted_tools.append(mount_name)
+                print(f"🌐 Mounted external MCP server '{server_name}' at prefix '{mount_name}'")
+            else:
+                print(f"⚠️  Failed to create proxy for {server_name}")
+
+        except Exception as e:
+            print(f"❌ Failed to mount external server {server_name}: {e}")
 
     # Add hub-level tools
     @hub.tool()
@@ -252,5 +398,6 @@ def create_hub_server() -> FastMCP:
 
 # Allow running directly with FastMCP
 if __name__ == "__main__":
-    hub = create_hub_server()
+    import asyncio
+    hub = asyncio.run(create_hub_server())
     hub.run(show_banner=False)

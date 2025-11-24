@@ -114,9 +114,7 @@ def _ensure_client(ctx: Optional[Context] = None) -> OmniClient:
         "destructiveHint": True,  # Delete operation is destructive
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def manage_instances(
     operation: InstanceOperation,
     instance_name: Optional[str] = None,
@@ -344,9 +342,7 @@ async def manage_instances(
         "destructiveHint": False,
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def send_message(
     message_type: MessageType,
     instance_name: Optional[str] = None,
@@ -544,9 +540,7 @@ async def send_message(
         "destructiveHint": True,  # Cleanup operation can delete traces
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def manage_traces(
     operation: TraceOperation,
     trace_id: Optional[str] = None,
@@ -711,9 +705,7 @@ async def manage_traces(
         "destructiveHint": False,  # Profile updates are non-destructive
         "idempotentHint": False,
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def manage_profiles(
     operation: ProfileOperation,
     instance_name: Optional[str] = None,
@@ -812,9 +804,7 @@ async def manage_profiles(
         "destructiveHint": False,
         "idempotentHint": True,  # Same query returns same results
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def manage_chats(
     operation: str,  # "list" or "get"
     instance_name: str,
@@ -904,9 +894,7 @@ async def manage_chats(
         "destructiveHint": False,
         "idempotentHint": True,  # Same query returns same results
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def manage_contacts(
     operation: str,  # "list" or "get"
     instance_name: str,
@@ -998,9 +986,7 @@ async def manage_contacts(
         "destructiveHint": False,
         "idempotentHint": True,  # Same query returns consistent results
         "openWorldHint": True
-    },
-    exclude_args=["ctx"]
-)
+    })
 async def list_all_channels(channel_type: Optional[str] = None, ctx: Optional[Context] = None,
 ) -> str:
     """
