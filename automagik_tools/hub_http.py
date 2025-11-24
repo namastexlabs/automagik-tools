@@ -295,7 +295,7 @@ if __name__ == "__main__":
     hub.run(transport="http", host=host, port=port, lifespan="on")
 
 # Expose app for Uvicorn CLI
-app = hub.http_app
+app = hub.http_app()
 
 # Add CORS middleware
 app.add_middleware(
@@ -307,11 +307,18 @@ app.add_middleware(
 )
 
 # Mount REST API routes at /api
-app.include_router(api_router)
+# api_router is FastAPI, but app is Starlette - need to mount as sub-app
+from fastapi import FastAPI
+from starlette.routing import Mount
+
+api_app = FastAPI()
+api_app.include_router(api_router)
+app.mount("/api", api_app)
 
 # Serve static UI files at /app
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from starlette.staticfiles import StaticFiles
+from starlette.responses import RedirectResponse
+from starlette.routing import Route
 from pathlib import Path
 
 ui_dist = Path(__file__).parent / "hub_ui" / "dist"
@@ -319,17 +326,21 @@ if ui_dist.exists():
     app.mount("/app", StaticFiles(directory=str(ui_dist), html=True), name="ui")
 
     # Redirect root to /app
-    @app.get("/")
-    async def root():
+    async def root(request):
         return RedirectResponse(url="/app")
+
+    app.routes.append(Route("/", root))
 else:
     # UI not built - serve placeholder
-    @app.get("/")
-    @app.get("/app")
-    async def ui_placeholder():
-        return {
+    from starlette.responses import JSONResponse
+
+    async def ui_placeholder(request):
+        return JSONResponse({
             "message": "Hub UI not built yet",
             "instructions": "Run: cd automagik_tools/hub_ui && npm install && npm run build",
             "mcp_endpoint": "/mcp",
             "api_endpoint": "/api"
-        }
+        })
+
+    app.routes.append(Route("/", ui_placeholder))
+    app.routes.append(Route("/app", ui_placeholder))
