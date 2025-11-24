@@ -110,11 +110,17 @@ async def convert_json_to_docs(
     client, processor = _ensure_client_and_processor(ctx)
 
     if not client or not processor:
+        if ctx:
+            await ctx.error("Google Docs client not configured - missing service account credentials")
         return {
             "error": "Google Docs client not configured - missing service account credentials"
         }
 
     try:
+        if ctx:
+            await ctx.info(f"Converting JSON to Google Docs: {output_filename}")
+            await ctx.debug(f"Template ID: {template_id}")
+
         # Convert JSON data
         result = await processor.convert_json_to_docx(
             json_data=json_data,
@@ -123,14 +129,26 @@ async def convert_json_to_docs(
             folder_id=folder_id,
         )
 
+        if ctx:
+            await ctx.info(
+                f"Document created successfully",
+                extra={"file_id": result.get("file_id"), "filename": output_filename}
+            )
+
         # Share document if requested
         if result.get("file_id") and (share_with_emails or make_public):
+            if ctx:
+                await ctx.debug(f"Sharing document with {len(share_with_emails or [])} users, public={make_public}")
+
             await client.share_document(
                 file_id=result["file_id"],
                 emails=share_with_emails or [],
                 make_public=make_public,
             )
             result["shared"] = True
+
+            if ctx:
+                await ctx.info("Document shared successfully")
 
         return {
             "status": "success",
@@ -139,6 +157,11 @@ async def convert_json_to_docs(
         }
 
     except Exception as e:
+        if ctx:
+            await ctx.error(
+                f"Conversion failed: {str(e)}",
+                extra={"template_id": template_id, "filename": output_filename}
+            )
         return {
             "status": "error",
             "error": str(e),
@@ -167,12 +190,24 @@ async def upload_template(
     client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
+        if ctx:
+            await ctx.error("Google Docs client not configured")
         return {"error": "Google Docs client not configured"}
 
     try:
+        if ctx:
+            await ctx.info(f"Uploading template: {template_name}")
+            await ctx.debug(f"File path: {file_path}")
+
         result = await client.upload_docx_file(
             file_path=file_path, filename=template_name, folder_id=folder_id
         )
+
+        if ctx:
+            await ctx.info(
+                f"Template uploaded successfully",
+                extra={"template_id": result["file_id"], "filename": template_name}
+            )
 
         return {
             "status": "success",
@@ -182,6 +217,11 @@ async def upload_template(
         }
 
     except Exception as e:
+        if ctx:
+            await ctx.error(
+                f"Template upload failed: {str(e)}",
+                extra={"file_path": file_path, "template_name": template_name}
+            )
         return {"status": "error", "error": str(e)}
 
 
@@ -208,12 +248,24 @@ async def share_document(
     client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
+        if ctx:
+            await ctx.error("Google Docs client not configured")
         return {"error": "Google Docs client not configured"}
 
     try:
+        if ctx:
+            await ctx.info(f"Sharing document {file_id}")
+            await ctx.debug(f"Sharing with {len(emails)} users as {role}, public={make_public}")
+
         result = await client.share_document(
             file_id=file_id, emails=emails, role=role, make_public=make_public
         )
+
+        if ctx:
+            await ctx.info(
+                f"Document shared successfully",
+                extra={"file_id": file_id, "users_count": len(emails), "role": role, "public": make_public}
+            )
 
         return {
             "status": "success",
@@ -224,6 +276,11 @@ async def share_document(
         }
 
     except Exception as e:
+        if ctx:
+            await ctx.error(
+                f"Document sharing failed: {str(e)}",
+                extra={"file_id": file_id, "users_count": len(emails)}
+            )
         return {"status": "error", "error": str(e)}
 
 
