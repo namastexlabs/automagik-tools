@@ -367,15 +367,51 @@ def hub(
         # stdio mode - single-user Claude Desktop integration
         stderr_console.print("[blue]Starting Automagik Tools Hub (stdio mode)...[/blue]")
         stderr_console.print("[dim]Mode: Single-user for Claude Desktop[/dim]")
-        stderr_console.print("[dim]Browser UI will auto-open on first connection[/dim]")
+        stderr_console.print("[dim]Starting background HTTP server for UI access...[/dim]")
 
         try:
+            import webbrowser
+            import threading
+            import time
+            import uvicorn
             from .hub_http import hub as hub_server
 
             # Set stdio mode flag
             os.environ["HUB_MODE"] = "stdio"
 
-            # Run in stdio mode
+            # Get HTTP server config
+            http_host = os.getenv("HUB_HOST", "127.0.0.1")
+            http_port = int(os.getenv("HUB_PORT", "8884"))
+
+            # Start HTTP server in background thread (for UI/API access)
+            def run_http_server():
+                """Run HTTP server in background for UI access."""
+                uvicorn.run(
+                    "automagik_tools.hub_http:app",
+                    host=http_host,
+                    port=http_port,
+                    log_level="warning",  # Less verbose for background
+                    ws="wsproto"
+                )
+
+            http_thread = threading.Thread(target=run_http_server, daemon=True)
+            http_thread.start()
+
+            # Wait for HTTP server to start, then open browser
+            def open_browser():
+                """Open browser to UI after HTTP server is ready."""
+                time.sleep(3)  # Wait for HTTP server to start
+                hub_url = f"http://{http_host if http_host != '0.0.0.0' else 'localhost'}:{http_port}/app"
+                stderr_console.print(f"[dim]🌐 Opening browser to {hub_url}[/dim]")
+                stderr_console.print(f"[dim]   MCP: stdio (Claude Desktop)[/dim]")
+                stderr_console.print(f"[dim]   UI: {hub_url}[/dim]")
+                stderr_console.print(f"[dim]   API: http://{http_host if http_host != '0.0.0.0' else 'localhost'}:{http_port}/api[/dim]")
+                webbrowser.open(hub_url)
+
+            browser_thread = threading.Thread(target=open_browser, daemon=True)
+            browser_thread.start()
+
+            # Run MCP in stdio mode (foreground)
             hub_server.run(transport="stdio")
 
         except Exception as e:
