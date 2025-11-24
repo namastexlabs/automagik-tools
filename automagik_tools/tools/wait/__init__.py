@@ -13,8 +13,30 @@ from typing import Dict, Any, Optional
 from fastmcp import FastMCP, Context
 from .config import WaitConfig
 
-# Global config instance
+# Global config instance (for backward compatibility in single-tenant mode)
 config: Optional[WaitConfig] = None
+
+
+def _get_config(ctx: Optional[Context] = None) -> WaitConfig:
+    """Get configuration from context or global config.
+
+    Multi-tenant mode: If ctx has user config, use it
+    Single-tenant mode: Fall back to global config from env vars
+    """
+    # Try to get user-specific config from context (multi-tenant mode)
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            return create_user_config_instance(WaitConfig, ctx.tool_config)
+        except Exception as e:
+            # Fall through to global config
+            pass
+
+    # Single-tenant mode: use global config from environment
+    global config
+    if config is None:
+        config = WaitConfig()
+    return config
 
 # Create FastMCP instance
 mcp = FastMCP(
@@ -45,11 +67,9 @@ async def wait_minutes(
     duration: float, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
     """Wait for specified minutes"""
-    global config
-    if not config:
-        raise ValueError("Tool not configured")
-
-    _validate_duration(duration, config)
+    # Get user-specific or global config
+    cfg = _get_config(ctx)
+    _validate_duration(duration, cfg)
 
     duration_seconds = duration * 60
     start_time = time.time()
