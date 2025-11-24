@@ -7,7 +7,7 @@ import unicodedata
 from typing import Callable, Optional
 from pathlib import Path
 import base64
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from thefuzz import fuzz
 
 logger = logging.getLogger(__name__)
@@ -33,14 +33,15 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     @mcp.tool()
     async def download_media(
         message_id: str, instance_name: str = "genie", filename: Optional[str] = None
-) -> str:
+,
+        ctx: Optional[Context] = None,) -> str:
         """Download media from WhatsApp message (image/video/audio/document). Args: message_id, instance_name, filename (optional, auto-detected). Returns: local file path where saved."""
         import base64
         import os
         from pathlib import Path
 
-        config = get_config()
-        client = get_client()
+        config = get_config(ctx)
+        client = get_client(ctx)
 
         try:
             # Get media as base64
@@ -113,9 +114,10 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     @mcp.tool()
     async def find_message(
         trace_id: str, instance_name: str = "genie", include_payload: bool = False
-) -> str:
+,
+        ctx: Optional[Context] = None,) -> str:
         """Get message details by trace ID. Args: trace_id, instance_name, include_payload. Returns: message details with status."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             trace = await client.get_trace(trace_id)
@@ -150,7 +152,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
 
     @mcp.tool()
-    async def find_person(search: str, instance_name: str = "genie") -> str:
+    async def find_person(search: str, instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Find person by name with fuzzy search (handles typos, accents, case). Searches local DB + WhatsApp. Args: search (name), instance_name. Returns: matching contacts sorted by relevance."""
         all_contacts = {}  # phone_number -> {name, source, original_name, score}
         normalized_search = _normalize_search(search)
@@ -188,7 +191,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             logger.warning(f"Failed to search local contacts: {e}")
 
         # 2. Search Evolution API contacts
-        client = get_client()
+        client = get_client(ctx)
         try:
             contacts = await client.list_contacts(
                 instance_name=instance_name, page=1, page_size=20, search_query=search
@@ -243,7 +246,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
 
     @mcp.tool()
-    async def search(query: str, instance_name: str = "genie") -> str:
+    async def search(query: str, instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Universal search across people, groups, messages, and group members. Args: query (name/phone/keyword), instance_name. Returns: categorized results sorted by relevance."""
         MIN_SCORE = 60
         normalized_query = _normalize_search(query)
@@ -253,7 +257,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         group_results = {}   # group_id -> {name, members, score}
         message_results = [] # [{sender, text, time, mention}]
 
-        client = get_client()
+        client = get_client(ctx)
 
         # 1. Search People (Local + WhatsApp + Group Members)
         try:
@@ -368,9 +372,10 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
 
     @mcp.tool()
-    async def find_chats(instance_name: str = "genie") -> str:
+    async def find_chats(instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Find all chat conversations in WhatsApp. Args: instance_name. Returns: list of chats with details."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_find_chats(instance_name=instance_name)
@@ -409,9 +414,10 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
 
     @mcp.tool()
-    async def list_all_groups(instance_name: str = "genie") -> str:
+    async def list_all_groups(instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """List all WhatsApp groups you're a member of. Args: instance_name. Returns: groups with member counts."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_fetch_all_groups(
@@ -453,9 +459,10 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
 
 
     @mcp.tool()
-    async def get_group_members(group_jid: str, instance_name: str = "genie") -> str:
+    async def get_group_members(group_jid: str, instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Get members of a WhatsApp group with real phone numbers. Args: group_jid (from list_all_groups), instance_name. Returns: members with roles, LID, and real phone numbers."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_find_group_members(

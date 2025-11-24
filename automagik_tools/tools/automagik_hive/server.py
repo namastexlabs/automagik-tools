@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 from .config import AutomagikHiveConfig
 
@@ -93,19 +93,31 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         config = AutomagikHiveConfig()
     mcp = FastMCP("Automagik Hive")
 
+    def _get_config(ctx: Optional[Context] = None) -> AutomagikHiveConfig:
+        """Get configuration from context or parameter config."""
+        if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+            try:
+                from automagik_tools.hub.config_injection import create_user_config_instance
+                return create_user_config_instance(AutomagikHiveConfig, ctx.tool_config)
+            except Exception:
+                pass
+        return config
+
     # 🎮 Playground Status
     @mcp.tool()
-    async def check_playground_status(app_id: Optional[str] = None) -> Dict[str, Any]:
+    async def check_playground_status(app_id: Optional[str] = None,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Check the current status of the playground environment. Optionally specify an app ID to check a specific application."""
         params = {"app_id": app_id} if app_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", "/playground/status", params=params)
 
     # 🤖 Agent Operations
     @mcp.tool()
-    async def list_available_agents() -> List[Dict[str, Any]]:
+    async def list_available_agents(
+        ctx: Optional[Context] = None,) -> List[Dict[str, Any]]:
         """List all available agents in the playground that you can interact with."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", "/playground/agents")
 
     @mcp.tool()
@@ -114,7 +126,8 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         message: str,
         user_id: Optional[str] = None,
         session_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Start a new conversation with an agent. Provide your message and the agent will respond."""
         # API expects multipart form data with message field and defaults
         data = {
@@ -127,7 +140,7 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         if session_id:
             data["session_id"] = session_id
 
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request_multipart(
                 "POST", f"/playground/agents/{agent_id}/runs", data
             )
@@ -135,13 +148,14 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def continue_agent_conversation(
         agent_id: str, run_id: str, message: str
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Continue an ongoing conversation with an agent. Send your next message to keep the conversation going."""
         # API expects form-urlencoded data with "tools" field containing JSON array
 
         tools_json = json.dumps([{"type": "message", "content": message}])
         data = {"tools": tools_json, "stream": False}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request_form_urlencoded(
                 "POST", f"/playground/agents/{agent_id}/runs/{run_id}/continue", data
             )
@@ -149,10 +163,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def view_agent_conversation_history(
         agent_id: str, user_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ,
+        ctx: Optional[Context] = None,) -> List[Dict[str, Any]]:
         """View all your conversation sessions with a specific agent."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET", f"/playground/agents/{agent_id}/sessions", params=params
             )
@@ -160,10 +175,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def get_specific_agent_conversation(
         agent_id: str, session_id: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Get details of a specific conversation session with an agent."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET",
                 f"/playground/agents/{agent_id}/sessions/{session_id}",
@@ -173,10 +189,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def delete_agent_conversation(
         agent_id: str, session_id: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Delete a conversation session with an agent. This cannot be undone."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "DELETE",
                 f"/playground/agents/{agent_id}/sessions/{session_id}",
@@ -186,10 +203,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def rename_agent_conversation(
         agent_id: str, session_id: str, new_name: str
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Give a custom name to your conversation session with an agent for easier identification."""
         data = {"name": new_name}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "POST",
                 f"/playground/agents/{agent_id}/sessions/{session_id}/rename",
@@ -197,31 +215,35 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
             )
 
     @mcp.tool()
-    async def view_agent_memories(agent_id: str, user_id: str) -> Dict[str, Any]:
+    async def view_agent_memories(agent_id: str, user_id: str,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """View what an agent remembers about your interactions and conversations."""
         params = {"user_id": user_id}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET", f"/playground/agents/{agent_id}/memories", params=params
             )
 
     # 🔄 Workflow Operations
     @mcp.tool()
-    async def list_available_workflows() -> List[Dict[str, Any]]:
+    async def list_available_workflows(
+        ctx: Optional[Context] = None,) -> List[Dict[str, Any]]:
         """List all available workflows in the playground that you can execute."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", "/playground/workflows")
 
     @mcp.tool()
-    async def get_workflow_details(workflow_id: str) -> Dict[str, Any]:
+    async def get_workflow_details(workflow_id: str,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Get detailed information about a specific workflow including its steps and capabilities."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", f"/playground/workflows/{workflow_id}")
 
     @mcp.tool()
     async def execute_workflow(
         workflow_id: str, input_data: Dict[str, Any], user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Execute a workflow with your input data. The workflow will process your request through multiple steps."""
         data = {
             "input": input_data,
@@ -229,7 +251,7 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         }
         if user_id:
             data["user_id"] = user_id
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "POST", f"/playground/workflows/{workflow_id}/runs", json=data
             )
@@ -237,10 +259,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def view_workflow_execution_history(
         workflow_id: str, user_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ,
+        ctx: Optional[Context] = None,) -> List[Dict[str, Any]]:
         """View all your execution sessions with a specific workflow."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET", f"/playground/workflows/{workflow_id}/sessions", params=params
             )
@@ -248,10 +271,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def get_workflow_execution_details(
         workflow_id: str, session_id: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Get detailed results and logs from a specific workflow execution."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET",
                 f"/playground/workflows/{workflow_id}/sessions/{session_id}",
@@ -261,9 +285,10 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def delete_workflow_execution(
         workflow_id: str, session_id: str
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Delete a workflow execution session. This cannot be undone."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "DELETE", f"/playground/workflows/{workflow_id}/sessions/{session_id}"
             )
@@ -271,10 +296,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def rename_workflow_execution(
         workflow_id: str, session_id: str, new_name: str
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Give a custom name to your workflow execution session for easier identification."""
         data = {"name": new_name}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "POST",
                 f"/playground/workflows/{workflow_id}/sessions/{session_id}/rename",
@@ -283,21 +309,24 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
 
     # 👥 Team Operations
     @mcp.tool()
-    async def list_available_teams() -> Dict[str, Any]:
+    async def list_available_teams(
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """List all available agent teams in the playground that you can collaborate with."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", "/playground/teams")
 
     @mcp.tool()
-    async def get_team_details(team_id: str) -> Dict[str, Any]:
+    async def get_team_details(team_id: str,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Get detailed information about a specific team including its members and capabilities."""
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request("GET", f"/playground/teams/{team_id}")
 
     @mcp.tool()
     async def start_team_collaboration(
         team_id: str, task_description: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Start a collaborative session with a team of agents. Describe your task and the team will work together."""
         # API expects multipart form data with message field and defaults
         data = {
@@ -308,7 +337,7 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
         if user_id:
             data["user_id"] = user_id
 
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request_multipart(
                 "POST", f"/playground/teams/{team_id}/runs", data
             )
@@ -316,10 +345,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def view_team_collaboration_history(
         team_id: str, user_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ,
+        ctx: Optional[Context] = None,) -> List[Dict[str, Any]]:
         """View all your collaboration sessions with a specific team."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET", f"/playground/teams/{team_id}/sessions", params=params
             )
@@ -327,10 +357,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def get_team_collaboration_details(
         team_id: str, session_id: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Get detailed results and communication logs from a specific team collaboration session."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET",
                 f"/playground/teams/{team_id}/sessions/{session_id}",
@@ -340,10 +371,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def delete_team_collaboration(
         team_id: str, session_id: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Delete a team collaboration session. This cannot be undone."""
         params = {"user_id": user_id} if user_id else {}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "DELETE",
                 f"/playground/teams/{team_id}/sessions/{session_id}",
@@ -353,10 +385,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     @mcp.tool()
     async def rename_team_collaboration(
         team_id: str, session_id: str, new_name: str
-    ) -> Dict[str, Any]:
+    ,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """Give a custom name to your team collaboration session for easier identification."""
         data = {"name": new_name}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "POST",
                 f"/playground/teams/{team_id}/sessions/{session_id}/rename",
@@ -364,10 +397,11 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
             )
 
     @mcp.tool()
-    async def view_team_memories(team_id: str, user_id: str) -> Dict[str, Any]:
+    async def view_team_memories(team_id: str, user_id: str,
+        ctx: Optional[Context] = None,) -> Dict[str, Any]:
         """View what a team remembers about your collaborations and shared experiences."""
         params = {"user_id": user_id}
-        async with AutomagikHiveClient(config) as client:
+        async with AutomagikHiveClient(_get_config(ctx)) as client:
             return await client.request(
                 "GET", f"/playground/team/{team_id}/memories", params=params
             )

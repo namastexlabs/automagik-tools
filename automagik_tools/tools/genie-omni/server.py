@@ -8,7 +8,7 @@ You ARE connected to WhatsApp. You CAN send and read messages.
 
 import logging
 from typing import Optional
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from .client import OmniClient
 from .config import OmniConfig
 
@@ -33,21 +33,34 @@ def initialize_client(config: OmniConfig) -> None:
     _client = OmniClient(config)
 
 
-def get_client() -> OmniClient:
-    """Get or create Omni client."""
-    global _client, _config
-    if _client is None:
-        _config = OmniConfig.from_env()
-        _client = OmniClient(_config)
-    return _client
+def get_config(ctx: Optional[Context] = None) -> OmniConfig:
+    """Get configuration from context or global config."""
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            return create_user_config_instance(OmniConfig, ctx.tool_config)
+        except Exception:
+            pass
 
-
-def get_config() -> OmniConfig:
-    """Get or create Omni config."""
     global _config
     if _config is None:
         _config = OmniConfig.from_env()
     return _config
+
+
+def get_client(ctx: Optional[Context] = None) -> OmniClient:
+    """Get client with user-specific or global config."""
+    cfg = get_config(ctx)
+
+    # For multi-tenant with user config, create fresh client
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        return OmniClient(cfg)
+
+    # For single-tenant, use singleton
+    global _client
+    if _client is None:
+        _client = OmniClient(cfg)
+    return _client
 
 
 # Register all tool modules

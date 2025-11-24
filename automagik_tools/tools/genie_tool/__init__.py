@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any
 import logging
 import json
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 # Import configuration
 from .config import GenieConfig, get_config
@@ -43,12 +43,31 @@ logger = logging.getLogger(__name__)
 # FastMCP server setup
 mcp = FastMCP("Genie")
 
-# Lazy config initialization - defer until actually needed
+# Lazy config initialization - defer until actually needed (single-tenant)
 _module_config = None
 
 
-def _ensure_config():
-    """Ensure config is loaded, initializing only when needed"""
+def _get_genie_config(ctx: Optional[Context] = None) -> GenieConfig:
+    """Get configuration from context or global config.
+
+    Multi-tenant mode: If ctx has user config, use it
+    Single-tenant mode: Fall back to global config from env vars
+    """
+    # Try to get user-specific config from context (multi-tenant mode)
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            config = create_user_config_instance(GenieConfig, ctx.tool_config)
+            if config.mcp_server_configs:
+                logger.info(
+                    f"📡 Genie configured with user MCP servers: {list(config.mcp_server_configs.keys())}"
+                )
+            return config
+        except Exception as e:
+            logger.warning(f"Failed to load user config from context: {e}")
+            # Fall through to global config
+
+    # Single-tenant mode: use global config from environment
     global _module_config
     if _module_config is None:
         _module_config = get_config()
@@ -61,12 +80,18 @@ def _ensure_config():
     return _module_config
 
 
+def _ensure_config(ctx: Optional[Context] = None):
+    """Ensure config is loaded - backward compatible wrapper"""
+    return _get_genie_config(ctx)
+
+
 @mcp.tool()
 async def ask_genie(
     query: str,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
     user_id: Optional[str] = None,
     context: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Ask Genie anything - it automatically connects to MCP tools and remembers your conversations.
@@ -93,7 +118,7 @@ async def ask_genie(
         ask_genie("help me analyze this codebase")
         ask_genie("remember that I prefer Python over JavaScript")
     """
-    config = _ensure_config()
+    config = _ensure_config(ctx)
     # Validate configuration only when actually using the tool
     config.validate_for_use()
     session_id = user_id or config.shared_session_id
@@ -348,6 +373,7 @@ I can also manage my own memories - creating, updating, or deleting them as need
 async def genie_memory_stats(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     View Genie's memories and learning statistics.
@@ -361,7 +387,7 @@ async def genie_memory_stats(
     Returns:
         Memory count and recent memories
     """
-    config = _ensure_config()
+    config = _ensure_config(ctx)
     # Validate configuration only when actually using the tool
     config.validate_for_use()
     session_id = user_id or config.shared_session_id
@@ -409,6 +435,7 @@ async def genie_clear_memories(
     user_id: Optional[str] = None,
     mcp_servers: Optional[Dict[str, Dict[str, Any]]] = None,
     confirm: bool = False,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Clear Genie's memories - use with caution!
@@ -426,7 +453,7 @@ async def genie_clear_memories(
     if not confirm:
         return "❌ To clear memories, set confirm=True. This action cannot be undone!"
 
-    config = _ensure_config()
+    config = _ensure_config(ctx)
     # Validate configuration only when actually using the tool
     config.validate_for_use()
     session_id = user_id or config.shared_session_id

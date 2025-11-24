@@ -1,8 +1,8 @@
 """Identity tools - Who am I on WhatsApp?"""
 
 import logging
-from typing import Callable
-from fastmcp import FastMCP
+from typing import Callable, Optional
+from fastmcp import FastMCP, Context
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +11,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
     """Register identity tools with the MCP server."""
 
     @mcp.tool()
-    async def my_whatsapp_info(instance_name: str = "genie") -> str:
+    async def my_whatsapp_info(instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Get WhatsApp identity and connection status. Args: instance_name. Returns: number, status, profile info."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             # Get instance details

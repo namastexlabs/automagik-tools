@@ -1,8 +1,8 @@
 """Admin tools - Manage connections and configuration."""
 
 import logging
-from typing import Callable
-from fastmcp import FastMCP
+from typing import Callable, Optional
+from fastmcp import FastMCP, Context
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
 
     @mcp.tool()
-    async def my_connections() -> str:
+    async def my_connections(
+        ctx: Optional[Context] = None,) -> str:
         """List WhatsApp instances. Returns: all instances with status."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             instances = await client.list_instances(skip=0, limit=100, include_status=True)
@@ -46,9 +47,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
 
 
     @mcp.tool()
-    async def connection_status(instance_name: str = "genie") -> str:
+    async def connection_status(instance_name: str = "genie",
+        ctx: Optional[Context] = None,) -> str:
         """Check WhatsApp instance connection status. Args: instance_name. Returns: detailed status."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             status = await client.get_instance_status(instance_name)

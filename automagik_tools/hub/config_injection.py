@@ -201,13 +201,29 @@ def create_user_config_instance(
 
     Returns:
         Instance of config_class with user config applied
+
+    Note:
+        Pydantic Settings by default loads from environment even with model_validate().
+        For multi-tenant configs, we construct directly with _env_file=None to bypass
+        environment loading and use only the provided dict values.
     """
-    # Pydantic Settings can accept dict directly
     try:
-        return config_class(**user_config)
+        # For Pydantic Settings, use model_construct() to bypass environment loading
+        # model_construct() creates an instance without validation or env loading
+        from pydantic_settings import BaseSettings
+
+        # Check if it's a Pydantic Settings class
+        if issubclass(config_class, BaseSettings):
+            # Use model_construct to bypass all env loading and validation
+            # This creates the instance directly from the dict
+            return config_class.model_construct(**user_config)
+        else:
+            # Regular Pydantic model - use standard validation
+            return config_class.model_validate(user_config)
+
     except Exception as e:
         logger.warning(f"Failed to create config from user data: {e}")
-        # Fall back to default config
+        # Fall back to default config from environment
         return config_class()
 
 

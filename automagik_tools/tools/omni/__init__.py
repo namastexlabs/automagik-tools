@@ -8,7 +8,7 @@ tracking traces, and managing profiles across WhatsApp, Slack, Discord and more.
 from typing import Dict, Any, Optional, List, Union
 import logging
 import json
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 from .config import OmniConfig
 from .client import OmniClient
@@ -46,14 +46,49 @@ mcp = FastMCP(
 )
 
 
-def _ensure_client() -> OmniClient:
-    """Ensure client is initialized"""
-    global _config, _client
-    if not _config:
+
+def _get_config(ctx: Optional[Context] = None) -> OmniConfig:
+    """Get configuration from context or global config.
+
+    Multi-tenant mode: If ctx has user config, use it
+    Single-tenant mode: Fall back to global config from env vars
+    """
+    # Try to get user-specific config from context (multi-tenant mode)
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            config = create_user_config_instance(OmniConfig, ctx.tool_config)
+            config.validate_for_use()
+            return config
+        except Exception as e:
+            logger.warning(f"Failed to load user config from context: {e}")
+            # Fall through to global config
+
+    # Single-tenant mode: use global config from environment
+    global _config
+    if _config is None:
         _config = OmniConfig()
         _config.validate_for_use()
-    if not _client:
-        _client = OmniClient(_config)
+    return _config
+
+
+def _ensure_client(ctx: Optional[Context] = None) -> OmniClient:
+    """Get client with user-specific or global config.
+
+    Multi-tenant mode: Create fresh client per request with user config
+    Single-tenant mode: Use singleton global client
+    """
+    config = _get_config(ctx)
+
+    # For multi-tenant with user config, create fresh client
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        return OmniClient(config)
+
+    # For single-tenant, use singleton
+    global _client
+    if _client is None:
+        _client = OmniClient(config)
+    return _client
     return _client
 
 
@@ -67,6 +102,7 @@ async def manage_instances(
     include_status: bool = True,
     skip: int = 0,
     limit: int = 100,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Manage messaging instances (WhatsApp, Slack, Discord, etc.)
@@ -100,7 +136,7 @@ async def manage_instances(
         manage_instances(operation="create", config={"name": "new-instance", "channel_type": "whatsapp"})
         manage_instances(operation="qr", instance_name="my-whatsapp")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     try:
         if operation == InstanceOperation.LIST:
@@ -294,6 +330,7 @@ async def send_message(
     quoted_message_id: Optional[str] = None,
     delay: Optional[int] = None,
     split_message: Optional[bool] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Send messages through any configured instance (WhatsApp, Slack, Discord)
@@ -333,7 +370,7 @@ async def send_message(
         send_message(message_type="reaction", phone="+1234567890", message_id="...", emoji="👍")
         send_message(message_type="text", phone="+1234567890", message="Long text\\n\\nwith sections", split_message=False)
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     # Use default instance if not specified
     if not instance_name:
@@ -484,6 +521,7 @@ async def manage_traces(
     include_payload: bool = False,
     days_old: int = 30,
     dry_run: bool = True,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Manage message traces for debugging and analytics
@@ -521,7 +559,7 @@ async def manage_traces(
         manage_traces(operation="analytics", start_date="2024-01-01")
         manage_traces(operation="by_phone", phone="+1234567890")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     try:
         if operation == TraceOperation.LIST:
@@ -631,6 +669,7 @@ async def manage_profiles(
     user_id: Optional[str] = None,
     phone_number: Optional[str] = None,
     picture_url: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Manage user profiles and profile pictures
@@ -653,7 +692,7 @@ async def manage_profiles(
         manage_profiles(operation="fetch", phone_number="+1234567890")
         manage_profiles(operation="update_picture", picture_url="https://...")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     # Use default instance if not specified
     if not instance_name:
@@ -725,6 +764,7 @@ async def manage_chats(
     chat_type_filter: Optional[str] = None,
     archived: Optional[bool] = None,
     channel_type: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Manage chats for an instance
@@ -751,7 +791,7 @@ async def manage_chats(
         manage_chats(operation="list", instance_name="ember", chat_type_filter="group")
         manage_chats(operation="get", instance_name="ember", chat_id="cmfrcz7ag00yr29akeheeiozu")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     try:
         if operation == "list":
@@ -807,6 +847,7 @@ async def manage_contacts(
     search_query: Optional[str] = None,
     status_filter: Optional[str] = None,
     channel_type: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> str:
     """
     Manage contacts for an instance
@@ -833,7 +874,7 @@ async def manage_contacts(
         manage_contacts(operation="list", instance_name="ember", search_query="John")
         manage_contacts(operation="get", instance_name="ember", contact_id="555196644761@s.whatsapp.net")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     try:
         if operation == "list":
@@ -882,7 +923,8 @@ async def manage_contacts(
 
 
 @mcp.tool()
-async def list_all_channels(channel_type: Optional[str] = None) -> str:
+async def list_all_channels(channel_type: Optional[str] = None, ctx: Optional[Context] = None,
+) -> str:
     """
     List all channels/instances with health status and capabilities
 
@@ -899,7 +941,7 @@ async def list_all_channels(channel_type: Optional[str] = None) -> str:
         list_all_channels()
         list_all_channels(channel_type="whatsapp")
     """
-    client = _ensure_client()
+    client = _ensure_client(ctx)
 
     try:
         response = await client.list_channels(channel_type=channel_type)

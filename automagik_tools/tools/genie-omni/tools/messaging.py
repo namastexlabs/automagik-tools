@@ -3,7 +3,7 @@
 import logging
 from typing import Callable, Optional, Literal, Dict, List, Any
 from pathlib import Path
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from ..models import SendMediaRequest, SendAudioRequest
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         quoted_message_id: Optional[str] = None,
         delay: Optional[int] = None,
         split_message: Optional[bool] = None,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """Send WhatsApp message (text/media/audio). Args: to (phone or contact ID), message (text or caption), instance_name, message_type, media_url, media_type, mime_type, audio_url, quoted_message_id, delay, split_message. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -43,7 +44,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             if message_type == "text":
@@ -213,10 +214,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     @mcp.tool()
     async def react_with(
         emoji: str, to_message_id: str, phone: str, instance_name: str = "genie"
-) -> str:
+,
+        ctx: Optional[Context] = None,) -> str:
         """React to message with emoji (auto-detects sender). Args: emoji, to_message_id, phone, instance_name. Returns: confirmation."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(phone)
 
         if not is_allowed:
@@ -227,7 +229,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             # Auto-detect from_me by checking message in Evolution API
@@ -273,10 +275,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         instance_name: str = "genie",
         quoted_message_id: Optional[str] = None,
         delay: Optional[int] = None,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """Send WhatsApp sticker. Args: to, sticker_url, instance_name, quoted_message_id, delay. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -287,7 +290,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_send_sticker(
@@ -316,10 +319,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         instance_name: str = "genie",
         quoted_message_id: Optional[str] = None,
         delay: Optional[int] = None,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """Send vCard contact. Use contacts= for custom data OR contact_name= to send saved contact by name. Args: to, contacts (list of dicts: full_name, phone_number, email, organization, url), contact_name (search saved contacts), instance_name, quoted_message_id, delay. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -330,7 +334,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             # If contact_name is provided, search for the contact first
@@ -413,10 +417,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         instance_name: str = "genie",
         name: Optional[str] = None,
         address: Optional[str] = None,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """Send location. Args: to, latitude, longitude, instance_name, name, address. Returns: confirmation with message ID."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -427,7 +432,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         # Evolution API requires address field - provide default if not given
         if not address:
@@ -457,10 +462,11 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         phone: str,
         instance_name: str = "genie",
         from_me: bool = True,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """Delete message for everyone. Only works for messages from you (from_me=True), within ~48 hour window. Args: message_id, phone, instance_name, from_me. Returns: confirmation."""
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(phone)
 
         if not is_allowed:
@@ -471,7 +477,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_delete_message(
@@ -525,7 +531,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             send_whatsapp(to="5511999999999", message="Hello!")
         """
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -536,7 +542,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_send_presence(
@@ -568,7 +574,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         phone: str,
         instance_name: str = "genie",
         from_me: bool = True,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """
         Edit/update a WhatsApp message that was already sent.
 
@@ -599,7 +606,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             )
         """
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(phone)
 
         if not is_allowed:
@@ -610,7 +617,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_update_message(
@@ -632,7 +639,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
     async def check_is_whatsapp(
         phone_numbers: List[str],
         instance_name: str = "genie",
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """
         Check if phone numbers are registered on WhatsApp.
 
@@ -651,7 +659,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         Example:
             check_is_whatsapp(phone_numbers=["5511999999999", "5511888888888"])
         """
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_check_is_whatsapp(
@@ -692,7 +700,8 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         options: List[str],
         instance_name: str = "genie",
         selectable_count: int = 1,
-) -> str:
+
+        ctx: Optional[Context] = None,) -> str:
         """
         Send an interactive poll to a WhatsApp contact.
 
@@ -721,7 +730,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
             )
         """
         # Safety check: validate recipient against master context
-        config = get_config()
+        config = get_config(ctx)
         is_allowed, validation_message = config.validate_recipient(to)
 
         if not is_allowed:
@@ -732,7 +741,7 @@ def register_tools(mcp: FastMCP, get_client: Callable, get_config: Callable):
         if not config.has_master_context():
             logger.warning(config.get_safety_warning())
 
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             response = await client.evolution_send_poll(

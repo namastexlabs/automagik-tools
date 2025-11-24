@@ -4,7 +4,7 @@ import logging
 import sqlite3
 import os
 from typing import Callable, Optional, Literal
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
     @mcp.tool()
     async def my_contacts(
         instance_name: str = "genie", search: Optional[str] = None, limit: int = 50
-    ) -> str:
+    ,
+        ctx: Optional[Context] = None,) -> str:
         """Get contacts from WhatsApp. Args: instance_name, search query, limit. Returns: list of contacts with names and phone numbers."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             contacts = await client.list_contacts(
@@ -85,9 +86,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         instance_name: str = "genie",
         conversation_type: Optional[Literal["direct", "group", "all"]] = "all",
         limit: int = 20,
-    ) -> str:
+    
+        ctx: Optional[Context] = None,) -> str:
         """Get active WhatsApp conversations. Args: instance_name, conversation_type filter, limit. Returns: list of active chats."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             chat_filter = None if conversation_type == "all" else conversation_type
@@ -128,7 +130,8 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         name: str,
         nickname: Optional[str] = None,
         notes: Optional[str] = None
-    ) -> str:
+    ,
+        ctx: Optional[Context] = None,) -> str:
         """Add contact to local database. Args: phone_number, name, nickname, notes. Returns: confirmation."""
         _ensure_contacts_table()
 
@@ -165,7 +168,8 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         name: Optional[str] = None,
         nickname: Optional[str] = None,
         notes: Optional[str] = None
-    ) -> str:
+    ,
+        ctx: Optional[Context] = None,) -> str:
         """Update existing contact in local database. Args: phone_number, name, nickname, notes. Returns: confirmation."""
         _ensure_contacts_table()
 
@@ -218,7 +222,8 @@ def register_tools(mcp: FastMCP, get_client: Callable):
             return f"❌ Failed to update contact: {str(e)}"
 
     @mcp.tool()
-    async def remove_contact(phone_number: str) -> str:
+    async def remove_contact(phone_number: str,
+        ctx: Optional[Context] = None,) -> str:
         """Remove contact from local database. Args: phone_number. Returns: confirmation."""
         _ensure_contacts_table()
 

@@ -1,8 +1,8 @@
 """Reading tools - What messages have I received?"""
 
 import logging
-from typing import Callable, Dict, List, Any
-from fastmcp import FastMCP
+from typing import Callable, Dict, List, Any, Optional
+from fastmcp import FastMCP, Context
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
         instance_name: str = "genie",
         limit: int = 50,
         before_message_id: str = None
-    ) -> str:
+    ,
+        ctx: Optional[Context] = None,) -> str:
         """Read messages from person or conversation. Args: from_phone (number or group ID), instance_name, limit, before_message_id (for pagination). Returns: messages newest first, with pagination info."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             # Use Evolution API directly for message history (Omni traces don't support groups)
@@ -111,9 +112,10 @@ def register_tools(mcp: FastMCP, get_client: Callable):
     @mcp.tool()
     async def check_new_messages(
         instance_name: str = "genie", hours: int = 24, limit: int = 50
-    ) -> str:
+    ,
+        ctx: Optional[Context] = None,) -> str:
         """Check recent incoming messages. Args: instance_name, hours (lookback), limit. Returns: messages grouped by sender."""
-        client = get_client()
+        client = get_client(ctx)
 
         try:
             from datetime import datetime, timedelta

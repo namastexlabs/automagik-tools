@@ -11,7 +11,7 @@ from datetime import datetime
 
 from google import genai
 from google.genai import types
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Context
 
 from .config import GeminiAssistantConfig
 
@@ -334,6 +334,17 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
     mcp = FastMCP("gemini-assistant")
     gemini_server = GeminiMCPServer(config)
 
+    def _get_server(ctx: Optional[Context] = None) -> GeminiMCPServer:
+        """Get server instance with user-specific or default config."""
+        if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+            try:
+                from automagik_tools.hub.config_injection import create_user_config_instance
+                user_config = create_user_config_instance(GeminiAssistantConfig, ctx.tool_config)
+                return GeminiMCPServer(user_config)
+            except Exception:
+                pass
+        return gemini_server
+
     @mcp.tool()
     async def consult_gemini(
         specific_question: str,
@@ -344,7 +355,8 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
         file_descriptions: Optional[dict] = None,
         additional_context: Optional[str] = None,
         preferred_approach: str = "solution",
-    ) -> str:
+    
+        ctx: Optional[Context] = None,) -> str:
         """Start or continue a conversation with Gemini about complex coding problems. Supports follow-up questions in the same context.
 
         Args:
@@ -357,24 +369,26 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
             additional_context: Additional context, updates, or what changed since last question
             preferred_approach: Type of assistance needed (solution, review, debug, optimize, explain, follow-up)
         """
+        server = _get_server(ctx)
 
-        await gemini_server._rate_limit()
+
+        await server._rate_limit()
 
         # Start cleanup task if needed
-        gemini_server._ensure_cleanup_task_started()
+        server._ensure_cleanup_task_started()
 
         try:
             # Check session limits
             if (
-                len(gemini_server.sessions) >= config.max_sessions
-                and session_id not in gemini_server.sessions
+                len(server.sessions) >= config.max_sessions
+                and session_id not in server.sessions
             ):
                 raise ValueError(
                     f"Maximum sessions ({config.max_sessions}) reached. Please end existing sessions."
                 )
 
             # Get or create session
-            session = gemini_server._get_or_create_session(session_id)
+            session = server._get_or_create_session(session_id)
 
             # For new sessions, require problem description and either code_context or attached_files
             if session.message_count == 0:
@@ -423,7 +437,7 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
                     )
                     upload_tasks = []
                     for file_path in attached_files:
-                        task = gemini_server._process_file(file_path, session)
+                        task = server._process_file(file_path, session)
                         upload_tasks.append(task)
 
                     # Execute all uploads in parallel
@@ -517,7 +531,7 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
                     response_text = response.text
 
                     # Extract any file requests or search queries from response
-                    gemini_server._extract_requests_from_response(
+                    server._extract_requests_from_response(
                         response_text, session
                     )
 
@@ -576,7 +590,7 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
             response_text = response.text
 
             # Extract any file requests or search queries from response
-            gemini_server._extract_requests_from_response(response_text, session)
+            server._extract_requests_from_response(response_text, session)
 
             # Build response with session info
             result_parts = [
@@ -625,16 +639,19 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
             return f"Error: {error_message}"
 
     @mcp.tool()
-    async def get_gemini_requests(session_id: str) -> str:
+    async def get_gemini_requests(session_id: str,
+        ctx: Optional[Context] = None,) -> str:
         """Get the files and searches that Gemini has requested in a session.
 
         Args:
             session_id: The session ID to check
         """
-        if session_id not in gemini_server.sessions:
+        server = _get_server(ctx)
+
+        if session_id not in server.sessions:
             return f"Session {session_id} not found"
 
-        session = gemini_server.sessions[session_id]
+        session = server.sessions[session_id]
 
         result_parts = [f"**Session {session_id} Requests:**"]
 
@@ -655,10 +672,13 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
         return "\n".join(result_parts)
 
     @mcp.tool()
-    async def list_sessions() -> str:
+    async def list_sessions(
+        ctx: Optional[Context] = None,) -> str:
         """List all active Gemini consultation sessions."""
+        server = _get_server(ctx)
+
         session_list = []
-        for session_id, session in gemini_server.sessions.items():
+        for session_id, session in server.sessions.items():
             session_info = {
                 "id": session_id,
                 "created": session.created.isoformat(),
@@ -689,11 +709,14 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
         return text
 
     @mcp.tool()
-    async def end_session(session_id: str) -> str:
+    async def end_session(session_id: str,
+        ctx: Optional[Context] = None,) -> str:
         """End a specific Gemini consultation session to free up memory."""
-        if session_id in gemini_server.sessions:
-            await gemini_server._cleanup_session_files(session_id)
-            del gemini_server.sessions[session_id]
+        server = _get_server(ctx)
+
+        if session_id in server.sessions:
+            await server._cleanup_session_files(session_id)
+            del server.sessions[session_id]
             print(
                 f"[{datetime.now().isoformat()}] Session {session_id} ended by user",
                 file=sys.stderr,

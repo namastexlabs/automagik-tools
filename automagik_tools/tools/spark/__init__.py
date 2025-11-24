@@ -43,6 +43,36 @@ Supports three workflow types:
 )
 
 
+def _get_config(ctx: Optional[Context] = None) -> SparkConfig:
+    """Get configuration from context or global config."""
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            return create_user_config_instance(SparkConfig, ctx.tool_config)
+        except Exception:
+            pass
+
+    global config
+    if config is None:
+        config = SparkConfig()
+    return config
+
+
+def _ensure_client(ctx: Optional[Context] = None) -> SparkClient:
+    """Get client with user-specific or global config."""
+    cfg = _get_config(ctx)
+
+    # For multi-tenant with user config, create fresh client
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        return SparkClient(cfg)
+
+    # For single-tenant, use singleton
+    global client
+    if client is None:
+        client = SparkClient(cfg)
+    return client
+
+
 def get_metadata() -> Dict[str, Any]:
     """Return tool metadata for discovery"""
     return {
@@ -76,12 +106,12 @@ async def get_health(ctx: Optional[Context] = None) -> str:
 
     Returns the status of API, worker, and Redis services.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.get_health()
+        result = await api_client.get_health()
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -105,12 +135,12 @@ async def list_workflows(
 
     Returns a list of workflows with their details including type, status, and run statistics.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        workflows = await client.list_workflows(source, limit)
+        workflows = await api_client.list_workflows(source, limit)
         return json.dumps(workflows, indent=2)
     except Exception as e:
         if ctx:
@@ -128,12 +158,12 @@ async def get_workflow(workflow_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns workflow details including configuration, components, and execution history.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        workflow = await client.get_workflow(workflow_id)
+        workflow = await api_client.get_workflow(workflow_id)
         return json.dumps(workflow, indent=2)
     except Exception as e:
         if ctx:
@@ -159,12 +189,12 @@ async def run_workflow(
         - For teams: "Create a REST API with authentication"
         - For workflows: Task-specific input based on workflow type
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.run_workflow(workflow_id, input_text)
+        result = await api_client.run_workflow(workflow_id, input_text)
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -182,12 +212,12 @@ async def delete_workflow(workflow_id: str, ctx: Optional[Context] = None) -> st
 
     Returns confirmation of deletion.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        await client.delete_workflow(workflow_id)
+        await api_client.delete_workflow(workflow_id)
         return json.dumps({"success": True, "deleted": workflow_id})
     except Exception as e:
         if ctx:
@@ -209,12 +239,12 @@ async def list_remote_workflows(
 
     Returns a list of available workflows that can be synced.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        workflows = await client.list_remote_workflows(source_url, simplified)
+        workflows = await api_client.list_remote_workflows(source_url, simplified)
         return json.dumps(workflows, indent=2)
     except Exception as e:
         if ctx:
@@ -235,12 +265,12 @@ async def get_remote_workflow(
 
     Returns detailed remote workflow information.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        workflow = await client.get_remote_workflow(workflow_id, source_url)
+        workflow = await api_client.get_remote_workflow(workflow_id, source_url)
         return json.dumps(workflow, indent=2)
     except Exception as e:
         if ctx:
@@ -267,12 +297,12 @@ async def sync_workflow(
 
     Returns the synced workflow details.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.sync_workflow(
+        result = await api_client.sync_workflow(
             workflow_id, source_url, input_component, output_component
         )
         return json.dumps(result, indent=2)
@@ -320,12 +350,12 @@ async def list_tasks(
         # Get only completed tasks, paginated
         list_tasks(status="completed", limit=25, offset=0)
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.list_tasks(workflow_id, status, limit, offset)
+        result = await api_client.list_tasks(workflow_id, status, limit, offset)
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -343,12 +373,12 @@ async def get_task(task_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns task details including input, output, status, and timing.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        task = await client.get_task(task_id)
+        task = await api_client.get_task(task_id)
         return json.dumps(task, indent=2)
     except Exception as e:
         if ctx:
@@ -366,12 +396,12 @@ async def delete_task(task_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns confirmation of deletion.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.delete_task(task_id)
+        result = await api_client.delete_task(task_id)
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -392,12 +422,12 @@ async def list_schedules(
 
     Returns a list of schedules with their configuration and next run times.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        schedules = await client.list_schedules(workflow_id)
+        schedules = await api_client.list_schedules(workflow_id)
         return json.dumps(schedules, indent=2)
     except Exception as e:
         if ctx:
@@ -426,12 +456,12 @@ async def create_schedule(
 
     Returns the created schedule details.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        schedule = await client.create_schedule(
+        schedule = await api_client.create_schedule(
             workflow_id, schedule_type, schedule_expr, input_value
         )
         return json.dumps(schedule, indent=2)
@@ -451,12 +481,12 @@ async def get_schedule(schedule_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns schedule details including configuration and next run time.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        schedule = await client.get_schedule(schedule_id)
+        schedule = await api_client.get_schedule(schedule_id)
         return json.dumps(schedule, indent=2)
     except Exception as e:
         if ctx:
@@ -500,12 +530,12 @@ async def update_schedule(
                input_value=schedule.get("input_value")
            )
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.update_schedule(
+        result = await api_client.update_schedule(
             schedule_id, workflow_id, schedule_type, schedule_expr, input_value
         )
         return json.dumps(result, indent=2)
@@ -525,12 +555,12 @@ async def delete_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
 
     Returns confirmation of deletion.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        await client.delete_schedule(schedule_id)
+        await api_client.delete_schedule(schedule_id)
         return json.dumps({"success": True, "deleted": schedule_id})
     except Exception as e:
         if ctx:
@@ -548,12 +578,12 @@ async def enable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> st
 
     Returns the updated schedule details.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.enable_schedule(schedule_id)
+        result = await api_client.enable_schedule(schedule_id)
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -571,12 +601,12 @@ async def disable_schedule(schedule_id: str, ctx: Optional[Context] = None) -> s
 
     Returns the updated schedule details.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        result = await client.disable_schedule(schedule_id)
+        result = await api_client.disable_schedule(schedule_id)
         return json.dumps(result, indent=2)
     except Exception as e:
         if ctx:
@@ -597,12 +627,12 @@ async def list_sources(
 
     Returns a list of sources (AutoMagik Agents, AutoMagik Hive instances).
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        sources = await client.list_sources(status)
+        sources = await api_client.list_sources(status)
         return json.dumps(sources, indent=2)
     except Exception as e:
         if ctx:
@@ -620,12 +650,12 @@ async def get_source(source_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns source details including configuration and status.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        source = await client.get_source(source_id)
+        source = await api_client.get_source(source_id)
         return json.dumps(source, indent=2)
     except Exception as e:
         if ctx:
@@ -655,12 +685,12 @@ async def add_source(
     Example:
         add_source("Local Agents", "automagik-agents", "http://localhost:8881", "namastex888")
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        source = await client.add_source(name, source_type, url, api_key)
+        source = await api_client.add_source(name, source_type, url, api_key)
         return json.dumps(source, indent=2)
     except Exception as e:
         if ctx:
@@ -687,12 +717,12 @@ async def update_source(
 
     Returns the updated source details.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        source = await client.update_source(source_id, name, url, api_key)
+        source = await api_client.update_source(source_id, name, url, api_key)
         return json.dumps(source, indent=2)
     except Exception as e:
         if ctx:
@@ -710,12 +740,12 @@ async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
 
     Returns confirmation of deletion.
     """
-    global client
-    if not client:
+    api_client = _ensure_client(ctx)
+    if not api_client:
         raise ValueError("Tool not configured")
 
     try:
-        await client.delete_source(source_id)
+        await api_client.delete_source(source_id)
         return json.dumps({"success": True, "deleted": source_id})
     except Exception as e:
         if ctx:

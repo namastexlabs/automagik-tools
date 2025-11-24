@@ -8,7 +8,7 @@ import os
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 from .config import JsonToGoogleDocsConfig
 
@@ -31,6 +31,46 @@ processor: Optional[DocumentProcessor] = None
 mcp = FastMCP("JSON to Google Docs")
 
 
+def _get_config(ctx: Optional[Context] = None) -> JsonToGoogleDocsConfig:
+    """Get configuration from context or global config."""
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        try:
+            from automagik_tools.hub.config_injection import create_user_config_instance
+            return create_user_config_instance(JsonToGoogleDocsConfig, ctx.tool_config)
+        except Exception:
+            pass
+
+    global config
+    if config is None:
+        config = JsonToGoogleDocsConfig()
+    return config
+
+
+def _ensure_client_and_processor(ctx: Optional[Context] = None):
+    """Ensure client and processor are initialized with user-specific or global config."""
+    cfg = _get_config(ctx)
+
+    # For multi-tenant with user config, create fresh instances
+    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+        if GOOGLE_API_AVAILABLE:
+            user_client = GoogleAPIClient(cfg)
+            user_processor = DocumentProcessor(user_client, cfg)
+            return user_client, user_processor
+        else:
+            return None, None
+
+    # For single-tenant, use singletons
+    global client, processor
+    if client is None or processor is None:
+        if GOOGLE_API_AVAILABLE:
+            client = GoogleAPIClient(cfg)
+            processor = DocumentProcessor(client, cfg)
+        else:
+            client = None
+            processor = None
+    return client, processor
+
+
 @mcp.tool()
 async def convert_json_to_docs(
     json_data: str,
@@ -39,6 +79,7 @@ async def convert_json_to_docs(
     folder_id: Optional[str] = None,
     share_with_emails: Optional[List[str]] = None,
     make_public: bool = False,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     Convert JSON data to DOCX using a Google Docs template with placeholder substitution.
@@ -54,7 +95,7 @@ async def convert_json_to_docs(
     Returns:
         Dictionary with conversion status and Google Drive URL
     """
-    global client, processor
+    client, processor = _ensure_client_and_processor(ctx)
 
     if not client or not processor:
         return {
@@ -95,7 +136,10 @@ async def convert_json_to_docs(
 
 @mcp.tool()
 async def upload_template(
-    file_path: str, template_name: str, folder_id: Optional[str] = None
+    file_path: str,
+    template_name: str,
+    folder_id: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     Upload a DOCX file as a template to Google Drive.
@@ -108,7 +152,7 @@ async def upload_template(
     Returns:
         Dictionary with upload status and template ID
     """
-    global client
+    client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
         return {"error": "Google Docs client not configured"}
@@ -131,7 +175,11 @@ async def upload_template(
 
 @mcp.tool()
 async def share_document(
-    file_id: str, emails: List[str], role: str = "reader", make_public: bool = False
+    file_id: str,
+    emails: List[str],
+    role: str = "reader",
+    make_public: bool = False,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     Share a Google Docs document with users.
@@ -145,7 +193,7 @@ async def share_document(
     Returns:
         Dictionary with sharing status
     """
-    global client
+    client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
         return {"error": "Google Docs client not configured"}
@@ -169,7 +217,9 @@ async def share_document(
 
 @mcp.tool()
 async def list_templates(
-    folder_id: Optional[str] = None, search_query: Optional[str] = None
+    folder_id: Optional[str] = None,
+    search_query: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     List available Google Docs templates.
@@ -181,7 +231,7 @@ async def list_templates(
     Returns:
         Dictionary with list of templates
     """
-    global client
+    client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
         return {"error": "Google Docs client not configured"}
@@ -201,7 +251,10 @@ async def list_templates(
 
 @mcp.tool()
 async def download_document(
-    file_id: str, output_path: str, format: str = "docx"
+    file_id: str,
+    output_path: str,
+    format: str = "docx",
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     Download a Google Docs document in specified format.
@@ -214,7 +267,7 @@ async def download_document(
     Returns:
         Dictionary with download status
     """
-    global client
+    client, _ = _ensure_client_and_processor(ctx)
 
     if not client:
         return {"error": "Google Docs client not configured"}
@@ -236,7 +289,9 @@ async def download_document(
 
 
 @mcp.tool()
-async def extract_placeholders(template_id: str) -> Dict[str, Any]:
+async def extract_placeholders(
+    template_id: str, ctx: Optional[Context] = None
+) -> Dict[str, Any]:
     """
     Extract placeholder {{keys}} from a Google Docs template.
 
@@ -246,7 +301,7 @@ async def extract_placeholders(template_id: str) -> Dict[str, Any]:
     Returns:
         Dictionary with list of found placeholders
     """
-    global client, processor
+    client, processor = _ensure_client_and_processor(ctx)
 
     if not client or not processor:
         return {"error": "Google Docs client not configured"}
@@ -277,7 +332,9 @@ async def extract_placeholders(template_id: str) -> Dict[str, Any]:
 
 @mcp.tool()
 async def validate_json_data(
-    json_data: str, template_id: Optional[str] = None
+    json_data: str,
+    template_id: Optional[str] = None,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
     Validate JSON data and optionally check against template placeholders.
@@ -289,7 +346,7 @@ async def validate_json_data(
     Returns:
         Dictionary with validation results
     """
-    global processor
+    _, processor = _ensure_client_and_processor(ctx)
 
     if not processor:
         return {"error": "Document processor not configured"}
