@@ -32,7 +32,13 @@ All tools support optional fixed recipient mode for security-controlled access.
 
 def _get_config(ctx: Optional[Context] = None) -> EvolutionAPIConfig:
     """Get configuration from context or global config."""
-    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
+    if ctx:
+        # Try to get cached config from context state (per-request cache)
+        cached = ctx.get_state("evolution_api_config")
+        if cached:
+            return cached
+
+        # if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
         try:
             from automagik_tools.hub.config_injection import create_user_config_instance
             return create_user_config_instance(EvolutionAPIConfig, ctx.tool_config)
@@ -47,11 +53,19 @@ def _get_config(ctx: Optional[Context] = None) -> EvolutionAPIConfig:
 
 def _ensure_client(ctx: Optional[Context] = None) -> EvolutionAPIClient:
     """Get client with user-specific or global config."""
+    if ctx:
+        # Try to get cached client from context state (per-request cache)
+        cached = ctx.get_state("evolution_api_client")
+        if cached:
+            return cached
+
     cfg = _get_config(ctx)
 
-    # For multi-tenant with user config, create fresh client
+    # For multi-tenant with user config, create fresh client and cache it
     if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        return EvolutionAPIClient(cfg)
+        user_client = EvolutionAPIClient(cfg)
+        ctx.set_state("evolution_api_client", user_client)
+        return user_client
 
     # For single-tenant, use singleton
     global client

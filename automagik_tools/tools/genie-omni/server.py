@@ -34,13 +34,23 @@ def initialize_client(config: OmniConfig) -> None:
 
 
 def get_config(ctx: Optional[Context] = None) -> OmniConfig:
-    """Get configuration from context or global config."""
-    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        try:
-            from automagik_tools.hub.config_injection import create_user_config_instance
-            return create_user_config_instance(OmniConfig, ctx.tool_config)
-        except Exception:
-            pass
+    """Get configuration from context or global config (cached in context state)."""
+    if ctx:
+        # Try to get cached config from context state (per-request cache)
+        cached = ctx.get_state("genie_omni_config")
+        if cached:
+            return cached
+
+        # Try to get user-specific config from context (multi-tenant mode)
+        if hasattr(ctx, "tool_config") and ctx.tool_config:
+            try:
+                from automagik_tools.hub.config_injection import create_user_config_instance
+                user_config = create_user_config_instance(OmniConfig, ctx.tool_config)
+                # Cache in context state for this request
+                ctx.set_state("genie_omni_config", user_config)
+                return user_config
+            except Exception:
+                pass
 
     global _config
     if _config is None:
@@ -49,12 +59,20 @@ def get_config(ctx: Optional[Context] = None) -> OmniConfig:
 
 
 def get_client(ctx: Optional[Context] = None) -> OmniClient:
-    """Get client with user-specific or global config."""
+    """Get client with user-specific or global config (cached in context state)."""
+    if ctx:
+        # Try to get cached client from context state (per-request cache)
+        cached = ctx.get_state("genie_omni_client")
+        if cached:
+            return cached
+
     cfg = get_config(ctx)
 
-    # For multi-tenant with user config, create fresh client
+    # For multi-tenant with user config, create fresh client and cache it
     if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        return OmniClient(cfg)
+        client = OmniClient(cfg)
+        ctx.set_state("genie_omni_client", client)
+        return client
 
     # For single-tenant, use singleton
     global _client

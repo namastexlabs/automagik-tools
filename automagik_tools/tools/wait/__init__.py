@@ -20,17 +20,26 @@ config: Optional[WaitConfig] = None
 def _get_config(ctx: Optional[Context] = None) -> WaitConfig:
     """Get configuration from context or global config.
 
-    Multi-tenant mode: If ctx has user config, use it
+    Multi-tenant mode: If ctx has user config, use it (cached in context state)
     Single-tenant mode: Fall back to global config from env vars
     """
-    # Try to get user-specific config from context (multi-tenant mode)
-    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        try:
-            from automagik_tools.hub.config_injection import create_user_config_instance
-            return create_user_config_instance(WaitConfig, ctx.tool_config)
-        except Exception as e:
-            # Fall through to global config
-            pass
+    if ctx:
+        # Try to get cached config from context state (per-request cache)
+        cached = ctx.get_state("wait_config")
+        if cached:
+            return cached
+
+        # Try to get user-specific config from context (multi-tenant mode)
+        if hasattr(ctx, "tool_config") and ctx.tool_config:
+            try:
+                from automagik_tools.hub.config_injection import create_user_config_instance
+                user_config = create_user_config_instance(WaitConfig, ctx.tool_config)
+                # Cache in context state for this request
+                ctx.set_state("wait_config", user_config)
+                return user_config
+            except Exception:
+                # Fall through to global config
+                pass
 
     # Single-tenant mode: use global config from environment
     global config
@@ -75,10 +84,19 @@ async def wait_minutes(
     start_time = time.time()
     start_iso = _get_iso_timestamp(start_time)
 
+    # Log wait start
+    if ctx:
+        await ctx.info(f"Starting wait: {duration} minutes ({duration_seconds}s)")
+
     try:
         await asyncio.sleep(duration_seconds)
         end_time = time.time()
         actual_duration = end_time - start_time
+
+        # Log completion
+        if ctx:
+            await ctx.info(f"Wait completed: {round(actual_duration, 3)}s elapsed")
+
         return {
             "status": "completed",
             "duration_minutes": round(duration, 3),
@@ -91,6 +109,11 @@ async def wait_minutes(
     except asyncio.CancelledError:
         end_time = time.time()
         actual_duration = end_time - start_time
+
+        # Log cancellation
+        if ctx:
+            await ctx.warning(f"Wait cancelled after {round(actual_duration, 3)}s")
+
         return {
             "status": "cancelled",
             "duration_minutes": round(duration, 3),

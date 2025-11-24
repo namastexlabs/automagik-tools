@@ -50,19 +50,27 @@ mcp = FastMCP(
 def _get_config(ctx: Optional[Context] = None) -> OmniConfig:
     """Get configuration from context or global config.
 
-    Multi-tenant mode: If ctx has user config, use it
+    Multi-tenant mode: If ctx has user config, use it (cached in context state)
     Single-tenant mode: Fall back to global config from env vars
     """
-    # Try to get user-specific config from context (multi-tenant mode)
-    if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        try:
-            from automagik_tools.hub.config_injection import create_user_config_instance
-            config = create_user_config_instance(OmniConfig, ctx.tool_config)
-            config.validate_for_use()
-            return config
-        except Exception as e:
-            logger.warning(f"Failed to load user config from context: {e}")
-            # Fall through to global config
+    if ctx:
+        # Try to get cached config from context state (per-request cache)
+        cached = ctx.get_state("omni_config")
+        if cached:
+            return cached
+
+        # Try to get user-specific config from context (multi-tenant mode)
+        if hasattr(ctx, "tool_config") and ctx.tool_config:
+            try:
+                from automagik_tools.hub.config_injection import create_user_config_instance
+                config = create_user_config_instance(OmniConfig, ctx.tool_config)
+                config.validate_for_use()
+                # Cache in context state for this request
+                ctx.set_state("omni_config", config)
+                return config
+            except Exception as e:
+                logger.warning(f"Failed to load user config from context: {e}")
+                # Fall through to global config
 
     # Single-tenant mode: use global config from environment
     global _config
@@ -75,20 +83,27 @@ def _get_config(ctx: Optional[Context] = None) -> OmniConfig:
 def _ensure_client(ctx: Optional[Context] = None) -> OmniClient:
     """Get client with user-specific or global config.
 
-    Multi-tenant mode: Create fresh client per request with user config
+    Multi-tenant mode: Create fresh client per request with user config (cached in context)
     Single-tenant mode: Use singleton global client
     """
+    if ctx:
+        # Try to get cached client from context state (per-request cache)
+        cached = ctx.get_state("omni_client")
+        if cached:
+            return cached
+
     config = _get_config(ctx)
 
-    # For multi-tenant with user config, create fresh client
+    # For multi-tenant with user config, create fresh client and cache it
     if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-        return OmniClient(config)
+        client = OmniClient(config)
+        ctx.set_state("omni_client", client)
+        return client
 
     # For single-tenant, use singleton
     global _client
     if _client is None:
         _client = OmniClient(config)
-    return _client
     return _client
 
 

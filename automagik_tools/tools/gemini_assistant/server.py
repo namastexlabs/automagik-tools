@@ -335,14 +335,24 @@ def create_server(config: Optional[GeminiAssistantConfig] = None) -> FastMCP:
     gemini_server = GeminiMCPServer(config)
 
     def _get_server(ctx: Optional[Context] = None) -> GeminiMCPServer:
-        """Get server instance with user-specific or default config."""
-        if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-            try:
-                from automagik_tools.hub.config_injection import create_user_config_instance
-                user_config = create_user_config_instance(GeminiAssistantConfig, ctx.tool_config)
-                return GeminiMCPServer(user_config)
-            except Exception:
-                pass
+        """Get server instance with user-specific or default config (cached in context state)."""
+        if ctx:
+            # Try to get cached server from context state (per-request cache)
+            cached = ctx.get_state("gemini_server")
+            if cached:
+                return cached
+
+            # Try to get user-specific config from context (multi-tenant mode)
+            if hasattr(ctx, "tool_config") and ctx.tool_config:
+                try:
+                    from automagik_tools.hub.config_injection import create_user_config_instance
+                    user_config = create_user_config_instance(GeminiAssistantConfig, ctx.tool_config)
+                    user_server = GeminiMCPServer(user_config)
+                    # Cache in context state for this request
+                    ctx.set_state("gemini_server", user_server)
+                    return user_server
+                except Exception:
+                    pass
         return gemini_server
 
     @mcp.tool()

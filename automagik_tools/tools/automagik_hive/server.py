@@ -94,13 +94,23 @@ def create_server(config: AutomagikHiveConfig = None) -> FastMCP:
     mcp = FastMCP("Automagik Hive")
 
     def _get_config(ctx: Optional[Context] = None) -> AutomagikHiveConfig:
-        """Get configuration from context or parameter config."""
-        if ctx and hasattr(ctx, "tool_config") and ctx.tool_config:
-            try:
-                from automagik_tools.hub.config_injection import create_user_config_instance
-                return create_user_config_instance(AutomagikHiveConfig, ctx.tool_config)
-            except Exception:
-                pass
+        """Get configuration from context or parameter config (cached in context state)."""
+        if ctx:
+            # Try to get cached config from context state (per-request cache)
+            cached = ctx.get_state("automagik_hive_config")
+            if cached:
+                return cached
+
+            # Try to get user-specific config from context (multi-tenant mode)
+            if hasattr(ctx, "tool_config") and ctx.tool_config:
+                try:
+                    from automagik_tools.hub.config_injection import create_user_config_instance
+                    user_config = create_user_config_instance(AutomagikHiveConfig, ctx.tool_config)
+                    # Cache in context state for this request
+                    ctx.set_state("automagik_hive_config", user_config)
+                    return user_config
+                except Exception:
+                    pass
         return config
 
     # 🎮 Playground Status
