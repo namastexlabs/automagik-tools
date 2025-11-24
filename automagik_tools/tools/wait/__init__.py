@@ -71,7 +71,16 @@ def _get_iso_timestamp(timestamp: Optional[float] = None) -> str:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "title": "Wait for Duration",
+        "readOnlyHint": True,  # Doesn't modify any data
+        "destructiveHint": False,
+        "idempotentHint": True,  # Multiple waits of same duration are equivalent
+        "openWorldHint": False  # Pure timing operation, no external interactions
+    },
+    exclude_args=["ctx"]
+)
 async def wait_minutes(
     duration: float, ctx: Optional[Context] = None
 ) -> Dict[str, Any]:
