@@ -352,3 +352,159 @@ class AuditLog(Base):
         Index("idx_audit_occurred", "occurred_at"),
         Index("idx_audit_request", "request_id"),
     )
+
+
+# ===================================
+# Zero-Config & Genie Discovery Models
+# ===================================
+
+class SystemConfig(Base):
+    """System-level configuration including encrypted secrets.
+
+    Stores:
+    - App mode (unconfigured/local/workos)
+    - Setup completion status
+    - WorkOS credentials (encrypted)
+    - Encryption salt
+    - Super admin emails
+    """
+    __tablename__ = "system_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    config_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    config_value: Mapped[str] = mapped_column(Text, nullable=False)
+    is_secret: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserBaseFolder(Base):
+    """User's base folder for project discovery.
+
+    Each user can configure one or more base folders to scan for .git repositories.
+    """
+    __tablename__ = "user_base_folders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)  # Absolute path to scan
+    label: Mapped[Optional[str]] = mapped_column(String(255))  # Optional display name
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_scanned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_base_folders_user", "user_id"),
+        Index("idx_base_folders_workspace", "workspace_id"),
+        Index("idx_base_folders_active", "is_active"),
+    )
+
+
+class Project(Base):
+    """Discovered project (any folder with .git/).
+
+    Projects are discovered by scanning base folders for .git directories.
+    Each project can contain Genie agents in .genie/ folder.
+    """
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    base_folder_id: Mapped[str] = mapped_column(String(36), ForeignKey("user_base_folders.id", ondelete="CASCADE"), nullable=False)
+
+    # Project metadata
+    name: Mapped[str] = mapped_column(String(255), nullable=False)  # Folder name
+    path: Mapped[str] = mapped_column(Text, nullable=False)  # Absolute path
+    git_remote_url: Mapped[Optional[str]] = mapped_column(Text)  # Git remote URL (if available)
+
+    # Genie integration
+    has_genie_folder: Mapped[bool] = mapped_column(Boolean, default=False)
+    agent_count: Mapped[int] = mapped_column(String(10), default=0)  # Cached count
+
+    # Status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_projects_workspace", "workspace_id"),
+        Index("idx_projects_base_folder", "base_folder_id"),
+        Index("idx_projects_active", "is_active"),
+        Index("idx_projects_has_genie", "has_genie_folder"),
+    )
+
+
+class Agent(Base):
+    """Cached agent from any .md within .genie/ tree.
+
+    Agents are discovered by scanning .genie/ folders for .md files with valid frontmatter.
+    No specific folder structure required - any .md with frontmatter is an agent.
+    """
+    __tablename__ = "agents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+
+    # File metadata
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)  # e.g., "developer.md"
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)  # Absolute path
+    relative_path: Mapped[str] = mapped_column(Text, nullable=False)  # e.g., "agents/dev/backend.md"
+    file_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA256 for change detection
+
+    # Parsed from frontmatter (genie: section)
+    executor: Mapped[Optional[str]] = mapped_column(String(50))
+    variant: Mapped[Optional[str]] = mapped_column(String(50))
+    model: Mapped[Optional[str]] = mapped_column(String(50))
+
+    # Parsed content
+    title: Mapped[str] = mapped_column(String(255), nullable=False)  # From # heading
+    description: Mapped[Optional[str]] = mapped_column(Text)  # First paragraph
+
+    # Hub config (from hub: frontmatter, written back)
+    icon: Mapped[str] = mapped_column(String(50), default="bot")  # Lucide icon name
+    toolkit: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Tools config
+
+    # Raw frontmatter (for preservation during write-back)
+    raw_frontmatter: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+
+    # Sync metadata
+    sync_status: Mapped[str] = mapped_column(String(20), default="synced")  # synced, modified, error
+    synced_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_agents_project", "project_id"),
+        Index("idx_agents_workspace", "workspace_id"),
+        Index("idx_agents_sync_status", "sync_status"),
+        Index("idx_agents_file_path", "file_path", unique=True),
+    )
+
+
+class ProjectTool(Base):
+    """Tools enabled per project.
+
+    Many-to-many relationship: Projects can have multiple tools.
+    Project-level tool enablement (agents can inherit or override).
+    """
+    __tablename__ = "project_tools"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "evolution_api_v2"
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Tool-specific config
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_project_tools_project", "project_id"),
+        Index("idx_project_tools_workspace", "workspace_id"),
+        Index("idx_project_tools_unique", "project_id", "tool_name", unique=True),
+    )

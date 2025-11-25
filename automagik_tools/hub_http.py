@@ -17,9 +17,16 @@ from fastmcp import FastMCP, Context
 from fastmcp.server.auth.providers.workos import AuthKitProvider
 from .hub import tools as hub_tools
 from .hub.registry import populate_tool_registry
-from .hub.database import init_database
+from .hub.database import init_database, get_db_session
 from .hub.api_routes import router as api_router
 from .hub.auth_routes import router as auth_router
+from .hub.setup import (
+    setup_router,
+    add_setup_middleware,
+    ConfigStore,
+    ModeManager,
+    AppMode,
+)
 
 
 # Server lifespan: populate tool registry on startup
@@ -30,6 +37,27 @@ async def lifespan(server: FastMCP):
 
     # Initialize database tables
     await init_database()
+
+    # Check app mode for zero-config
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        mode_manager = ModeManager(config_store)
+
+        try:
+            app_mode = await mode_manager.get_current_mode()
+            print(f"📋 App Mode: {app_mode.value}")
+
+            if app_mode == AppMode.UNCONFIGURED:
+                print("⚠️  Setup required! Navigate to /app/setup to configure.")
+            elif app_mode == AppMode.LOCAL:
+                admin_email = await mode_manager.get_local_admin_email()
+                print(f"🏠 Local Mode: Admin = {admin_email}")
+            elif app_mode == AppMode.WORKOS:
+                creds = await mode_manager.get_workos_credentials()
+                print(f"🏢 WorkOS Mode: Domain = {creds.get('authkit_domain') if creds else 'N/A'}")
+        except Exception as e:
+            print(f"⚠️  Failed to check app mode: {e}")
+            print("   Assuming UNCONFIGURED - setup required")
 
     # Import Google Calendar Tools
     # This registers all calendar tools onto the Hub instance
@@ -72,10 +100,33 @@ async def lifespan(server: FastMCP):
 
     # Use localhost for browser open (0.0.0.0 won't work in browser)
     browser_host = "localhost" if host == "0.0.0.0" else host
-    hub_url = f"http://{browser_host}:{port}"
+    base_url = f"http://{browser_host}:{port}"
+
+    # Determine URL based on app mode
+    # If unconfigured, open directly to setup wizard
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        mode_manager = ModeManager(config_store)
+        try:
+            current_mode = await mode_manager.get_current_mode()
+            if current_mode == AppMode.UNCONFIGURED:
+                hub_url = f"{base_url}/app/setup"
+                print("⚙️  Setup required - opening setup wizard in browser")
+            else:
+                hub_url = base_url
+        except Exception:
+            # If mode check fails, assume unconfigured
+            hub_url = f"{base_url}/app/setup"
 
     def open_browser():
-        """Open browser after a short delay to ensure server is listening."""
+        """Open browser after a short delay to ensure server is listening.
+
+        Uses Python's webbrowser module which automatically detects the OS
+        and uses the appropriate browser opening mechanism:
+        - Windows: uses os.startfile() or ShellExecute
+        - macOS: uses 'open' command
+        - Linux: uses xdg-open, gnome-open, or kde-open
+        """
         time.sleep(2)  # Wait for server to fully start
         print(f"🌐 Opening browser to {hub_url}")
         webbrowser.open(hub_url)
@@ -88,21 +139,55 @@ async def lifespan(server: FastMCP):
     print("👋 Hub shutting down...")
 
 
-# Create Hub with AuthKit
+# Create Hub with conditional AuthKit
 from automagik_tools.tools.google_calendar import create_server as create_calendar_server
 from .hub.middleware import get_hub_middleware
 
-# Initialize AuthKit provider (FastMCP native integration)
-auth_provider = AuthKitProvider(
-    authkit_domain=os.getenv("WORKOS_AUTHKIT_DOMAIN", "https://your-project.authkit.app"),
-    base_url=os.getenv("HUB_BASE_URL", "http://localhost:8000")
-)
+
+def get_auth_provider():
+    """Get auth provider based on app mode.
+
+    Returns None if UNCONFIGURED or LOCAL mode.
+    Returns AuthKitProvider if WORKOS mode.
+    """
+    try:
+        # Try to read mode from database
+        import asyncio
+        from .hub.database import AsyncSessionLocal
+
+        async def check_mode():
+            async with AsyncSessionLocal() as session:
+                config_store = ConfigStore(session)
+                mode_str = await config_store.get_app_mode()
+                mode = AppMode(mode_str)
+
+                if mode == AppMode.WORKOS:
+                    # Get WorkOS credentials from database
+                    mode_manager = ModeManager(config_store)
+                    creds = await mode_manager.get_workos_credentials()
+                    if creds:
+                        return AuthKitProvider(
+                            authkit_domain=creds["authkit_domain"],
+                            base_url=os.getenv("HUB_BASE_URL", "http://localhost:8884")
+                        )
+                return None
+
+        # Run async check
+        return asyncio.run(check_mode())
+    except Exception as e:
+        # If database not ready or mode check fails, return None
+        print(f"⚠️  Auth provider check failed: {e}")
+        return None
+
+
+# Initialize auth provider (None for UNCONFIGURED/LOCAL, AuthKitProvider for WORKOS)
+auth_provider = get_auth_provider()
 
 hub = FastMCP(
     name="Automagik Tools Hub",
     instructions="Multi-tenant MCP tool management hub. Use the available tools to manage your personal tool collection.",
     lifespan=lifespan,
-    auth=auth_provider,  # Native FastMCP AuthKit integration
+    auth=auth_provider,  # Conditional auth: None for local mode, AuthKit for WorkOS
 )
 
 # Add multi-tenant middleware
@@ -339,12 +424,20 @@ from starlette.routing import Mount
 api_app = FastAPI()
 api_app.include_router(api_router)
 api_app.include_router(auth_router)
+api_app.include_router(setup_router)  # Zero-config setup wizard API
+
+# Add discovery routes
+from .hub.discovery_routes import router as discovery_router
+api_app.include_router(discovery_router)
 
 # Add webhook routes
 from .hub.webhooks import directory_sync_router
 api_app.include_router(directory_sync_router)
 
 app.mount("/api", api_app)
+
+# Add setup middleware (must be after app creation)
+add_setup_middleware(app)
 
 # Serve static UI files at /app
 from starlette.staticfiles import StaticFiles

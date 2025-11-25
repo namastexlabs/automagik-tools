@@ -1,0 +1,200 @@
+"""Application mode state machine.
+
+Manages transitions between:
+- UNCONFIGURED: Fresh install, redirect to setup wizard
+- LOCAL: Single admin, no password, no external auth
+- WORKOS: Full enterprise auth with SSO, MFA, Directory Sync
+"""
+import enum
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, Field
+
+from .config_store import ConfigStore
+
+
+class AppMode(str, enum.Enum):
+    """Application mode states."""
+    UNCONFIGURED = "unconfigured"
+    LOCAL = "local"
+    WORKOS = "workos"
+
+
+class LocalModeConfig(BaseModel):
+    """Configuration for local mode setup."""
+    admin_email: EmailStr = Field(..., description="Admin email address")
+
+
+class WorkOSModeConfig(BaseModel):
+    """Configuration for WorkOS mode setup."""
+    client_id: str = Field(..., description="WorkOS Client ID", min_length=1)
+    api_key: str = Field(..., description="WorkOS API Key", min_length=1)
+    authkit_domain: str = Field(..., description="AuthKit domain URL", min_length=1)
+    super_admin_emails: list[EmailStr] = Field(..., description="Super admin email addresses", min_items=1)
+
+
+class ModeManager:
+    """Manages application mode state machine."""
+
+    def __init__(self, config_store: ConfigStore):
+        """Initialize mode manager.
+
+        Args:
+            config_store: Configuration store instance
+        """
+        self.config_store = config_store
+
+    async def get_current_mode(self) -> AppMode:
+        """Get current application mode.
+
+        Returns:
+            Current AppMode
+        """
+        mode_str = await self.config_store.get_app_mode()
+        return AppMode(mode_str)
+
+    async def is_setup_required(self) -> bool:
+        """Check if setup wizard should be shown.
+
+        Returns:
+            True if mode is UNCONFIGURED, False otherwise
+        """
+        mode = await self.get_current_mode()
+        return mode == AppMode.UNCONFIGURED
+
+    async def configure_local_mode(self, config: LocalModeConfig) -> None:
+        """Configure local mode (single admin, no password).
+
+        Args:
+            config: Local mode configuration
+
+        Raises:
+            ValueError: If already configured in different mode
+        """
+        current_mode = await self.get_current_mode()
+        if current_mode not in (AppMode.UNCONFIGURED, AppMode.LOCAL):
+            raise ValueError(f"Cannot configure local mode from {current_mode} state")
+
+        # Initialize encryption if not done
+        await self.config_store.initialize_encryption()
+
+        # Store local admin email
+        await self.config_store.set(
+            ConfigStore.KEY_LOCAL_ADMIN_EMAIL,
+            config.admin_email
+        )
+
+        # Set mode
+        await self.config_store.set_app_mode(AppMode.LOCAL.value)
+        await self.config_store.mark_setup_completed()
+
+    async def configure_workos_mode(self, config: WorkOSModeConfig) -> None:
+        """Configure WorkOS mode (enterprise auth).
+
+        Args:
+            config: WorkOS mode configuration
+
+        Raises:
+            ValueError: If already configured in different mode
+        """
+        current_mode = await self.get_current_mode()
+        # Allow upgrade from LOCAL to WORKOS
+        if current_mode not in (AppMode.UNCONFIGURED, AppMode.LOCAL, AppMode.WORKOS):
+            raise ValueError(f"Cannot configure WorkOS mode from {current_mode} state")
+
+        # Initialize encryption if not done
+        await self.config_store.initialize_encryption()
+
+        # Store WorkOS credentials (API key is encrypted)
+        await self.config_store.set(
+            ConfigStore.KEY_WORKOS_CLIENT_ID,
+            config.client_id,
+            is_secret=False
+        )
+        await self.config_store.set(
+            ConfigStore.KEY_WORKOS_API_KEY,
+            config.api_key,
+            is_secret=True  # Encrypt API key
+        )
+        await self.config_store.set(
+            ConfigStore.KEY_WORKOS_AUTHKIT_DOMAIN,
+            config.authkit_domain,
+            is_secret=False
+        )
+
+        # Store super admin emails (comma-separated)
+        admin_emails = ",".join(config.super_admin_emails)
+        await self.config_store.set(
+            ConfigStore.KEY_SUPER_ADMIN_EMAILS,
+            admin_emails,
+            is_secret=False
+        )
+
+        # Set mode
+        await self.config_store.set_app_mode(AppMode.WORKOS.value)
+        await self.config_store.mark_setup_completed()
+
+    async def get_workos_credentials(self) -> Optional[Dict[str, str]]:
+        """Get WorkOS credentials (if configured).
+
+        Returns:
+            Dict with client_id, api_key, authkit_domain, or None
+        """
+        mode = await self.get_current_mode()
+        if mode != AppMode.WORKOS:
+            return None
+
+        client_id = await self.config_store.get(ConfigStore.KEY_WORKOS_CLIENT_ID)
+        api_key = await self.config_store.get(ConfigStore.KEY_WORKOS_API_KEY)
+        authkit_domain = await self.config_store.get(ConfigStore.KEY_WORKOS_AUTHKIT_DOMAIN)
+
+        if not all([client_id, api_key, authkit_domain]):
+            return None
+
+        return {
+            "client_id": client_id,
+            "api_key": api_key,
+            "authkit_domain": authkit_domain,
+        }
+
+    async def get_local_admin_email(self) -> Optional[str]:
+        """Get local mode admin email (if configured).
+
+        Returns:
+            Admin email or None
+        """
+        mode = await self.get_current_mode()
+        if mode != AppMode.LOCAL:
+            return None
+
+        return await self.config_store.get(ConfigStore.KEY_LOCAL_ADMIN_EMAIL)
+
+    async def get_super_admin_emails(self) -> list[str]:
+        """Get super admin emails (for WorkOS mode).
+
+        Returns:
+            List of super admin emails
+        """
+        mode = await self.get_current_mode()
+        if mode != AppMode.WORKOS:
+            return []
+
+        emails_str = await self.config_store.get(ConfigStore.KEY_SUPER_ADMIN_EMAILS)
+        if not emails_str:
+            return []
+
+        return [email.strip() for email in emails_str.split(",")]
+
+    async def upgrade_to_workos(self, config: WorkOSModeConfig) -> None:
+        """Upgrade from LOCAL mode to WORKOS mode.
+
+        Args:
+            config: WorkOS mode configuration
+
+        Raises:
+            ValueError: If not in LOCAL mode
+        """
+        current_mode = await self.get_current_mode()
+        if current_mode != AppMode.LOCAL:
+            raise ValueError(f"Can only upgrade from LOCAL mode (current: {current_mode})")
+
+        await self.configure_workos_mode(config)

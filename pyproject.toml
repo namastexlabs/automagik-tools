@@ -57,6 +57,8 @@ dependencies = [
     "alembic>=1.17.2",
     "aiosqlite>=0.21.0",
     "workos>=5.33.0",
+    "ruamel.yaml>=0.18.0",
+    "cryptography>=42.0.0",
 ]
 
 [project.optional-dependencies]
