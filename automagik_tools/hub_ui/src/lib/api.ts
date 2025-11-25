@@ -1,3 +1,5 @@
+import { clearUserInfo } from './auth';
+
 const TOKEN_STORAGE_KEY = 'hub_access_token';
 const API_BASE_URL = '/api';
 
@@ -12,6 +14,7 @@ export function setAccessToken(token: string): void {
 
 export function removeAccessToken(): void {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  clearUserInfo();
 }
 
 export function isAuthenticated(): boolean {
@@ -245,6 +248,116 @@ export const api = {
       return apiRequest(`/user/credentials/${toolName}?provider=${provider}`, {
         method: 'DELETE',
       });
+    },
+  },
+
+  // Workspace API
+  workspace: {
+    async get(): Promise<{
+      id: string;
+      name: string;
+      slug: string;
+      owner_id: string;
+      settings: Record<string, any>;
+      stats: {
+        tools: { total: number; enabled: number };
+        configs: number;
+        credentials: number;
+        audit_events_30d: number;
+      };
+    }> {
+      return apiRequest('/workspace');
+    },
+
+    async updateSettings(settings: Record<string, any>): Promise<{
+      id: string;
+      name: string;
+      settings: Record<string, any>;
+    }> {
+      return apiRequest('/workspace/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      });
+    },
+  },
+
+  // Audit Logs API
+  auditLogs: {
+    async list(options?: {
+      category?: string;
+      action?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<Array<{
+      id: string;
+      action: string;
+      category: string;
+      actor: { id: string | null; email: string | null; type: string };
+      target: { type: string; id: string | null; name: string | null } | null;
+      workspace_id: string;
+      success: boolean;
+      error_message: string | null;
+      occurred_at: string;
+      metadata: Record<string, any> | null;
+    }>> {
+      const params = new URLSearchParams();
+      if (options?.category) params.append('category', options.category);
+      if (options?.action) params.append('action', options.action);
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.offset) params.append('offset', options.offset.toString());
+
+      const query = params.toString();
+      return apiRequest(`/audit-logs${query ? `?${query}` : ''}`);
+    },
+  },
+
+  // Admin API (Super Admin Only)
+  admin: {
+    async listWorkspaces(options?: {
+      limit?: number;
+      offset?: number;
+    }): Promise<Array<{
+      id: string;
+      name: string;
+      slug: string;
+      owner_id: string;
+      created_at: string;
+    }>> {
+      const params = new URLSearchParams();
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.offset) params.append('offset', options.offset.toString());
+
+      const query = params.toString();
+      return apiRequest(`/admin/workspaces${query ? `?${query}` : ''}`);
+    },
+
+    async listAllAuditLogs(options?: {
+      workspace_id?: string;
+      category?: string;
+      action?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<Array<{
+      id: string;
+      action: string;
+      category: string;
+      actor: { id: string | null; email: string | null; type: string };
+      target: { type: string; id: string | null; name: string | null } | null;
+      workspace_id: string;
+      success: boolean;
+      error_message: string | null;
+      occurred_at: string;
+      metadata: Record<string, any> | null;
+    }>> {
+      const params = new URLSearchParams();
+      if (options?.workspace_id) params.append('workspace_id', options.workspace_id);
+      if (options?.category) params.append('category', options.category);
+      if (options?.action) params.append('action', options.action);
+      if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.offset) params.append('offset', options.offset.toString());
+
+      const query = params.toString();
+      return apiRequest(`/admin/audit-logs${query ? `?${query}` : ''}`);
     },
   },
 

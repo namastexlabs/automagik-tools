@@ -311,13 +311,24 @@ if __name__ == "__main__":
 # Expose app for Uvicorn CLI
 app = hub.http_app()
 
-# Add CORS middleware
+# Add security headers middleware (must be added before CORS)
+from .hub.security_middleware import SecurityHeadersMiddleware, RequestIDMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+# CORS configuration - SECURITY: Do not use wildcard origins with credentials
+ALLOWED_ORIGINS = os.getenv(
+    "HUB_ALLOWED_ORIGINS",
+    "http://localhost:8885,http://localhost:3000,http://127.0.0.1:8885"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (needed for browser UI)
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+    max_age=600,  # Cache preflight for 10 minutes
 )
 
 # Mount REST API routes at /api
@@ -328,6 +339,11 @@ from starlette.routing import Mount
 api_app = FastAPI()
 api_app.include_router(api_router)
 api_app.include_router(auth_router)
+
+# Add webhook routes
+from .hub.webhooks import directory_sync_router
+api_app.include_router(directory_sync_router)
+
 app.mount("/api", api_app)
 
 # Serve static UI files at /app

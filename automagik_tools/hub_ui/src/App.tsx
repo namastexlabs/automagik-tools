@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import Catalogue from './pages/Catalogue';
 import MyTools from './pages/MyTools';
 import Settings from './pages/Settings';
+import AuditLogs from './pages/AuditLogs';
+import AdminDashboard from './pages/AdminDashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +80,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/audit-logs"
+              element={
+                <ProtectedRoute>
+                  <AuditLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

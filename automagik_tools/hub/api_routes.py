@@ -352,6 +352,181 @@ async def delete_tool_credential(
     }
 
 
+# --- Workspace Endpoints ---
+
+@router.get("/workspace")
+async def get_my_workspace(user_id: str = Depends(get_current_user_id)) -> Dict[str, Any]:
+    """Get current user's workspace details."""
+    from .database import get_db_session
+    from .models import User
+    from .workspaces import get_workspace, get_workspace_stats
+    from sqlalchemy import select
+
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User.workspace_id).where(User.id == user_id)
+        )
+        workspace_id = result.scalar_one_or_none()
+
+    if not workspace_id:
+        raise HTTPException(status_code=404, detail="No workspace found")
+
+    workspace = await get_workspace(workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    stats = await get_workspace_stats(workspace_id)
+
+    return {
+        **workspace,
+        "stats": stats,
+    }
+
+
+@router.put("/workspace/settings")
+async def update_my_workspace_settings(
+    settings: Dict[str, Any],
+    user_id: str = Depends(get_current_user_id)
+) -> Dict[str, Any]:
+    """Update workspace settings."""
+    from .database import get_db_session
+    from .models import User
+    from .workspaces import update_workspace_settings
+    from sqlalchemy import select
+
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User.workspace_id).where(User.id == user_id)
+        )
+        workspace_id = result.scalar_one_or_none()
+
+    if not workspace_id:
+        raise HTTPException(status_code=404, detail="No workspace found")
+
+    return await update_workspace_settings(workspace_id, settings)
+
+
+# --- Audit Log Endpoints ---
+
+@router.get("/audit-logs")
+async def get_audit_logs_api(
+    category: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id)
+) -> List[Dict[str, Any]]:
+    """Get audit logs for user's workspace."""
+    from .database import get_db_session
+    from .models import User, AuditEventCategory
+    from .audit import logger as audit_module
+    from sqlalchemy import select
+
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User.workspace_id).where(User.id == user_id)
+        )
+        workspace_id = result.scalar_one_or_none()
+
+    if not workspace_id:
+        raise HTTPException(status_code=404, detail="No workspace found")
+
+    # Parse category if provided
+    category_enum = None
+    if category:
+        try:
+            category_enum = AuditEventCategory(category)
+        except ValueError:
+            pass  # Invalid category, ignore filter
+
+    return await audit_module.get_audit_logs(
+        workspace_id=workspace_id,
+        category=category_enum,
+        action=action,
+        limit=limit,
+        offset=offset,
+    )
+
+
+# --- Admin Endpoints (Super Admin Only) ---
+
+@router.get("/admin/workspaces")
+async def list_all_workspaces_api(
+    limit: int = 100,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id)
+) -> List[Dict[str, Any]]:
+    """List all workspaces (super admin only)."""
+    from .authorization import is_super_admin
+    from .database import get_db_session
+    from .models import User
+    from .workspaces import list_all_workspaces
+    from sqlalchemy import select
+
+    # Check if user is super admin
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User.email, User.is_super_admin).where(User.id == user_id)
+        )
+        row = result.one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    email, db_is_super_admin = row
+    if not (db_is_super_admin or is_super_admin(email)):
+        raise HTTPException(status_code=403, detail="Super admin access required")
+
+    return await list_all_workspaces(limit=limit, offset=offset)
+
+
+@router.get("/admin/audit-logs")
+async def get_all_audit_logs_api(
+    workspace_id: Optional[str] = None,
+    category: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id)
+) -> List[Dict[str, Any]]:
+    """Get all audit logs (super admin only)."""
+    from .authorization import is_super_admin
+    from .database import get_db_session
+    from .models import User, AuditEventCategory
+    from .audit import logger as audit_module
+    from sqlalchemy import select
+
+    # Check if user is super admin
+    async with get_db_session() as session:
+        result = await session.execute(
+            select(User.email, User.is_super_admin).where(User.id == user_id)
+        )
+        row = result.one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    email, db_is_super_admin = row
+    if not (db_is_super_admin or is_super_admin(email)):
+        raise HTTPException(status_code=403, detail="Super admin access required")
+
+    # Parse category if provided
+    category_enum = None
+    if category:
+        try:
+            category_enum = AuditEventCategory(category)
+        except ValueError:
+            pass
+
+    return await audit_module.get_audit_logs(
+        workspace_id=workspace_id,
+        category=category_enum,
+        action=action,
+        limit=limit,
+        offset=offset,
+    )
+
+
 # --- Health & Info Endpoints ---
 
 @router.get("/health")
@@ -369,8 +544,11 @@ async def server_info() -> Dict[str, Any]:
         "auth_provider": "WorkOS AuthKit",
         "features": [
             "multi_tenant",
+            "workspace_isolation",
             "oauth_support",
             "encrypted_credentials",
-            "dynamic_tool_loading"
+            "dynamic_tool_loading",
+            "audit_logging",
+            "directory_sync",
         ]
     }

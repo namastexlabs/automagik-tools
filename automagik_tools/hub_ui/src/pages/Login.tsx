@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { setAccessToken, isAuthenticated } from '@/lib/api';
+import { setUserInfo, UserInfo } from '@/lib/auth';
 import { Package, Lock, Loader2 } from 'lucide-react';
 
 export default function Login() {
@@ -54,10 +55,28 @@ export default function Login() {
         throw new Error(error || 'Failed to authenticate');
       }
 
-      const { access_token } = await response.json();
+      const data = await response.json();
 
-      // Store token and navigate to dashboard
-      setAccessToken(access_token);
+      // Store token and user info
+      setAccessToken(data.access_token);
+
+      // Store user info for session
+      if (data.user) {
+        const userInfo: UserInfo = {
+          id: data.user.id,
+          email: data.user.email,
+          first_name: data.user.first_name,
+          last_name: data.user.last_name,
+          workspace_id: data.user.workspace_id,
+          workspace_name: data.user.workspace_name,
+          workspace_slug: data.user.workspace_slug,
+          is_super_admin: data.user.is_super_admin || false,
+          mfa_enabled: data.user.mfa_enabled || false,
+        };
+        setUserInfo(userInfo);
+      }
+
+      // Navigate to dashboard
       navigate('/dashboard');
     } catch (err) {
       console.error('[Login] OAuth callback error:', err);
