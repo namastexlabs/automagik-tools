@@ -10,32 +10,9 @@ from typing import Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Base
+from ..models import SystemConfig  # Use the one from models.py to avoid duplicate
 from ..database import get_db_session
 from .encryption import get_encryption_manager
-
-
-class SystemConfig(Base):
-    """System-level configuration including encrypted secrets.
-
-    Stores:
-    - App mode (unconfigured/local/workos)
-    - Setup completion status
-    - WorkOS credentials (encrypted)
-    - Encryption salt
-    - Super admin emails
-    """
-    from sqlalchemy import String, Boolean, Text, DateTime
-    from sqlalchemy.orm import Mapped, mapped_column
-
-    __tablename__ = "system_config"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    config_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    config_value: Mapped[str] = mapped_column(Text, nullable=False)
-    is_secret: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ConfigStore:

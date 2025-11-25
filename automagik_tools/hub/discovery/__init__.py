@@ -4,7 +4,7 @@ from .frontmatter_utils import FrontmatterManager
 from .project_scanner import ProjectScanner
 from .agent_parser import AgentParser
 from .cache import AgentCache
-from .file_watcher import GenieAgentWatcher, AgentDiscoveryService
+from .file_watcher import GenieAgentWatcher, AgentDiscoveryService, get_discovery_service
 
 __all__ = [
     "FrontmatterManager",
@@ -13,4 +13,5 @@ __all__ = [
     "AgentCache",
     "GenieAgentWatcher",
     "AgentDiscoveryService",
+    "get_discovery_service",
 ]
