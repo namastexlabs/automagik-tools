@@ -68,17 +68,16 @@ class SetupSuccessResponse(BaseModel):
     message: str
 
 
-async def get_mode_manager(
-    session: AsyncSession = Depends(get_db_session)
-) -> ModeManager:
-    """Dependency to get mode manager."""
-    config_store = ConfigStore(session)
-    return ModeManager(config_store)
+async def get_mode_manager_dep():
+    """Dependency to get mode manager with proper session handling."""
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        yield ModeManager(config_store)
 
 
 @router.get("/status", response_model=SetupStatusResponse)
 async def get_setup_status(
-    mode_manager: ModeManager = Depends(get_mode_manager)
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
 ):
     """Get setup wizard status.
 
@@ -99,7 +98,7 @@ async def get_setup_status(
 @router.post("/local", response_model=SetupSuccessResponse)
 async def setup_local_mode(
     request: LocalModeSetupRequest,
-    mode_manager: ModeManager = Depends(get_mode_manager)
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
 ):
     """Configure local mode (single admin, no password).
 
@@ -133,7 +132,7 @@ async def setup_local_mode(
 @router.post("/workos", response_model=SetupSuccessResponse)
 async def setup_workos_mode(
     request: WorkOSModeSetupRequest,
-    mode_manager: ModeManager = Depends(get_mode_manager)
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
 ):
     """Configure WorkOS mode (enterprise auth).
 
@@ -221,7 +220,7 @@ async def validate_workos_credentials(request: WorkOSValidateRequest):
 @router.post("/upgrade-to-workos", response_model=SetupSuccessResponse)
 async def upgrade_to_workos_mode(
     request: WorkOSModeSetupRequest,
-    mode_manager: ModeManager = Depends(get_mode_manager)
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
 ):
     """Upgrade from local mode to WorkOS mode.
 
@@ -259,7 +258,7 @@ async def upgrade_to_workos_mode(
 
 @router.get("/mode", response_model=dict)
 async def get_current_mode(
-    mode_manager: ModeManager = Depends(get_mode_manager)
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
 ):
     """Get current application mode.
 

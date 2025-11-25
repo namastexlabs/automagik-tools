@@ -24,13 +24,16 @@ class SetupRequiredMiddleware(BaseHTTPMiddleware):
     """
 
     ALLOWED_PATHS_UNCONFIGURED = {
-        "/setup/",
-        "/app/setup",
-        "/static/",
+        "/api/setup/",  # Setup API routes
+        "/setup/",      # Legacy setup routes
+        "/app/setup",   # Setup UI
+        "/static/",     # Static assets
         "/favicon.ico",
+        "/api/health",  # Health check
         "/health",
-        "/docs",
+        "/docs",        # API docs
         "/openapi.json",
+        "/redoc",
     }
 
     async def dispatch(self, request: Request, call_next):
