@@ -1,10 +1,7 @@
 // ===================================================================
-// 🛠️ Automagik-Tools - PM2 Configuration for Two Services
+// Automagik Tools Hub - PM2 Configuration
 // ===================================================================
-// This file creates two separate PM2 services:
-// - automagik-tools-sse (port 8884)
-// - automagik-tools-http (port 8885)
-
+// Multi-tenant Hub server with WorkOS authentication and auto-migration
 const path = require('path');
 const fs = require('fs');
 
@@ -12,32 +9,32 @@ const fs = require('fs');
 const PROJECT_ROOT = __dirname;
 
 /**
- * Extract version from pyproject.toml file using standardized approach
+ * Extract version from pyproject.toml file
  * @param {string} projectPath - Path to the project directory
  * @returns {string} Version string or 'unknown'
  */
 function extractVersionFromPyproject(projectPath) {
   const pyprojectPath = path.join(projectPath, 'pyproject.toml');
-  
+
   if (!fs.existsSync(pyprojectPath)) {
     return 'unknown';
   }
-  
+
   try {
     const content = fs.readFileSync(pyprojectPath, 'utf8');
-    
+
     // Standard approach: Static version in [project] section
     const projectVersionMatch = content.match(/\[project\][\s\S]*?version\s*=\s*["']([^"']+)["']/);
     if (projectVersionMatch) {
       return projectVersionMatch[1];
     }
-    
+
     // Fallback: Simple version = "..." pattern anywhere in file
     const simpleVersionMatch = content.match(/^version\s*=\s*["']([^"']+)["']/m);
     if (simpleVersionMatch) {
       return simpleVersionMatch[1];
     }
-    
+
     return 'unknown';
   } catch (error) {
     console.warn(`Failed to read version from ${pyprojectPath}:`, error.message);
@@ -51,75 +48,87 @@ let envVars = {};
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf8');
   envContent.split('\n').forEach(line => {
-    const [key, value] = line.split('=');
-    if (key && value) {
-      envVars[key.trim()] = value.trim().replace(/^["']|["']$/g, '');
+    // Skip comments and empty lines
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+
+    const eqIndex = line.indexOf('=');
+    if (eqIndex > 0) {
+      const key = line.substring(0, eqIndex).trim();
+      const value = line.substring(eqIndex + 1).trim().replace(/^["']|["']$/g, '');
+      envVars[key] = value;
     }
   });
 }
 
+// Create logs directory if it doesn't exist
+const logsDir = path.join(PROJECT_ROOT, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Create hub_data directory for database
+const hubDataDir = path.join(PROJECT_ROOT, 'hub_data');
+if (!fs.existsSync(hubDataDir)) {
+  fs.mkdirSync(hubDataDir, { recursive: true });
+}
+
+const version = extractVersionFromPyproject(PROJECT_ROOT);
+
 module.exports = {
   apps: [
+    // ===================================================================
+    // Tools Hub - HTTP Server with Auto-Migration
+    // ===================================================================
     {
-      name: 'automagik-tools-sse',
+      name: 'Tools Hub',
       cwd: PROJECT_ROOT,
-      script: '.venv/bin/automagik-tools',
-      args: 'hub --host 0.0.0.0 --port ' + (envVars.PORT || '8884') + ' --transport sse',
+      script: '.venv/bin/uvicorn',
+      args: 'automagik_tools.hub_http:app --host 0.0.0.0 --port ' + (envVars.HUB_PORT || '8884'),
       interpreter: 'none',
-      version: extractVersionFromPyproject(PROJECT_ROOT),
+      version: version,
       env: {
         ...envVars,
         PYTHONPATH: PROJECT_ROOT,
-        PORT: envVars.PORT || '8884',
-        HOST: envVars.HOST || '0.0.0.0',
-        NODE_ENV: 'production'
+        HUB_HOST: envVars.HUB_HOST || '0.0.0.0',
+        HUB_PORT: envVars.HUB_PORT || '8884',
+        NODE_ENV: 'production',
+        PROCESS_TITLE: 'Tools Hub'
       },
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: '1G',
+      max_memory_restart: '512M',
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 1000,
-      kill_timeout: 5000,
-      error_file: path.join(PROJECT_ROOT, 'logs/sse-err.log'),
-      out_file: path.join(PROJECT_ROOT, 'logs/sse-out.log'),
-      log_file: path.join(PROJECT_ROOT, 'logs/sse-combined.log'),
-      merge_logs: true,
-      time: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-    {
-      name: 'automagik-tools-http',
-      cwd: PROJECT_ROOT,
-      script: '.venv/bin/automagik-tools',
-      args: 'hub --host 0.0.0.0 --port ' + (envVars.AUTOMAGIK_TOOLS_PORT || '8885') + ' --transport http',
-      interpreter: 'none',
-      version: extractVersionFromPyproject(PROJECT_ROOT),
-      env: {
-        ...envVars,
-        PYTHONPATH: PROJECT_ROOT,
-        PORT: envVars.AUTOMAGIK_TOOLS_PORT || '8885',
-        AUTOMAGIK_TOOLS_PORT: envVars.AUTOMAGIK_TOOLS_PORT || '8885',
-        HOST: envVars.HOST || '0.0.0.0',
-        NODE_ENV: 'production'
-      },
-      instances: 1,
-      exec_mode: 'fork',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      max_restarts: 10,
-      min_uptime: '10s',
-      restart_delay: 1000,
-      kill_timeout: 5000,
-      error_file: path.join(PROJECT_ROOT, 'logs/http-err.log'),
-      out_file: path.join(PROJECT_ROOT, 'logs/http-out.log'),
-      log_file: path.join(PROJECT_ROOT, 'logs/http-combined.log'),
+      restart_delay: 2000,
+      kill_timeout: 10000,
+      error_file: path.join(PROJECT_ROOT, 'logs/hub-err.log'),
+      out_file: path.join(PROJECT_ROOT, 'logs/hub-out.log'),
+      log_file: path.join(PROJECT_ROOT, 'logs/hub-combined.log'),
       merge_logs: true,
       time: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
-  ]
+  ],
+
+  // ===================================================================
+  // PM2 Deploy Configuration (Optional)
+  // ===================================================================
+  deploy: {
+    production: {
+      user: 'deploy',
+      host: 'your-server.com',
+      ref: 'origin/main',
+      repo: 'git@github.com:namastex-labs/automagik-tools.git',
+      path: '/var/www/automagik-tools',
+      'pre-deploy-local': '',
+      'post-deploy': 'uv sync && .venv/bin/alembic upgrade head && pm2 reload ecosystem.config.js --env production',
+      'pre-setup': '',
+      env: {
+        NODE_ENV: 'production'
+      }
+    }
+  }
 };

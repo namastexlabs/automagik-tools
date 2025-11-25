@@ -1,5 +1,7 @@
 """Database connection and session management."""
 import os
+import subprocess
+import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -29,8 +31,33 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+def run_migrations():
+    """Run Alembic migrations to head."""
+    print("Running database migrations...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent.parent,  # Project root
+        )
+        if result.returncode == 0:
+            print("Migrations completed successfully")
+            if result.stdout:
+                print(result.stdout)
+        else:
+            print(f"Migration warning: {result.stderr}")
+            # Don't fail - might be first run or no migrations needed
+    except Exception as e:
+        print(f"Migration error (continuing anyway): {e}")
+
+
 async def init_database():
-    """Initialize database tables (only if not using Alembic)."""
+    """Initialize database with auto-migration support."""
+    # Run Alembic migrations first
+    run_migrations()
+
+    # Fallback: create any missing tables (for development)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
