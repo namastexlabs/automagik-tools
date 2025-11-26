@@ -618,5 +618,4 @@ else:
     app.add_route("/app/setup", ui_placeholder, methods=["GET"])
 
 # Add setup middleware AFTER routes are registered
-# Temporarily disabled to test routes
-# add_setup_middleware(app)
+add_setup_middleware(app)
