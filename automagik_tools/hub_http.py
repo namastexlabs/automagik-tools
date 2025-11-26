@@ -438,13 +438,26 @@ app.mount("/api", api_app)
 
 # Serve static UI files at /app BEFORE adding middleware
 from starlette.staticfiles import StaticFiles
-from starlette.responses import RedirectResponse, HTMLResponse
-from starlette.routing import Route
+from starlette.responses import RedirectResponse, HTMLResponse, FileResponse
+from starlette.routing import Route, Mount
 from pathlib import Path
+import os
 
 ui_dist = Path(__file__).parent / "hub_ui" / "dist"
 if ui_dist.exists():
-    app.mount("/app", StaticFiles(directory=str(ui_dist), html=True), name="ui")
+    # Custom SPA handler for React Router
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except Exception:
+                # If file not found, serve index.html for SPA routing
+                index_path = os.path.join(self.directory, "index.html")
+                if os.path.exists(index_path):
+                    return FileResponse(index_path)
+                raise
+
+    app.mount("/app", SPAStaticFiles(directory=str(ui_dist), html=True), name="ui")
 
     # Redirect root to /app
     async def root(request):

@@ -5,6 +5,7 @@ import { ForgeInspector as AutomagikForgeWebCompanion } from 'forge-inspector';
 import { ThemeProvider } from './components/ThemeProvider';
 import { isAuthenticated } from './lib/api';
 import Login from './pages/Login';
+import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
 import Catalogue from './pages/Catalogue';
 import MyTools from './pages/MyTools';
@@ -45,6 +46,7 @@ function App() {
         <AutomagikForgeWebCompanion />
         <BrowserRouter>
           <Routes>
+            <Route path="/setup" element={<Setup />} />
             <Route
               path="/login"
               element={
