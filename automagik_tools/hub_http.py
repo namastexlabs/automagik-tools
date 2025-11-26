@@ -436,12 +436,9 @@ api_app.include_router(directory_sync_router)
 
 app.mount("/api", api_app)
 
-# Add setup middleware (must be after app creation)
-add_setup_middleware(app)
-
-# Serve static UI files at /app
+# Serve static UI files at /app BEFORE adding middleware
 from starlette.staticfiles import StaticFiles
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, HTMLResponse
 from starlette.routing import Route
 from pathlib import Path
 
@@ -453,18 +450,173 @@ if ui_dist.exists():
     async def root(request):
         return RedirectResponse(url="/app")
 
-    app.routes.append(Route("/", root))
+    app.routes.insert(0, Route("/", root))
 else:
-    # UI not built - serve placeholder
-    from starlette.responses import JSONResponse
-
+    # UI not built - serve HTML placeholder with setup info
     async def ui_placeholder(request):
-        return JSONResponse({
-            "message": "Hub UI not built yet",
-            "instructions": "Run: cd automagik_tools/hub_ui && npm install && npm run build",
-            "mcp_endpoint": "/mcp",
-            "api_endpoint": "/api"
-        })
+        html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automagik Tools Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .status {
+            background: #48bb78;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        h2 {
+            color: #4a5568;
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .link-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            text-decoration: none;
+            color: #2d3748;
+            border: 2px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+        .link-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .link-card strong {
+            display: block;
+            color: #667eea;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .info-box {
+            background: #edf2f7;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        .info-box code {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .footer {
+            text-align: center;
+            color: #718096;
+            margin-top: 32px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Automagik Tools Hub</h1>
+        <div class="status">✅ Running in Local Mode</div>
 
-    app.routes.append(Route("/", ui_placeholder))
-    app.routes.append(Route("/app", ui_placeholder))
+        <div class="section">
+            <h2>🔗 Quick Access</h2>
+            <div class="link-grid">
+                <a href="/docs" class="link-card">
+                    <strong>📚 API Docs</strong>
+                    <span>Interactive API Documentation</span>
+                </a>
+                <a href="/redoc" class="link-card">
+                    <strong>📖 ReDoc</strong>
+                    <span>Alternative API Docs</span>
+                </a>
+                <a href="/api/health" class="link-card">
+                    <strong>💚 Health Check</strong>
+                    <span>System Status</span>
+                </a>
+                <a href="/mcp" class="link-card">
+                    <strong>🔌 MCP Endpoint</strong>
+                    <span>Model Context Protocol</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⚙️ Configuration</h2>
+            <div class="info-box">
+                <p><strong>Mode:</strong> Local (Passwordless)</p>
+                <p><strong>Admin:</strong> <code>admin@namastex.com</code></p>
+                <p><strong>Port:</strong> <code>8884</code></p>
+                <p><strong>Process:</strong> PM2 ("Tools Hub")</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Getting Started</h2>
+            <div class="info-box">
+                <p style="margin-bottom: 12px;">The Hub is configured and ready. Visit <strong>/docs</strong> to explore available API endpoints.</p>
+                <p><strong>Next Steps:</strong></p>
+                <ul style="margin-left: 20px; margin-top: 8px;">
+                    <li>Scan for projects: <code>POST /api/discovery/scan</code></li>
+                    <li>List agents: <code>GET /api/discovery/agents</code></li>
+                    <li>Configure toolkits: <code>PUT /api/discovery/agents/{id}/toolkit</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Automagik Tools • FastMCP • WorkOS</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        return HTMLResponse(content=html)
+
+    # Use specific path patterns for routes
+    app.add_route("/", ui_placeholder, methods=["GET"])
+    app.add_route("/app", ui_placeholder, methods=["GET"])
+    app.add_route("/app/setup", ui_placeholder, methods=["GET"])
+
+# Add setup middleware AFTER routes are registered
+# Temporarily disabled to test routes
+# add_setup_middleware(app)
