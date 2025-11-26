@@ -198,3 +198,53 @@ class ModeManager:
             raise ValueError(f"Can only upgrade from LOCAL mode (current: {current_mode})")
 
         await self.configure_workos_mode(config)
+
+    async def migrate_from_env_if_needed(self) -> bool:
+        """Auto-migrate WorkOS credentials from .env to database.
+
+        Only runs if:
+        - App mode is UNCONFIGURED
+        - .env has WORKOS_CLIENT_ID and WORKOS_API_KEY
+        - Database doesn't have credentials yet
+
+        Returns:
+            True if migration happened, False otherwise
+        """
+        import os
+
+        # Only migrate if unconfigured
+        mode = await self.get_current_mode()
+        if mode != AppMode.UNCONFIGURED:
+            return False
+
+        # Check if .env has credentials
+        client_id = os.getenv("WORKOS_CLIENT_ID")
+        api_key = os.getenv("WORKOS_API_KEY")
+        authkit_domain = os.getenv("WORKOS_AUTHKIT_DOMAIN", "")
+        super_admins = os.getenv("WORKOS_SUPER_ADMIN_EMAILS", "").split(",")
+
+        if not client_id or not api_key:
+            return False  # Nothing to migrate
+
+        # Validate email list
+        super_admin_emails = [e.strip() for e in super_admins if e.strip()]
+        if not super_admin_emails:
+            # Default to a placeholder if not set
+            super_admin_emails = ["admin@example.com"]
+
+        # Migrate to database
+        config = WorkOSModeConfig(
+            client_id=client_id,
+            api_key=api_key,
+            authkit_domain=authkit_domain or "https://veracious-shadow-68.authkit.app",
+            super_admin_emails=super_admin_emails
+        )
+
+        await self.configure_workos_mode(config)
+
+        print(f"✅ Auto-migrated WorkOS credentials from .env to database")
+        print(f"   Client ID: {client_id[:20]}...")
+        print(f"   Domain: {authkit_domain}")
+        print(f"   Super Admins: {', '.join(super_admin_emails)}")
+
+        return True

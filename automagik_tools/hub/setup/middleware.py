@@ -19,15 +19,16 @@ class SetupRequiredMiddleware(BaseHTTPMiddleware):
 
     If app is UNCONFIGURED, only allow access to:
     - /setup/* (setup API)
-    - /app/setup (setup UI)
+    - /setup (setup UI)
     - Static assets
     """
 
     ALLOWED_PATHS_UNCONFIGURED = {
         "/api/setup/",  # Setup API routes
         "/setup/",      # Legacy setup routes
-        "/app/setup",   # Setup UI
-        "/app/",        # App UI (all pages)
+        "/setup",   # Setup UI
+        "/",        # App UI (all pages - SPA at root)
+        "/assets/",     # Vite bundled assets (JS/CSS)
         "/static/",     # Static assets
         "/favicon.ico",
         "/api/health",  # Health check
@@ -71,13 +72,13 @@ class SetupRequiredMiddleware(BaseHTTPMiddleware):
                 if path.startswith("/api/"):
                     # API requests get 503 Service Unavailable
                     return Response(
-                        content='{"error": "Setup required", "setup_url": "/app/setup"}',
+                        content='{"error": "Setup required", "setup_url": "/setup"}',
                         status_code=503,
                         media_type="application/json"
                     )
                 else:
                     # Browser requests get redirected
-                    return RedirectResponse(url="/app/setup", status_code=307)
+                    return RedirectResponse(url="/setup", status_code=307)
 
         except Exception as e:
             # If database not initialized yet, allow setup routes

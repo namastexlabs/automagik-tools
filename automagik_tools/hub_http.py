@@ -14,7 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from fastmcp import FastMCP, Context
-from fastmcp.server.auth.providers.workos import AuthKitProvider
 from .hub import tools as hub_tools
 from .hub.registry import populate_tool_registry
 from .hub.database import init_database, get_db_session
@@ -38,6 +37,12 @@ async def lifespan(server: FastMCP):
     # Initialize database tables
     await init_database()
 
+    # Auto-migrate from .env if needed
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        mode_manager = ModeManager(config_store)
+        await mode_manager.migrate_from_env_if_needed()
+
     # Check app mode for zero-config
     async with get_db_session() as session:
         config_store = ConfigStore(session)
@@ -48,7 +53,7 @@ async def lifespan(server: FastMCP):
             print(f"📋 App Mode: {app_mode.value}")
 
             if app_mode == AppMode.UNCONFIGURED:
-                print("⚠️  Setup required! Navigate to /app/setup to configure.")
+                print("⚠️  Setup required! Navigate to /setup to configure.")
             elif app_mode == AppMode.LOCAL:
                 admin_email = await mode_manager.get_local_admin_email()
                 print(f"🏠 Local Mode: Admin = {admin_email}")
@@ -110,13 +115,13 @@ async def lifespan(server: FastMCP):
         try:
             current_mode = await mode_manager.get_current_mode()
             if current_mode == AppMode.UNCONFIGURED:
-                hub_url = f"{base_url}/app/setup"
+                hub_url = f"{base_url}/setup"
                 print("⚙️  Setup required - opening setup wizard in browser")
             else:
                 hub_url = base_url
         except Exception:
             # If mode check fails, assume unconfigured
-            hub_url = f"{base_url}/app/setup"
+            hub_url = f"{base_url}/setup"
 
     def open_browser():
         """Open browser after a short delay to ensure server is listening.
@@ -144,50 +149,14 @@ from automagik_tools.tools.google_calendar import create_server as create_calend
 from .hub.middleware import get_hub_middleware
 
 
-def get_auth_provider():
-    """Get auth provider based on app mode.
-
-    Returns None if UNCONFIGURED or LOCAL mode.
-    Returns AuthKitProvider if WORKOS mode.
-    """
-    try:
-        # Try to read mode from database
-        import asyncio
-        from .hub.database import AsyncSessionLocal
-
-        async def check_mode():
-            async with AsyncSessionLocal() as session:
-                config_store = ConfigStore(session)
-                mode_str = await config_store.get_app_mode()
-                mode = AppMode(mode_str)
-
-                if mode == AppMode.WORKOS:
-                    # Get WorkOS credentials from database
-                    mode_manager = ModeManager(config_store)
-                    creds = await mode_manager.get_workos_credentials()
-                    if creds:
-                        return AuthKitProvider(
-                            authkit_domain=creds["authkit_domain"],
-                            base_url=os.getenv("HUB_BASE_URL", "http://localhost:8884")
-                        )
-                return None
-
-        # Run async check
-        return asyncio.run(check_mode())
-    except Exception as e:
-        # If database not ready or mode check fails, return None
-        print(f"⚠️  Auth provider check failed: {e}")
-        return None
-
-
-# Initialize auth provider (None for UNCONFIGURED/LOCAL, AuthKitProvider for WORKOS)
-auth_provider = get_auth_provider()
-
+# Initialize FastMCP Hub
+# Note: Authentication is handled by custom routes in auth_routes.py
+# This allows support for dual-mode (local passwordless + WorkOS enterprise)
 hub = FastMCP(
     name="Automagik Tools Hub",
     instructions="Multi-tenant MCP tool management hub. Use the available tools to manage your personal tool collection.",
     lifespan=lifespan,
-    auth=auth_provider,  # Conditional auth: None for local mode, AuthKit for WorkOS
+    # No auth parameter - custom routes handle authentication
 )
 
 # Add multi-tenant middleware
@@ -390,8 +359,14 @@ if __name__ == "__main__":
 
     print(f"🚀 Starting Hub HTTP server on http://{host}:{port}")
 
-    # Direct HTTP deployment (recommended)
-    hub.run(transport="http", host=host, port=port, lifespan="on")
+    # Use uvicorn to run the full app (not hub.run which only starts MCP server)
+    uvicorn.run(
+        "automagik_tools.hub_http:app",
+        host=host,
+        port=port,
+        reload=False,
+        log_level="info"
+    )
 
 # Expose app for Uvicorn CLI
 app = hub.http_app()
@@ -418,7 +393,7 @@ app.add_middleware(
 
 # Mount REST API routes at /api
 # api_router is FastAPI, but app is Starlette - need to mount as sub-app
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from starlette.routing import Mount
 
 api_app = FastAPI()
@@ -445,25 +420,67 @@ import os
 
 ui_dist = Path(__file__).parent / "hub_ui" / "dist"
 if ui_dist.exists():
-    # Custom SPA handler for React Router
-    class SPAStaticFiles(StaticFiles):
+    # Production SPA handler with proper cache headers
+    class ProductionSPAStaticFiles(StaticFiles):
         async def get_response(self, path: str, scope):
+            # Check if file exists
+            full_path = os.path.join(self.directory, path)
+
+            # If path has no extension and file doesn't exist, it's a client-side route
+            if "." not in path.split("/")[-1] and not os.path.exists(full_path):
+                # Serve index.html for SPA routing
+                response = FileResponse(
+                    os.path.join(self.directory, "index.html"),
+                    media_type="text/html"
+                )
+                # Never cache HTML
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+                return response
+
+            # Otherwise, try to serve the file normally
             try:
-                return await super().get_response(path, scope)
-            except Exception:
-                # If file not found, serve index.html for SPA routing
-                index_path = os.path.join(self.directory, "index.html")
-                if os.path.exists(index_path):
-                    return FileResponse(index_path)
+                response = await super().get_response(path, scope)
+                return self._add_cache_headers(response, path)
+            except (FileNotFoundError, IsADirectoryError, HTTPException):
+                # If it's a directory or missing file with extension, try index.html fallback
+                if "." not in path.split("/")[-1]:
+                    response = FileResponse(
+                        os.path.join(self.directory, "index.html"),
+                        media_type="text/html"
+                    )
+                    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                    response.headers["Pragma"] = "no-cache"
+                    response.headers["Expires"] = "0"
+                    return response
                 raise
 
-    app.mount("/app", SPAStaticFiles(directory=str(ui_dist), html=True), name="ui")
+        def _add_cache_headers(self, response, path):
+            # HTML: never cache
+            if path.endswith('.html'):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            # Hashed assets (Vite pattern): cache forever
+            elif self._is_hashed_asset(path):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            # Other assets: short cache
+            else:
+                response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
 
-    # Redirect root to /app
-    async def root(request):
-        return RedirectResponse(url="/app")
+        def _is_hashed_asset(self, path):
+            # Vite pattern: index-RPesmEwX.js
+            filename = path.split("/")[-1]
+            if any(path.endswith(e) for e in ['.js', '.css', '.woff2', '.woff', '.ttf']):
+                name_parts = filename.rsplit('.', 1)[0].split('-')
+                return len(name_parts) >= 2 and len(name_parts[-1]) >= 8
+            return False
 
-    app.routes.insert(0, Route("/", root))
+    # Mount SPA at root
+    app.mount("/", ProductionSPAStaticFiles(directory=str(ui_dist), html=True), name="ui")
+
 else:
     # UI not built - serve HTML placeholder with setup info
     async def ui_placeholder(request):
@@ -627,8 +644,8 @@ else:
 
     # Use specific path patterns for routes
     app.add_route("/", ui_placeholder, methods=["GET"])
-    app.add_route("/app", ui_placeholder, methods=["GET"])
-    app.add_route("/app/setup", ui_placeholder, methods=["GET"])
+    app.add_route("/", ui_placeholder, methods=["GET"])
+    app.add_route("/setup", ui_placeholder, methods=["GET"])
 
 # Add setup middleware AFTER routes are registered
 add_setup_middleware(app)

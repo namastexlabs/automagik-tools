@@ -876,6 +876,21 @@ mcp-config: ## 🔧 Generate MCP configuration for Cursor/Claude (use TOOL=name)
 	@$(UV) run automagik-tools mcp-config $(TOOL)
 
 # ===========================================
+# 🚀 Production Deployment
+# ===========================================
+.PHONY: deploy smoke-test
+
+deploy: ## 🚀 Deploy to production (build UI + restart service)
+	$(call print_status,Deploying to production...)
+	@chmod +x scripts/deploy.sh scripts/smoke_test.sh
+	@./scripts/deploy.sh
+
+smoke-test: ## 🧪 Run smoke tests
+	$(call print_status,Running smoke tests...)
+	@chmod +x scripts/smoke_test.sh
+	@./scripts/smoke_test.sh
+
+# ===========================================
 # 📚 Documentation
 # ===========================================
 .PHONY: docs

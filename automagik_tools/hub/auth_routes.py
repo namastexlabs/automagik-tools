@@ -17,17 +17,69 @@ import httpx
 from .authorization import get_or_create_user, is_super_admin
 from .models import ProvisioningMethod
 from .audit import audit_logger, AuditEventCategory
+from .setup import ConfigStore, ModeManager, AppMode
+from .database import get_db_session
 
 logger = logging.getLogger(__name__)
 
-# Environment variables for WorkOS
-WORKOS_API_KEY = os.getenv("WORKOS_API_KEY", "")
-WORKOS_CLIENT_ID = os.getenv("WORKOS_CLIENT_ID", "")
-WORKOS_REDIRECT_URI = os.getenv("WORKOS_REDIRECT_URI", "http://localhost:8885/api/auth/callback")
+# WorkOS API base URL (not a secret)
 WORKOS_BASE_URL = "https://api.workos.com"
 
 router = APIRouter(prefix="/auth")
 security = HTTPBearer(auto_error=False)
+
+
+async def get_workos_config() -> Dict[str, str]:
+    """Get WorkOS configuration from database (or fallback to .env).
+
+    Returns:
+        Dict with client_id, api_key, authkit_domain, redirect_uri
+
+    Raises:
+        HTTPException: If WorkOS not configured
+    """
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        mode_manager = ModeManager(config_store)
+
+        # Get from database
+        creds = await mode_manager.get_workos_credentials()
+
+        if creds:
+            # Database has credentials
+            redirect_uri = os.getenv(
+                "WORKOS_REDIRECT_URI",
+                "https://tools.genieos.namastex.io/api/auth/callback"
+            )
+            return {
+                "client_id": creds["client_id"],
+                "api_key": creds["api_key"],
+                "authkit_domain": creds["authkit_domain"],
+                "redirect_uri": redirect_uri,
+            }
+
+        # Fallback to .env (backwards compatibility)
+        client_id = os.getenv("WORKOS_CLIENT_ID")
+        api_key = os.getenv("WORKOS_API_KEY")
+
+        if not client_id or not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="WorkOS not configured. Complete setup wizard at /setup"
+            )
+
+        return {
+            "client_id": client_id,
+            "api_key": api_key,
+            "authkit_domain": os.getenv(
+                "WORKOS_AUTHKIT_DOMAIN",
+                "https://veracious-shadow-68.authkit.app"
+            ),
+            "redirect_uri": os.getenv(
+                "WORKOS_REDIRECT_URI",
+                "https://tools.genieos.namastex.io/api/auth/callback"
+            ),
+        }
 
 
 class AuthCallbackRequest(BaseModel):
@@ -42,22 +94,17 @@ async def get_authorization_url() -> Dict[str, str]:
     Returns a URL that the frontend redirects to for authentication.
     WorkOS handles the login UI, MFA, SSO, etc.
     """
-    if not WORKOS_CLIENT_ID:
-        raise HTTPException(
-            status_code=500,
-            detail="WorkOS not configured. Set WORKOS_CLIENT_ID environment variable."
-        )
+    config = await get_workos_config()
 
-    # Build WorkOS authorization URL
+    # Build WorkOS authorization URL - use AuthKit OAuth endpoint directly
     authorization_url = (
-        f"{WORKOS_BASE_URL}/user_management/authorize"
-        f"?client_id={WORKOS_CLIENT_ID}"
-        f"&redirect_uri={WORKOS_REDIRECT_URI}"
+        f"{config['authkit_domain']}/oauth2/authorize"
+        f"?client_id={config['client_id']}"
+        f"&redirect_uri={config['redirect_uri']}"
         f"&response_type=code"
-        f"&provider=authkit"  # Use AuthKit for universal login
     )
 
-    logger.info(f"Generated authorization URL for redirect")
+    logger.info(f"Generated authorization URL with redirect_uri={config['redirect_uri']}")
     return {"authorization_url": authorization_url}
 
 
@@ -71,11 +118,7 @@ async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str,
     3. Creates workspace for new users
     4. Logs authentication event for audit
     """
-    if not WORKOS_API_KEY or not WORKOS_CLIENT_ID:
-        raise HTTPException(
-            status_code=500,
-            detail="WorkOS not configured. Set WORKOS_API_KEY and WORKOS_CLIENT_ID."
-        )
+    config = await get_workos_config()
 
     # Get client IP for audit logging
     client_ip = req.client.host if req.client else None
@@ -87,8 +130,8 @@ async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str,
             response = await client.post(
                 f"{WORKOS_BASE_URL}/user_management/authenticate",
                 json={
-                    "client_id": WORKOS_CLIENT_ID,
-                    "client_secret": WORKOS_API_KEY,
+                    "client_id": config["client_id"],
+                    "client_secret": config["api_key"],
                     "grant_type": "authorization_code",
                     "code": request.code,
                 },
@@ -202,22 +245,60 @@ async def get_current_user(
             detail="Authentication required"
         )
 
-    # In production, decode and verify the JWT token
-    # For development, we can decode the token payload
-    # The token is a JWT from WorkOS
+    token = credentials.credentials
+    config = await get_workos_config()
 
-    # TODO: Proper JWT verification with WorkOS JWKS
-    # For now, we trust the token and use it to look up the user
+    try:
+        # Verify token via WorkOS userinfo endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{config['authkit_domain']}/oauth2/userinfo",
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
-    # This is a placeholder - in production use proper JWT verification
-    # import jwt
-    # payload = jwt.decode(credentials.credentials, options={"verify_signature": False})
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired token"
+                )
 
-    # For now, return a response that indicates authentication is working
-    return {
-        "authenticated": True,
-        "message": "Token validation not implemented yet - configure JWT verification"
-    }
+            user_data = response.json()
+
+            # Get user from database
+            from .database import get_db_session
+            from sqlalchemy import select
+            from .models import User
+
+            async with get_db_session() as session:
+                result = await session.execute(
+                    select(User).where(User.id == user_data.get("sub"))
+                )
+                user = result.scalar_one_or_none()
+
+                if not user:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="User not found in database"
+                    )
+
+                return {
+                    "authenticated": True,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "workspace_id": user.workspace_id,
+                        "is_super_admin": user.is_super_admin,
+                        "mfa_enabled": user.mfa_enabled,
+                    }
+                }
+
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to verify token: {str(e)}"
+        )
 
 
 @router.post("/logout")
