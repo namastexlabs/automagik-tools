@@ -9,6 +9,8 @@ import {
   LogOut,
   FileText,
   Shield,
+  FolderGit2,
+  Bot,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +21,8 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Catalogue', href: '/catalogue', icon: Package },
   { name: 'My Tools', href: '/my-tools', icon: Wrench },
+  { name: 'Projects', href: '/projects', icon: FolderGit2 },
+  { name: 'Agents', href: '/agents', icon: Bot },
   { name: 'Audit Logs', href: '/audit-logs', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

@@ -1,13 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { api, getAccessToken, isAuthenticated } from '@/lib/api';
 import { getUserInfo, isSuperAdmin } from '@/lib/auth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Settings as SettingsIcon, Shield, Info, Moon, Sun, Building, User, Key } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Info, Moon, Sun, Building, User, Key, AlertCircle, Rocket } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 
 export default function Settings() {
@@ -22,11 +35,21 @@ export default function Settings() {
     enabled: isAuthenticated(),
   });
 
+  const { data: modeData } = useQuery({
+    queryKey: ['app-mode'],
+    queryFn: async () => {
+      const response = await fetch('/api/setup/mode');
+      if (!response.ok) throw new Error('Failed to fetch mode');
+      return response.json();
+    }
+  });
+
   const hasToken = isAuthenticated();
   const token = getAccessToken();
   const maskedToken = token && hasToken ? `${token.substring(0, 12)}...${token.substring(token.length - 8)}` : 'Not authenticated';
   const user = getUserInfo();
   const isAdmin = isSuperAdmin();
+  const isLocalMode = modeData?.mode === 'local';
 
   return (
     <DashboardLayout>
@@ -138,6 +161,59 @@ export default function Settings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Team Mode Upgrade */}
+            {isLocalMode && (
+              <Card className="border-border elevation-md border-amber-500/20 bg-amber-500/5">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Rocket className="h-5 w-5 text-amber-500" />
+                    <CardTitle>Upgrade to Team Mode</CardTitle>
+                  </div>
+                  <CardDescription>
+                    You're currently in Local Mode (single admin, no password).
+                    Upgrade to Team Mode for multi-user workspaces with SSO, MFA, and directory sync.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Alert className="border-amber-500/30 bg-amber-500/10">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <AlertTitle className="text-amber-500">Warning</AlertTitle>
+                    <AlertDescription className="text-amber-600 dark:text-amber-400">
+                      This upgrade is <strong>irreversible</strong>. Team mode requires WorkOS credentials.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+                <CardFooter>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button className="gradient-primary border-0">
+                        <Rocket className="h-4 w-4 mr-2" />
+                        Upgrade to Team Mode
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Ready to upgrade?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          You'll be redirected to the setup wizard to configure WorkOS for team mode.
+                          This action is irreversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => window.location.href = '/app/setup?mode=upgrade'}
+                          className="gradient-primary border-0"
+                        >
+                          Continue to Setup
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
+              </Card>
+            )}
 
             {/* Authentication */}
             <Card className="border-border elevation-md">

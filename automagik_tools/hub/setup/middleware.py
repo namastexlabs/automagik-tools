@@ -27,11 +27,15 @@ class SetupRequiredMiddleware(BaseHTTPMiddleware):
         "/api/setup/",  # Setup API routes
         "/setup/",      # Legacy setup routes
         "/app/setup",   # Setup UI
+        "/app/",        # App UI (all pages)
         "/static/",     # Static assets
         "/favicon.ico",
         "/api/health",  # Health check
         "/health",
-        "/docs",        # API docs
+        "/docs",        # API docs (root)
+        "/api/docs",    # API docs (mounted)
+        "/api/redoc",   # ReDoc (mounted)
+        "/api/openapi.json",  # OpenAPI spec
         "/openapi.json",
         "/redoc",
     }

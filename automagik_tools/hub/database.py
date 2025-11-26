@@ -54,6 +54,27 @@ def run_migrations():
 
 async def init_database():
     """Initialize database with auto-migration support."""
+    # TEMPORARY: Reset to unconfigured if not in WORKOS mode
+    # Local mode should not persist between restarts
+    db_path = Path("hub_data/hub.db")
+    if db_path.exists():
+        import sqlite3
+        try:
+            temp_conn = sqlite3.connect(db_path)
+            cursor = temp_conn.execute(
+                "SELECT config_value FROM system_config WHERE config_key='app_mode'"
+            )
+            result = cursor.fetchone()
+            temp_conn.close()
+
+            # Only preserve database if in WORKOS mode (irreversible)
+            if result and result[0] != 'workos':
+                db_path.unlink()
+                print("🔄 Reset database: local mode is not persistent")
+        except Exception:
+            # Table doesn't exist yet - first startup
+            pass
+
     # Run Alembic migrations first
     run_migrations()
 

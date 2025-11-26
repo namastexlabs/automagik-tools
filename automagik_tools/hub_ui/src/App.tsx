@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Catalogue from './pages/Catalogue';
 import MyTools from './pages/MyTools';
+import Projects from './pages/Projects';
+import Agents from './pages/Agents';
 import Settings from './pages/Settings';
 import AuditLogs from './pages/AuditLogs';
 import AdminDashboard from './pages/AdminDashboard';
@@ -72,6 +74,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MyTools />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Projects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <ProtectedRoute>
+                  <Agents />
                 </ProtectedRoute>
               }
             />
