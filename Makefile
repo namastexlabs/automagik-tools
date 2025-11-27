@@ -252,7 +252,6 @@ help: ## 🛠️ Show this help message
 # ===========================================
 .PHONY: install install-full install-deps install-pm2 install-systemd
 install: ## $(ROCKET) Install automagik-tools (interactive)
-	@$(call show_automagik_logo)
 	$(call print_status,Starting automagik-tools installation...)
 	@echo ""
 
@@ -369,7 +368,7 @@ install-complete:
 	@echo -e "  $(FONT_PURPLE)make update$(FONT_RESET)          # Update to latest version"
 	@echo ""
 	@echo -e "$(FONT_CYAN)🌐 Access the Hub:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)http://localhost:8884$(FONT_RESET)  # Hub (Web UI + API)"
+	@echo -e "  $(FONT_PURPLE)http://$(HOST):$(PORT)$(FONT_RESET)  # Hub (Web UI + API)"
 	@echo ""
 	@echo -e "$(FONT_GREEN)Happy automating! 🚀$(FONT_RESET)"
 	@echo ""
