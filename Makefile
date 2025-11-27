@@ -88,14 +88,14 @@ endef
 # Check Node.js and pnpm availability
 define check_node
 	@if ! command -v node >/dev/null 2>&1; then \
-		$(call print_error,Node.js not found); \
+		echo -e "$(FONT_RED)$(ERROR) Node.js not found$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Install Node.js:$(FONT_RESET)"; \
 		echo -e "  • Download from: https://nodejs.org/"; \
 		echo -e "  • Or use nvm: https://github.com/nvm-sh/nvm"; \
 		exit 1; \
 	fi; \
 	if ! command -v pnpm >/dev/null 2>&1; then \
-		$(call print_error,pnpm not found); \
+		echo -e "$(FONT_RED)$(ERROR) pnpm not found$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Install pnpm:$(FONT_RESET)"; \
 		echo -e "  • Run: npm install -g pnpm"; \
 		exit 1; \
@@ -262,7 +262,7 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 	$(call print_status,Phase 2/6: Installing Python dependencies...)
 	@$(UV) sync --all-extras
 	@if [ ! -d ".venv" ]; then \
-		$(call print_error,Virtual environment creation failed); \
+		echo -e "$(FONT_RED)$(ERROR) Virtual environment creation failed$(FONT_RESET)"; \
 		exit 1; \
 	fi
 	$(call print_success,Python dependencies installed!)
@@ -274,7 +274,7 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 	@cd automagik_tools/hub_ui && pnpm install --silent
 	@cd automagik_tools/hub_ui && pnpm run build
 	@if [ ! -f "automagik_tools/hub_ui/dist/index.html" ]; then \
-		$(call print_error,UI build failed); \
+		echo -e "$(FONT_RED)$(ERROR) UI build failed$(FONT_RESET)"; \
 		exit 1; \
 	fi
 	$(call print_success,UI built successfully!)
@@ -284,64 +284,71 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 	$(call print_status,Phase 4/6: PM2 Process Manager)
 	@if command -v pm2 >/dev/null 2>&1; then \
 		PM2_VERSION=$$(pm2 --version 2>/dev/null || echo "unknown"); \
-		$(call print_success,PM2 $$PM2_VERSION already installed); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 $$PM2_VERSION already installed$(FONT_RESET)"; \
 	else \
-		$(call print_warning,PM2 not installed); \
+		echo -e "$(FONT_YELLOW)$(WARNING) PM2 not installed$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)PM2 is a process manager for Node.js applications.$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)Features: auto-restart, log management, monitoring$(FONT_RESET)"; \
-		$(call prompt_user,Install PM2 globally?) || exit 0; \
-		$(call print_status,Installing PM2...); \
+		read -p "Install PM2 globally? [y/N] " -n 1 -r REPLY; echo; \
+		if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
+			echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+			exit 0; \
+		fi; \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Installing PM2...$(FONT_RESET)"; \
 		npm install -g pm2 || { \
-			$(call print_error,PM2 installation failed); \
+			echo -e "$(FONT_RED)$(ERROR) PM2 installation failed$(FONT_RESET)"; \
 			echo -e "$(FONT_YELLOW)💡 Try: sudo npm install -g pm2$(FONT_RESET)"; \
 			exit 1; \
 		}; \
 		PM2_VERSION=$$(pm2 --version); \
-		$(call print_success,PM2 $$PM2_VERSION installed!); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 $$PM2_VERSION installed!$(FONT_RESET)"; \
 		pm2 update 2>/dev/null || true; \
 	fi
 	@echo ""
 
 	@# Phase 5: Configure PM2 and setup ecosystem
 	@if command -v pm2 >/dev/null 2>&1; then \
-		$(call print_status,Phase 5/6: Configuring PM2...); \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Phase 5/6: Configuring PM2...$(FONT_RESET)"; \
 		pm2 install pm2-logrotate 2>/dev/null || true; \
 		pm2 set pm2-logrotate:max_size 100M 2>/dev/null || true; \
 		pm2 set pm2-logrotate:retain 7 2>/dev/null || true; \
 		pm2 update 2>/dev/null || true; \
-		$(call print_success,PM2 configured!); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 configured!$(FONT_RESET)"; \
 		echo ""; \
-		$(call print_status,Phase 6/6: Service Setup); \
-		$(call prompt_user,Start automagik-tools service now?) || { \
-			$(call print_info,Service not started); \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Phase 6/6: Service Setup$(FONT_RESET)"; \
+		read -p "Start automagik-tools service now? [y/N] " -n 1 -r REPLY; echo; \
+		if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
+			echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+			echo -e "$(FONT_CYAN)$(INFO) Service not started$(FONT_RESET)"; \
 			echo ""; \
 			$(MAKE) install-complete-skipped; \
 			exit 0; \
-		}; \
-		$(call print_status,Starting service...); \
+		fi; \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Starting service...$(FONT_RESET)"; \
 		pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart "Tools Hub" 2>/dev/null; \
 		pm2 save --force; \
 		if [[ "$$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then \
 			pm2 startup systemd -u $$USER --hp $$HOME 2>/dev/null || true; \
 		fi; \
-		$(call print_success,Service started!); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Service started!$(FONT_RESET)"; \
 		echo ""; \
-		$(call print_status,Running health checks...); \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Running health checks...$(FONT_RESET)"; \
 		sleep 3; \
-		$(MAKE) health 2>/dev/null || $(call print_warning,Health check failed - service may need more time); \
+		$(MAKE) health 2>/dev/null || echo -e "$(FONT_YELLOW)$(WARNING) Health check failed - service may need more time$(FONT_RESET)"; \
 		echo ""; \
-		$(call print_status,Service Status:); \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Service Status:$(FONT_RESET)"; \
 		pm2 status; \
 		echo ""; \
-		$(call prompt_user,View recent logs?) && { \
+		read -p "View recent logs? [y/N] " -n 1 -r REPLY; echo; \
+		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 			echo ""; \
 			pm2 logs "Tools Hub" --lines 50 --nostream; \
 			echo ""; \
-		} || true; \
+		fi; \
 		$(MAKE) install-complete; \
 	else \
-		$(call print_success,Phase 5/6: Skipped (no PM2)); \
-		$(call print_success,Phase 6/6: Skipped (no PM2)); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Phase 5/6: Skipped (no PM2)$(FONT_RESET)"; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Phase 6/6: Skipped (no PM2)$(FONT_RESET)"; \
 		echo ""; \
 		$(MAKE) install-complete-no-pm2; \
 	fi
@@ -403,7 +410,7 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 	@# Check if already installed
 	@if command -v pm2 >/dev/null 2>&1; then \
 		PM2_VERSION=$$(pm2 --version 2>/dev/null || echo "unknown"); \
-		$(call print_success,PM2 $$PM2_VERSION already installed); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 $$PM2_VERSION already installed$(FONT_RESET)"; \
 		exit 0; \
 	fi
 
@@ -417,7 +424,7 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 	@# Install PM2
 	$(call print_status,Installing PM2...)
 	@npm install -g pm2 || { \
-		$(call print_error,PM2 installation failed); \
+		echo -e "$(FONT_RED)$(ERROR) PM2 installation failed$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Check npm permissions:$(FONT_RESET)"; \
 		echo -e "  • May need sudo: sudo npm install -g pm2"; \
 		echo -e "  • Or fix npm permissions: https://docs.npmjs.com/resolving-eacces-permissions-errors"; \
@@ -426,7 +433,7 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 
 	@# Verify installation
 	@if ! command -v pm2 >/dev/null 2>&1; then \
-		$(call print_error,PM2 installation verification failed); \
+		echo -e "$(FONT_RED)$(ERROR) PM2 installation verification failed$(FONT_RESET)"; \
 		exit 1; \
 	fi
 
@@ -447,20 +454,20 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 install-systemd: ## 🔧 Install systemd service (interactive, Linux only)
 	@# OS check - Linux only
 	@if [[ "$$(uname -s)" != "Linux" ]]; then \
-		$(call print_info,systemd service only available on Linux); \
+		echo -e "$(FONT_CYAN)$(INFO) systemd service only available on Linux$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)💡 On macOS, use: make start-local$(FONT_RESET)"; \
 		exit 0; \
 	fi
 
 	@# systemd availability check
 	@if ! command -v systemctl >/dev/null 2>&1; then \
-		$(call print_warning,systemd not found - skipping service installation); \
+		echo -e "$(FONT_YELLOW)$(WARNING) systemd not found - skipping service installation$(FONT_RESET)"; \
 		exit 0; \
 	fi
 
 	@# PM2 prerequisite check
 	@if ! command -v pm2 >/dev/null 2>&1; then \
-		$(call print_error,PM2 not found - install PM2 first); \
+		echo -e "$(FONT_RED)$(ERROR) PM2 not found - install PM2 first$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Run: make install-pm2$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -484,7 +491,7 @@ install-systemd: ## 🔧 Install systemd service (interactive, Linux only)
 	echo -e "  WorkDir: $$WORKDIR"; \
 	echo -e "  PM2: $$PM2_PATH"; \
 	\
-	$(call print_status,Creating service file...); \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Creating service file...$(FONT_RESET)"; \
 	sed -e "s|User=.*|User=$$USER|" \
 	    -e "s|WorkingDirectory=.*|WorkingDirectory=$$WORKDIR|" \
 	    -e "s|Environment=\"PATH=.*|Environment=\"PATH=$$PM2_DIR:/usr/local/bin:/usr/bin:/bin\"|" \
@@ -494,12 +501,12 @@ install-systemd: ## 🔧 Install systemd service (interactive, Linux only)
 	    -e "s|ExecReload=.*|ExecReload=$$PM2_PATH restart ecosystem.config.cjs|" \
 	    automagik-tools.service > /tmp/automagik-tools.service.tmp; \
 	\
-	$(call print_status,Installing service (requires sudo)...); \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Installing service (requires sudo)...$(FONT_RESET)"; \
 	if sudo cp /tmp/automagik-tools.service.tmp /etc/systemd/system/automagik-tools.service; then \
 		sudo systemctl daemon-reload; \
 		sudo systemctl enable automagik-tools; \
 		rm /tmp/automagik-tools.service.tmp; \
-		$(call print_success,systemd service installed and enabled!); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) systemd service installed and enabled!$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)💡 Control the service:$(FONT_RESET)"; \
 		echo -e "  $(FONT_PURPLE)sudo systemctl start automagik-tools$(FONT_RESET)"; \
 		echo -e "  $(FONT_PURPLE)sudo systemctl stop automagik-tools$(FONT_RESET)"; \
@@ -507,7 +514,7 @@ install-systemd: ## 🔧 Install systemd service (interactive, Linux only)
 		echo -e "  $(FONT_PURPLE)sudo systemctl restart automagik-tools$(FONT_RESET)"; \
 	else \
 		rm /tmp/automagik-tools.service.tmp 2>/dev/null || true; \
-		$(call print_error,Failed to install systemd service); \
+		echo -e "$(FONT_RED)$(ERROR) Failed to install systemd service$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Check sudo permissions$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -519,7 +526,7 @@ install-full: ## $(ROCKET) Full installation (system + deps + PM2 + systemd)
 	@if [ -x "./scripts/install.sh" ]; then \
 		./scripts/install.sh; \
 	else \
-		$(call print_error,scripts/install.sh not found or not executable); \
+		echo -e "$(FONT_RED)$(ERROR) scripts/install.sh not found or not executable$(FONT_RESET)"; \
 		exit 1; \
 	fi
 
@@ -529,17 +536,17 @@ install-full: ## $(ROCKET) Full installation (system + deps + PM2 + systemd)
 	@# Phase 3: Process management (interactive, optional)
 	@echo ""
 	@echo -e "$(FONT_CYAN)=== Optional: Process Management ===$(FONT_RESET)"
-	@$(MAKE) install-pm2 || $(call print_warning,PM2 installation skipped - you can install later with: make install-pm2)
+	@$(MAKE) install-pm2 || echo -e "$(FONT_YELLOW)$(WARNING) PM2 installation skipped - you can install later with: make install-pm2$(FONT_RESET)"
 
 	@# Phase 4: PM2 setup (if PM2 was installed)
 	@if command -v pm2 >/dev/null 2>&1; then \
-		$(MAKE) setup-pm2 || $(call print_warning,PM2 setup skipped); \
+		$(MAKE) setup-pm2 || echo -e "$(FONT_YELLOW)$(WARNING) PM2 setup skipped$(FONT_RESET)"; \
 	fi
 
 	@# Phase 5: systemd service (interactive, optional, Linux only)
 	@echo ""
 	@echo -e "$(FONT_CYAN)=== Optional: System Service ===$(FONT_RESET)"
-	@$(MAKE) install-systemd || $(call print_warning,systemd installation skipped - you can install later with: make install-systemd)
+	@$(MAKE) install-systemd || echo -e "$(FONT_YELLOW)$(WARNING) systemd installation skipped - you can install later with: make install-systemd$(FONT_RESET)"
 
 	@# Summary
 	$(call print_success_with_logo,Complete installation finished!)
@@ -595,9 +602,9 @@ install-hooks: ## 🔗 Install git pre-commit hooks
 	@if [ -f .githooks/pre-commit ]; then \
 		cp .githooks/pre-commit .git/hooks/pre-commit; \
 		chmod +x .git/hooks/pre-commit; \
-		$(call print_success,Git hooks installed! Pre-commit checks enabled.); \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Git hooks installed! Pre-commit checks enabled.$(FONT_RESET)"; \
 	else \
-		$(call print_error,.githooks/pre-commit not found!); \
+		echo -e "$(FONT_RED)$(ERROR) .githooks/pre-commit not found!$(FONT_RESET)"; \
 		exit 1; \
 	fi
 
@@ -657,7 +664,7 @@ check-release: ## 🔍 Check if ready for release (clean working directory)
 publish-test: build check-dist ## 🧪 Upload to TestPyPI
 	$(call print_status,Publishing to TestPyPI...)
 	@if [ -z "$(TESTPYPI_TOKEN)" ]; then \
-		$(call print_error,TESTPYPI_TOKEN not set); \
+		echo -e "$(FONT_RED)$(ERROR) TESTPYPI_TOKEN not set$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Get your TestPyPI token at: https://test.pypi.org/manage/account/token/$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)💡 Set with: export TESTPYPI_TOKEN=pypi-xxxxx$(FONT_RESET)"; \
 		exit 1; \
@@ -749,7 +756,7 @@ docker-compose: ## 🎼 Run multi-transport setup with docker-compose
 docker-deploy: ## 🚢 Deploy Docker container to cloud (PROVIDER=railway|aws|gcloud|render)
 	$(call print_status,Deploying to cloud provider...)
 	@if [ -z "$(PROVIDER)" ]; then \
-		$(call print_error,PROVIDER not specified); \
+		echo -e "$(FONT_RED)$(ERROR) PROVIDER not specified$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)Usage: make docker-deploy PROVIDER=railway$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Available providers: railway, aws, gcloud, render$(FONT_RESET)"; \
 		exit 1; \
@@ -800,12 +807,12 @@ publish-dev: build check-dist ## 🚀 Build and publish dev version to PyPI
 	$(call print_status,Publishing dev version to PyPI...)
 	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
 	if ! echo "$$CURRENT_VERSION" | grep -q "pre"; then \
-		$(call print_error,Not a dev version! Use 'make bump-dev' first); \
+		echo -e "$(FONT_RED)$(ERROR) Not a dev version! Use 'make bump-dev' first$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Current version: $$CURRENT_VERSION$(FONT_RESET)"; \
 		exit 1; \
 	fi
 	@if [ -z "$(PYPI_TOKEN)" ]; then \
-		$(call print_error,PYPI_TOKEN not set); \
+		echo -e "$(FONT_RED)$(ERROR) PYPI_TOKEN not set$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Get your PyPI token at: https://pypi.org/manage/account/token/$(FONT_RESET)"; \
 		echo -e "$(FONT_CYAN)💡 Set with: export PYPI_TOKEN=pypi-xxxxx$(FONT_RESET)"; \
 		exit 1; \
@@ -820,7 +827,7 @@ finalize-version: ## ✅ Remove 'pre' from version (0.1.2pre3 -> 0.1.2)
 	$(call print_status,Finalizing version for release...)
 	@CURRENT_VERSION=$$(grep "^version" pyproject.toml | cut -d'"' -f2); \
 	if ! echo "$$CURRENT_VERSION" | grep -q "pre"; then \
-		$(call print_error,Not a pre-release version!); \
+		echo -e "$(FONT_RED)$(ERROR) Not a pre-release version!$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Current version: $$CURRENT_VERSION$(FONT_RESET)"; \
 		exit 1; \
 	fi; \
@@ -911,7 +918,7 @@ start-local: ## 🚀 Start service using local PM2 ecosystem
 	$(call print_status,Starting automagik-tools with local PM2...)
 	@$(call check_pm2)
 	@if [ ! -d ".venv" ]; then \
-		$(call print_error,Virtual environment not found); \
+		echo -e "$(FONT_RED)$(ERROR) Virtual environment not found$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Run 'make install' first$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -934,7 +941,7 @@ restart-local: ## 🔄 Restart service using local PM2 ecosystem
 install-service: ## 🔧 Install local PM2 service for automagik-tools
 	$(call print_status,Installing local PM2 service)
 	@if [ ! -d ".venv" ]; then \
-		$(call print_warning,Virtual environment not found - creating it now...); \
+		echo -e "$(FONT_YELLOW)$(WARNING) Virtual environment not found - creating it now...$(FONT_RESET)"; \
 		$(MAKE) install; \
 	fi
 	@$(MAKE) setup-pm2
@@ -959,7 +966,7 @@ uninstall-service: ## 🗑️ Uninstall local PM2 service
 
 define check_pm2
 	@if ! command -v pm2 >/dev/null 2>&1; then \
-		$(call print_error,PM2 not found); \
+		echo -e "$(FONT_RED)$(ERROR) PM2 not found$(FONT_RESET)"; \
 		echo -e "$(FONT_YELLOW)💡 Install with: make install-pm2$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -1002,7 +1009,7 @@ update: ## 🔄 Update installation (git pull + deps + restart + health check)
 	@# Step 1: Git pull
 	$(call print_status,Pulling latest changes from git...)
 	@git pull || { \
-		$(call print_error,Git pull failed); \
+		echo -e "$(FONT_RED)$(ERROR) Git pull failed$(FONT_RESET)"; \
 		exit 1; \
 	}
 	$(call print_success,Latest changes pulled!)
@@ -1018,14 +1025,14 @@ update: ## 🔄 Update installation (git pull + deps + restart + health check)
 		echo -e "$(FONT_CYAN)⏳ Waiting for service to restart...$(FONT_RESET)"; \
 		sleep 3; \
 	else \
-		$(call print_warning,PM2 service not running - skipping restart); \
+		echo -e "$(FONT_YELLOW)$(WARNING) PM2 service not running - skipping restart$(FONT_RESET)"; \
 	fi
 
 	@# Step 4: Health check
 	$(call print_status,Running health checks...)
 	@sleep 2
 	@$(MAKE) health || { \
-		$(call print_warning,Health check failed - service may need more time to start); \
+		echo -e "$(FONT_YELLOW)$(WARNING) Health check failed - service may need more time to start$(FONT_RESET)"; \
 	}
 
 	@# Success summary
@@ -1061,7 +1068,7 @@ list: ## 📋 List available tools
 
 info: ## $(INFO) Show tool information (use TOOL=name)
 	@if [ -z "$(TOOL)" ]; then \
-		$(call print_error,Usage: make info TOOL=<tool-name>); \
+		echo -e "$(FONT_RED)$(ERROR) Usage: make info TOOL=<tool-name>$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Example: make info TOOL=evolution-api$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -1069,7 +1076,7 @@ info: ## $(INFO) Show tool information (use TOOL=name)
 
 run: ## $(ROCKET) Run tool standalone (use TOOL=name)
 	@if [ -z "$(TOOL)" ]; then \
-		$(call print_error,Usage: make run TOOL=<tool-name>); \
+		echo -e "$(FONT_RED)$(ERROR) Usage: make run TOOL=<tool-name>$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Example: make run TOOL=evolution-api$(FONT_RESET)"; \
 		exit 1; \
 	fi
@@ -1077,7 +1084,7 @@ run: ## $(ROCKET) Run tool standalone (use TOOL=name)
 
 serve: ## 🚀 Serve single tool (use TOOL=name TRANSPORT=stdio|sse|http)
 	@if [ -z "$(TOOL)" ]; then \
-		$(call print_error,Usage: make serve TOOL=<tool-name> [TRANSPORT=stdio|sse|http]); \
+		echo -e "$(FONT_RED)$(ERROR) Usage: make serve TOOL=<tool-name> [TRANSPORT=stdio|sse|http]$(FONT_RESET)"; \
 		echo -e "$(FONT_GRAY)Example: make serve TOOL=evolution-api TRANSPORT=stdio$(FONT_RESET)"; \
 		exit 1; \
 	fi
