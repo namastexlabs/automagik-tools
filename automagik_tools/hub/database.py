@@ -2,6 +2,7 @@
 
 After bootstrap, database path comes from RuntimeConfig.
 Module-level initialization is lazy to avoid premature database access.
+Supports both SQLite (default) and PostgreSQL (optional).
 """
 import os
 import subprocess
@@ -16,21 +17,52 @@ from .models import Base
 def _get_database_url() -> str:
     """Get database URL from environment (bootstrap phase only).
 
+    Supports:
+    - HUB_DATABASE_URL for PostgreSQL: postgresql://user:pass@host:port/db
+    - HUB_DATABASE_PATH for SQLite: ./data/hub.db
+
     After bootstrap, connection is already established.
     This is only called during initial module import.
     """
+    # Check for PostgreSQL URL first
+    pg_url = os.getenv("HUB_DATABASE_URL")
+    if pg_url:
+        # Convert to async driver if needed
+        if pg_url.startswith("postgresql://"):
+            return pg_url.replace("postgresql://", "postgresql+asyncpg://")
+        elif pg_url.startswith("postgresql+asyncpg://"):
+            return pg_url
+        else:
+            return pg_url
+
+    # Default to SQLite
     database_path = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
     return f"sqlite+aiosqlite:///{database_path}"
 
 
+def _is_postgresql() -> bool:
+    """Check if using PostgreSQL backend."""
+    return DATABASE_URL.startswith("postgresql")
+
+
 DATABASE_URL = _get_database_url()
 
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,  # SQL logging disabled for production
-    future=True,
-)
+# Create async engine with appropriate settings
+if _is_postgresql():
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        future=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+    )
+else:
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        future=True,
+    )
 
 # Session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -128,18 +160,28 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 def get_db_session_sync():
     """
-    Get a synchronous database session (via aiosqlite run_sync or similar).
+    Get a synchronous database session.
     WARNING: This is a hack to support legacy sync code.
-    Ideally, we should refactor everything to be async.
-    For now, we will use a separate synchronous engine for these specific calls.
     """
-    # Create a sync engine just for this purpose
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    # We need the sync URL (sqlite:/// instead of sqlite+aiosqlite:///)
-    sync_url = DATABASE_URL.replace("+aiosqlite", "")
-    sync_engine = create_engine(sync_url)
-    SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+    # Convert async URL to sync URL
+    sync_url = DATABASE_URL
+    if "+aiosqlite" in sync_url:
+        sync_url = sync_url.replace("+aiosqlite", "")
+    elif "+asyncpg" in sync_url:
+        sync_url = sync_url.replace("+asyncpg", "+psycopg2")
 
+    if _is_postgresql():
+        sync_engine = create_engine(
+            sync_url,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+        )
+    else:
+        sync_engine = create_engine(sync_url)
+
+    SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
     return SyncSessionLocal()

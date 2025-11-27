@@ -201,6 +201,37 @@ async def bootstrap_application() -> RuntimeConfig:
     Returns:
         RuntimeConfig loaded from database
     """
+    import traceback
+    import re
+    from .database import DATABASE_URL, _is_postgresql
+
+    # Pre-flight connectivity check - fail fast if database is unreachable
+    try:
+        async with get_db_session() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        # Print detailed error trace for debugging
+        safe_url = re.sub(r':([^@]+)@', ':****@', DATABASE_URL) if '@' in DATABASE_URL else DATABASE_URL
+        print(f"""
+================================================================================
+TOOLS HUB DATABASE CONNECTION FAILED
+================================================================================
+URL: {safe_url}
+Error: {type(e).__name__}: {e}
+
+{traceback.format_exc()}
+
+Quick fixes:
+1. PostgreSQL: pg_isready -h 192.168.112.135 -p 5432
+2. Check HUB_DATABASE_URL environment variable
+3. Ensure database exists
+
+Copy this block when reporting issues.
+================================================================================
+""")
+        raise SystemExit(f"DATABASE CONNECTION FAILED: {e}")
+
+
     from dotenv import load_dotenv
 
     # Step 1: Detect state
