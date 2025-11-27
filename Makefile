@@ -543,6 +543,85 @@ install-full: ## $(ROCKET) Full installation (system + deps + PM2 + systemd)
 install-deps: install-full ## $(ROCKET) Alias for install-full
 
 # ===========================================
+# 🗑️ Uninstall
+# ===========================================
+.PHONY: uninstall
+
+uninstall: ## 🗑️ Uninstall automagik-tools (interactive)
+	@echo ""
+	@echo -e "$(FONT_RED)$(FONT_BOLD)⚠️  UNINSTALL AUTOMAGIK-TOOLS$(FONT_RESET)"
+	@echo ""
+	@echo -e "$(FONT_YELLOW)This will remove:$(FONT_RESET)"
+	@echo -e "  • Python virtual environment (.venv/)"
+	@echo -e "  • Node.js dependencies (hub_ui/node_modules/)"
+	@echo -e "  • UI build artifacts (hub_ui/dist/)"
+	@echo -e "  • PM2 process (Tools Hub)"
+	@echo -e "  • systemd service (if installed)"
+	@echo ""
+	@read -p "Proceed with uninstall? [y/N] " -n 1 -r REPLY; echo; \
+	if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo -e "$(FONT_YELLOW)Uninstall cancelled.$(FONT_RESET)"; \
+		exit 0; \
+	fi; \
+	echo ""; \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Stopping PM2 process...$(FONT_RESET)"; \
+	if command -v pm2 >/dev/null 2>&1; then \
+		pm2 delete "Tools Hub" 2>/dev/null || true; \
+		pm2 save --force 2>/dev/null || true; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 process removed$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_GRAY)  PM2 not installed, skipping$(FONT_RESET)"; \
+	fi; \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Removing systemd service...$(FONT_RESET)"; \
+	if [ -f "/etc/systemd/system/automagik-tools.service" ]; then \
+		sudo systemctl stop automagik-tools 2>/dev/null || true; \
+		sudo systemctl disable automagik-tools 2>/dev/null || true; \
+		sudo rm -f /etc/systemd/system/automagik-tools.service; \
+		sudo systemctl daemon-reload; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) systemd service removed$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_GRAY)  No systemd service found, skipping$(FONT_RESET)"; \
+	fi; \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Removing Python virtual environment...$(FONT_RESET)"; \
+	if [ -d ".venv" ]; then \
+		rm -rf .venv; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Removed .venv/$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_GRAY)  .venv/ not found, skipping$(FONT_RESET)"; \
+	fi; \
+	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Removing Node.js artifacts...$(FONT_RESET)"; \
+	if [ -d "automagik_tools/hub_ui/node_modules" ]; then \
+		rm -rf automagik_tools/hub_ui/node_modules; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Removed node_modules/$(FONT_RESET)"; \
+	fi; \
+	if [ -d "automagik_tools/hub_ui/dist" ]; then \
+		rm -rf automagik_tools/hub_ui/dist; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Removed dist/$(FONT_RESET)"; \
+	fi; \
+	echo ""; \
+	echo -e "$(FONT_YELLOW)$(WARNING) Optional: Wipe database?$(FONT_RESET)"; \
+	echo -e "  This will permanently delete:"; \
+	echo -e "  • data/hub.db"; \
+	echo -e "  • hub_data/hub.db"; \
+	echo ""; \
+	read -p "Wipe database files? [y/N] " -n 1 -r WIPE_DB; echo; \
+	if [[ $$WIPE_DB =~ ^[Yy]$$ ]]; then \
+		rm -rf data/ hub_data/; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Database files wiped$(FONT_RESET)"; \
+	else \
+		echo -e "$(FONT_CYAN)$(INFO) Database preserved$(FONT_RESET)"; \
+	fi; \
+	echo ""; \
+	echo -e "$(FONT_GREEN)$(FONT_BOLD)$(CHECKMARK) Uninstall complete!$(FONT_RESET)"; \
+	echo ""; \
+	echo -e "$(FONT_CYAN)Preserved:$(FONT_RESET)"; \
+	echo -e "  • .env (configuration)"; \
+	echo -e "  • Source code"; \
+	echo ""; \
+	echo -e "$(FONT_CYAN)To reinstall: make install$(FONT_RESET)"; \
+	echo ""
+
+# ===========================================
 # 🧪 Testing
 # ===========================================
 .PHONY: test test-unit test-mcp test-coverage
