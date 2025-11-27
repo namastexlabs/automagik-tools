@@ -254,6 +254,19 @@ async def bootstrap_application() -> RuntimeConfig:
             if super_admins:
                 await config_store.set(ConfigStore.KEY_SUPER_ADMIN_EMAILS, super_admins)
 
+            # Auto-migrate Google OAuth credentials from .env (Priority 4)
+            google_client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID") or os.getenv("GOOGLE_CLIENT_ID")
+            google_client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET") or os.getenv("GOOGLE_CLIENT_SECRET")
+
+            if google_client_id and google_client_secret:
+                # Check if already migrated
+                existing = await config_store.get_google_oauth_credentials("default")
+                if not existing:
+                    await config_store.set_google_oauth_credentials(
+                        "default", google_client_id, google_client_secret
+                    )
+                    print("✅ Auto-migrated Google OAuth credentials from .env to database")
+
             await session.commit()
 
         print("✅ Bootstrap complete - configuration stored in database")
