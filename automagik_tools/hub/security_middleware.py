@@ -27,13 +27,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     - HUB_CSP_REPORT_URI: URI for CSP violation reports (optional)
     """
 
-    def __init__(self, app: Callable, enable_hsts: bool = None):
+    def __init__(
+        self,
+        app: Callable,
+        enable_hsts: bool = None,
+        csp_report_uri: str = None
+    ):
         super().__init__(app)
-        # Auto-detect HSTS from environment
+        # Auto-detect HSTS from environment (fallback for bootstrap phase)
         if enable_hsts is None:
             enable_hsts = os.getenv("HUB_ENABLE_HSTS", "false").lower() == "true"
         self.enable_hsts = enable_hsts
-        self.csp_report_uri = os.getenv("HUB_CSP_REPORT_URI", "")
+
+        # Auto-detect CSP report URI from environment (fallback for bootstrap phase)
+        if csp_report_uri is None:
+            csp_report_uri = os.getenv("HUB_CSP_REPORT_URI", "")
+        self.csp_report_uri = csp_report_uri
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and add security headers to response."""

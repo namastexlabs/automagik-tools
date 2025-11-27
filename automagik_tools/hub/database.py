@@ -1,20 +1,29 @@
-"""Database connection and session management."""
+"""Database connection and session management.
+
+After bootstrap, database path comes from RuntimeConfig.
+Module-level initialization is lazy to avoid premature database access.
+"""
 import os
 import subprocess
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from .models import Base
 
 
-# Database configuration
-DATABASE_PATH = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
-# Ensure directory exists
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+def _get_database_url() -> str:
+    """Get database URL from environment (bootstrap phase only).
 
-DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
+    After bootstrap, connection is already established.
+    This is only called during initial module import.
+    """
+    database_path = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
+    return f"sqlite+aiosqlite:///{database_path}"
+
+
+DATABASE_URL = _get_database_url()
 
 # Create async engine
 engine = create_async_engine(
@@ -31,9 +40,16 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-def run_migrations():
-    """Run Alembic migrations to head."""
-    print("Running database migrations...")
+async def run_database_migrations() -> bool:
+    """Run Alembic migrations to head (idempotent).
+
+    This is called by bootstrap system during first-run setup.
+    Safe to call multiple times - Alembic will skip if already up-to-date.
+
+    Returns:
+        True if migrations were applied, False if already current
+    """
+    print("🔄 Running database migrations...")
     try:
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -41,25 +57,59 @@ def run_migrations():
             text=True,
             cwd=Path(__file__).parent.parent.parent,  # Project root
         )
+
+        # Check if migrations were actually applied
+        applied_migrations = "Running upgrade" in result.stdout
+
         if result.returncode == 0:
-            print("Migrations completed successfully")
-            if result.stdout:
-                print(result.stdout)
+            if applied_migrations:
+                print("✅ Migrations applied successfully")
+                if result.stdout:
+                    print(result.stdout)
+                return True
+            else:
+                print("✅ Database already up-to-date")
+                return False
         else:
-            print(f"Migration warning: {result.stderr}")
+            print(f"⚠️  Migration warning: {result.stderr}")
             # Don't fail - might be first run or no migrations needed
+            return False
     except Exception as e:
-        print(f"Migration error (continuing anyway): {e}")
+        print(f"❌ Migration error (continuing anyway): {e}")
+        return False
 
 
-async def init_database():
-    """Initialize database with auto-migration support."""
-    # Run Alembic migrations first
-    run_migrations()
+async def migrations_are_current() -> bool:
+    """Check if all migrations are applied (for health checks).
 
-    # Fallback: create any missing tables (for development)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    Returns:
+        True if database is up-to-date
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "current"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent.parent,
+        )
+
+        if result.returncode == 0 and result.stdout:
+            # Check if we're at head
+            result_head = subprocess.run(
+                [sys.executable, "-m", "alembic", "heads"],
+                capture_output=True,
+                text=True,
+                cwd=Path(__file__).parent.parent.parent,
+            )
+
+            current = result.stdout.strip().split()[0] if result.stdout.strip() else ""
+            head = result_head.stdout.strip().split()[0] if result_head.stdout.strip() else ""
+
+            return current == head
+
+        return False
+    except Exception:
+        return False
 
 
 @asynccontextmanager

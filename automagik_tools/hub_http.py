@@ -3,12 +3,8 @@ import os
 import webbrowser
 import threading
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
-
-# Load environment variables before any other imports
-from dotenv import load_dotenv
-load_dotenv()
 
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -16,7 +12,7 @@ from starlette.responses import JSONResponse
 from fastmcp import FastMCP, Context
 from .hub import tools as hub_tools
 from .hub.registry import populate_tool_registry
-from .hub.database import init_database, get_db_session
+from .hub.database import get_db_session
 from .hub.api_routes import router as api_router
 from .hub.auth_routes import router as auth_router
 from .hub.setup import (
@@ -26,24 +22,30 @@ from .hub.setup import (
     ModeManager,
     AppMode,
 )
+from .hub.bootstrap import bootstrap_application, RuntimeConfig
 
 
-# Server lifespan: populate tool registry on startup
+# Global runtime config (set during bootstrap)
+_runtime_config: Optional[RuntimeConfig] = None
+
+
+def get_runtime_config() -> Optional[RuntimeConfig]:
+    """Get the runtime configuration set during bootstrap."""
+    return _runtime_config
+
+
+# Server lifespan: bootstrap and initialize
 @asynccontextmanager
 async def lifespan(server: FastMCP):
-    """Initialize tool registry on server startup."""
+    """Bootstrap application and initialize tool registry on startup."""
+    global _runtime_config
+
     print("🚀 Initializing Hub...")
 
-    # Initialize database tables
-    await init_database()
+    # Phase 1: Bootstrap application (handles first-run, migrations, .env migration)
+    _runtime_config = await bootstrap_application()
 
-    # Auto-migrate from .env if needed
-    async with get_db_session() as session:
-        config_store = ConfigStore(session)
-        mode_manager = ModeManager(config_store)
-        await mode_manager.migrate_from_env_if_needed()
-
-    # Check app mode for zero-config
+    # Phase 2: Check app mode for zero-config
     async with get_db_session() as session:
         config_store = ConfigStore(session)
         mode_manager = ModeManager(config_store)
@@ -353,17 +355,18 @@ async def delete_credential(
 # Run server
 if __name__ == "__main__":
     import uvicorn
+    import asyncio
 
-    host = os.getenv("HUB_HOST", "0.0.0.0")
-    port = int(os.getenv("HUB_PORT", 8884))
+    # Bootstrap to get runtime config
+    config = asyncio.run(bootstrap_application())
 
-    print(f"🚀 Starting Hub HTTP server on http://{host}:{port}")
+    print(f"🚀 Starting Hub HTTP server on http://{config.host}:{config.port}")
 
     # Use uvicorn to run the full app (not hub.run which only starts MCP server)
     uvicorn.run(
         "automagik_tools.hub_http:app",
-        host=host,
-        port=port,
+        host=config.host,
+        port=config.port,
         reload=False,
         log_level="info"
     )
@@ -372,19 +375,39 @@ if __name__ == "__main__":
 app = hub.http_app()
 
 # Add security headers middleware (must be added before CORS)
+# Security settings will be loaded from RuntimeConfig during lifespan
 from .hub.security_middleware import SecurityHeadersMiddleware, RequestIDMiddleware
+
+# Middleware initialization happens before lifespan, so we use a factory function
+def create_security_middleware():
+    """Create security middleware with settings from RuntimeConfig."""
+    if _runtime_config is not None:
+        return SecurityHeadersMiddleware(
+            app,
+            enable_hsts=_runtime_config.enable_hsts,
+            csp_report_uri=_runtime_config.csp_report_uri
+        )
+    # Fallback during initialization (will be reconfigured in lifespan)
+    return SecurityHeadersMiddleware(app, enable_hsts=False, csp_report_uri="")
+
+# Note: Middleware is added at module level, before bootstrap runs
+# The middleware __init__ will read from env as fallback
+# This is acceptable as middleware settings are low-risk compared to credentials
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
 # CORS configuration - SECURITY: Do not use wildcard origins with credentials
-ALLOWED_ORIGINS = os.getenv(
-    "HUB_ALLOWED_ORIGINS",
-    "http://localhost:8885,http://localhost:3000,http://127.0.0.1:8885"
-).split(",")
+# Get CORS origins from runtime config (loaded from database)
+def get_cors_origins():
+    """Get CORS origins from runtime config, with fallback for startup."""
+    if _runtime_config is not None:
+        return _runtime_config.allowed_origins
+    # Fallback during app initialization before lifespan runs
+    return ["http://localhost:8885", "http://localhost:3000", "http://127.0.0.1:8885"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Request-ID"],

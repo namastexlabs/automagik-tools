@@ -828,6 +828,109 @@ def version():
     console.print(f"automagik-tools v{__version__}")
 
 
+@app.command(name="config")
+def config_command(
+    action: str = typer.Argument(..., help="Action: show, set, reset"),
+    key: Optional[str] = typer.Option(None, help="Configuration key to set/get"),
+    value: Optional[str] = typer.Option(None, help="Configuration value to set"),
+):
+    """Manage hub configuration stored in database
+
+    Examples:
+        automagik-tools config show                    # Show all configuration
+        automagik-tools config set --key port --value 8885
+        automagik-tools config reset                   # Reset to unconfigured state
+    """
+    import asyncio
+    from .hub.database import get_db_session
+    from .hub.setup import ConfigStore
+    from .hub.bootstrap import get_bootstrap_state, BootstrapState
+
+    async def show_config():
+        """Display current configuration."""
+        state = await get_bootstrap_state()
+
+        console.print(f"\n[bold]Bootstrap State:[/bold] {state.value}")
+
+        if state in [BootstrapState.NO_DATABASE, BootstrapState.EMPTY_DATABASE]:
+            console.print("[yellow]Database not initialized. Run the hub to complete setup.[/yellow]")
+            return
+
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+
+            # Display key configuration
+            table = Table(title="Hub Configuration")
+            table.add_column("Setting", style="cyan")
+            table.add_column("Value", style="green")
+
+            mode = await config_store.get_app_mode()
+            table.add_row("App Mode", mode)
+
+            network = await config_store.get_network_config()
+            table.add_row("Bind Address", network["bind_address"])
+            table.add_row("Port", str(network["port"]))
+
+            db_path = await config_store.get(ConfigStore.KEY_DATABASE_PATH, "data/hub.db")
+            table.add_row("Database Path", db_path)
+
+            super_admins = await config_store.get(ConfigStore.KEY_SUPER_ADMIN_EMAILS, "")
+            admin_count = len([e for e in super_admins.split(",") if e.strip()])
+            table.add_row("Super Admins", f"{admin_count} configured")
+
+            if mode == "workos":
+                client_id = await config_store.get(ConfigStore.KEY_WORKOS_CLIENT_ID)
+                has_api_key = bool(await config_store.get(ConfigStore.KEY_WORKOS_API_KEY))
+                table.add_row("WorkOS Client ID", client_id or "(not set)")
+                table.add_row("WorkOS API Key", "✓ configured" if has_api_key else "(not set)")
+
+            console.print(table)
+
+    async def set_config():
+        """Set a configuration value."""
+        if not key:
+            console.print("[red]Error: --key is required for 'set' action[/red]")
+            raise typer.Exit(1)
+        if not value:
+            console.print("[red]Error: --value is required for 'set' action[/red]")
+            raise typer.Exit(1)
+
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            await config_store.set(key, value)
+            await session.commit()
+
+        console.print(f"[green]✓ Set {key} = {value}[/green]")
+
+    async def reset_config():
+        """Reset configuration to unconfigured state."""
+        console.print("[yellow]Warning: This will reset the app to unconfigured state.[/yellow]")
+        confirm = typer.confirm("Are you sure?")
+
+        if not confirm:
+            console.print("Cancelled.")
+            return
+
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            await config_store.set_app_mode("unconfigured")
+            await session.commit()
+
+        console.print("[green]✓ Configuration reset. Navigate to /setup to reconfigure.[/green]")
+
+    # Execute action
+    if action == "show":
+        asyncio.run(show_config())
+    elif action == "set":
+        asyncio.run(set_config())
+    elif action == "reset":
+        asyncio.run(reset_config())
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        console.print("Valid actions: show, set, reset")
+        raise typer.Exit(1)
+
+
 def main():
     """Main entry point"""
     app()
