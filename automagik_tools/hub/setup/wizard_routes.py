@@ -280,3 +280,71 @@ async def get_current_mode(
             result["authkit_domain"] = creds["authkit_domain"]
 
     return result
+
+
+class NetworkConfigRequest(BaseModel):
+    """Network configuration request."""
+    bind_address: str = Field(..., description="'localhost' or 'network'")
+    port: int = Field(..., description="Port number (1024-65535)", ge=1024, le=65535)
+
+
+class DatabasePathRequest(BaseModel):
+    """Database path configuration request."""
+    path: str = Field(..., description="Database file path")
+
+
+@router.post("/network-config")
+async def set_network_config(
+    request: NetworkConfigRequest,
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
+):
+    """Set network configuration (bind address and port).
+
+    Args:
+        request: Network configuration
+
+    Returns:
+        Success response
+
+    Raises:
+        HTTPException: If validation fails
+    """
+    try:
+        await mode_manager.config_store.set_network_config(
+            request.bind_address,
+            request.port
+        )
+        return {"success": True, "message": "Network configuration saved"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save network configuration: {str(e)}"
+        )
+
+
+@router.post("/database-path")
+async def set_database_path(
+    request: DatabasePathRequest,
+    mode_manager: ModeManager = Depends(get_mode_manager_dep)
+):
+    """Set database file path.
+
+    Args:
+        request: Database path
+
+    Returns:
+        Success response
+
+    Raises:
+        HTTPException: If path is invalid
+    """
+    try:
+        await mode_manager.config_store.set_database_path(request.path)
+        return {"success": True, "message": "Database path saved"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save database path: {str(e)}"
+        )

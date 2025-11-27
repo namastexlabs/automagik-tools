@@ -1,298 +1,320 @@
-import { useState, useEffect } from 'react';
+/**
+ * Setup Wizard - Refactored Multi-Step Version
+ *
+ * Beautiful multi-step wizard with proper state management.
+ * Phases covered:
+ * - Phase 4: Multi-step wizard UI
+ * - Phase 5: LOCAL mode with folder picker
+ * - Phase 6: WorkOS hybrid setup (Quick Start + Custom App)
+ */
+import { useState, useEffect, useReducer } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { StepIndicator, Step } from '@/components/StepIndicator';
+import { Step0_ModeSelection, Step0Data } from '@/components/wizard/Step0_ModeSelection';
+import { Step1a_LocalConfig, Step1aData } from '@/components/wizard/Step1a_LocalConfig';
+import { Step1b_WorkOSConfig, Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
+import { Step2_NetworkConfig, Step2Data } from '@/components/wizard/Step2_NetworkConfig';
+import { Step3_Review } from '@/components/wizard/Step3_Review';
 
-export default function Setup() {
+// Wizard state type
+interface WizardState extends Step0Data, Step1aData, Step1bData, Step2Data {
+  currentStep: number;
+  completedSteps: Set<number>;
+}
+
+// Wizard actions
+type WizardAction =
+  | { type: 'UPDATE_DATA'; payload: Partial<WizardState> }
+  | { type: 'NEXT_STEP' }
+  | { type: 'PREV_STEP' }
+  | { type: 'COMPLETE_STEP'; step: number }
+  | { type: 'GO_TO_STEP'; step: number };
+
+// Initial state
+const initialState: WizardState = {
+  // Step 0
+  mode: null,
+  // Step 1a (Local)
+  adminEmail: '',
+  databasePath: 'data',
+  // Step 1b (WorkOS)
+  setupType: null,
+  clientId: '',
+  apiKey: '',
+  authkitDomain: '',
+  adminEmails: '',
+  // Step 2 (Network)
+  bindAddress: 'localhost',
+  port: 8885,
+  // State management
+  currentStep: 0,
+  completedSteps: new Set(),
+};
+
+// Reducer
+function wizardReducer(state: WizardState, action: WizardAction): WizardState {
+  switch (action.type) {
+    case 'UPDATE_DATA':
+      return { ...state, ...action.payload };
+
+    case 'NEXT_STEP':
+      return {
+        ...state,
+        currentStep: state.currentStep + 1,
+        completedSteps: new Set([...state.completedSteps, state.currentStep]),
+      };
+
+    case 'PREV_STEP':
+      return {
+        ...state,
+        currentStep: Math.max(0, state.currentStep - 1),
+      };
+
+    case 'COMPLETE_STEP':
+      return {
+        ...state,
+        completedSteps: new Set([...state.completedSteps, action.step]),
+      };
+
+    case 'GO_TO_STEP':
+      return {
+        ...state,
+        currentStep: action.step,
+      };
+
+    default:
+      return state;
+  }
+}
+
+export default function SetupNew() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [mode, setMode] = useState<'local' | 'workos' | null>(null);
-  const [localEmail, setLocalEmail] = useState('');
-  const [workosClientId, setWorkosClientId] = useState('');
-  const [workosApiKey, setWorkosApiKey] = useState('');
-  const [workosAuthkitDomain, setWorkosAuthkitDomain] = useState('');
-  const [workosAdminEmails, setWorkosAdminEmails] = useState('');
-
+  const [state, dispatch] = useReducer(wizardReducer, initialState);
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
+  // Check if setup is already complete
   useEffect(() => {
-    // Check if setup is already complete
     fetch('/api/setup/status')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (!data.is_setup_required && !isUpgrade) {
-          // Already configured, redirect to dashboard
           navigate('/dashboard');
         }
       })
       .catch(console.error);
   }, [navigate, isUpgrade]);
 
-  const handleLocalSetup = async () => {
-    if (!localEmail) {
-      setError('Please enter an admin email');
-      return;
+  // Define steps based on mode
+  const getSteps = (): Step[] => {
+    const baseSteps: Step[] = [
+      { id: 'mode', title: 'Mode', description: 'Choose setup type' },
+    ];
+
+    if (state.mode === 'local') {
+      baseSteps.push({ id: 'local-config', title: 'Config', description: 'Local settings' });
+    } else if (state.mode === 'workos') {
+      baseSteps.push({ id: 'workos-config', title: 'WorkOS', description: 'Credentials' });
     }
 
-    setLoading(true);
-    setError('');
+    if (state.mode) {
+      baseSteps.push(
+        { id: 'network', title: 'Network', description: 'Server config' },
+        { id: 'review', title: 'Review', description: 'Confirm setup' }
+      );
+    }
 
-    try {
+    return baseSteps;
+  };
+
+  const steps = getSteps();
+
+  // Handle complete setup
+  const handleComplete = async () => {
+    if (state.mode === 'local') {
+      // Local mode setup
       const response = await fetch('/api/setup/local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_email: localEmail })
+        body: JSON.stringify({
+          admin_email: state.adminEmail,
+        }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.detail || 'Setup failed');
+        throw new Error(data.detail || 'Local setup failed');
       }
+
+      // Save network config
+      await fetch('/api/setup/network-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bind_address: state.bindAddress,
+          port: state.port,
+        }),
+      });
+
+      // Save database path
+      await fetch('/api/setup/database-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: state.databasePath,
+        }),
+      });
 
       // Redirect to dashboard
       window.location.href = '/app/dashboard';
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWorkOSSetup = async () => {
-    if (!workosClientId || !workosApiKey || !workosAuthkitDomain || !workosAdminEmails) {
-      setError('Please fill in all WorkOS fields');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const adminEmailsArray = workosAdminEmails.split(',').map(e => e.trim()).filter(Boolean);
+    } else if (state.mode === 'workos') {
+      // WorkOS mode setup
+      const adminEmailsArray = state.adminEmails
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean);
 
       const endpoint = isUpgrade ? '/api/setup/upgrade-to-workos' : '/api/setup/workos';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: workosClientId,
-          api_key: workosApiKey,
-          authkit_domain: workosAuthkitDomain,
-          super_admin_emails: adminEmailsArray
-        })
+          client_id: state.clientId,
+          api_key: state.apiKey,
+          authkit_domain: state.authkitDomain,
+          super_admin_emails: adminEmailsArray,
+          setup_type: state.setupType,
+        }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.detail || 'Setup failed');
+        throw new Error(data.detail || 'WorkOS setup failed');
       }
+
+      // Save network config
+      await fetch('/api/setup/network-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bind_address: state.bindAddress,
+          port: state.port,
+        }),
+      });
 
       // Redirect to login
       window.location.href = '/app/login';
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
-  if (mode === null) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              {isUpgrade ? '🚀 Upgrade to Team Mode' : '⚙️ Setup Automagik Tools Hub'}
-            </CardTitle>
-            <CardDescription>
-              {isUpgrade
-                ? 'Upgrade your workspace to team mode with WorkOS authentication'
-                : 'Choose how you want to configure your Tools Hub'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!isUpgrade && (
-              <Button
-                onClick={() => setMode('local')}
-                className="w-full justify-start h-auto py-4"
-                variant="outline"
-              >
-                <div className="text-left">
-                  <div className="font-semibold">🏠 Local Mode</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Single admin, passwordless access (not persistent between restarts)
-                  </div>
-                </div>
-              </Button>
-            )}
-            <Button
-              onClick={() => setMode('workos')}
-              className="w-full justify-start h-auto py-4"
-              variant="outline"
-            >
-              <div className="text-left">
-                <div className="font-semibold">🏢 Team Mode</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Multi-user workspace with WorkOS SSO, MFA & directory sync (irreversible)
-                </div>
-              </div>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Render current step
+  const renderStep = () => {
+    const stepIndex = state.currentStep;
 
-  if (mode === 'local') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">🏠 Local Mode Setup</CardTitle>
-            <CardDescription>
-              Quick setup for personal use. No password required.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+    // Step 0: Mode Selection
+    if (stepIndex === 0) {
+      return (
+        <Step0_ModeSelection
+          data={{ mode: state.mode }}
+          onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
+          onNext={() => dispatch({ type: 'NEXT_STEP' })}
+          isUpgrade={isUpgrade}
+        />
+      );
+    }
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Admin Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={localEmail}
-                onChange={(e) => setLocalEmail(e.target.value)}
-                disabled={loading}
-              />
-              <p className="text-sm text-muted-foreground">
-                This email will be used for identification only. No password needed.
-              </p>
-            </div>
+    // Step 1a: Local Config (if mode is local)
+    if (state.mode === 'local' && stepIndex === 1) {
+      return (
+        <Step1a_LocalConfig
+          data={{
+            adminEmail: state.adminEmail,
+            databasePath: state.databasePath,
+          }}
+          onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
+          onNext={() => dispatch({ type: 'NEXT_STEP' })}
+          onBack={() => dispatch({ type: 'PREV_STEP' })}
+        />
+      );
+    }
 
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Local mode is not persistent. Your configuration will reset on server restart.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-          <CardFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setMode(null)} disabled={loading}>
-              Back
-            </Button>
-            <Button onClick={handleLocalSetup} disabled={loading} className="flex-1">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Complete Setup
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
+    // Step 1b: WorkOS Config (if mode is workos)
+    if (state.mode === 'workos' && stepIndex === 1) {
+      return (
+        <Step1b_WorkOSConfig
+          data={{
+            setupType: state.setupType,
+            clientId: state.clientId,
+            apiKey: state.apiKey,
+            authkitDomain: state.authkitDomain,
+            adminEmails: state.adminEmails,
+          }}
+          onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
+          onNext={() => dispatch({ type: 'NEXT_STEP' })}
+          onBack={() => dispatch({ type: 'PREV_STEP' })}
+        />
+      );
+    }
 
-  if (mode === 'workos') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              {isUpgrade ? '🚀 Upgrade to Team Mode' : '🏢 Team Mode Setup'}
-            </CardTitle>
-            <CardDescription>
-              Configure WorkOS for enterprise authentication
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+    // Step 2: Network Config
+    if ((state.mode === 'local' && stepIndex === 2) || (state.mode === 'workos' && stepIndex === 2)) {
+      return (
+        <Step2_NetworkConfig
+          data={{
+            bindAddress: state.bindAddress,
+            port: state.port,
+          }}
+          onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
+          onNext={() => dispatch({ type: 'NEXT_STEP' })}
+          onBack={() => dispatch({ type: 'PREV_STEP' })}
+        />
+      );
+    }
 
-            <div className="space-y-2">
-              <Label htmlFor="clientId">WorkOS Client ID</Label>
-              <Input
-                id="clientId"
-                placeholder="client_..."
-                value={workosClientId}
-                onChange={(e) => setWorkosClientId(e.target.value)}
-                disabled={loading}
+    // Step 3: Review
+    if ((state.mode === 'local' && stepIndex === 3) || (state.mode === 'workos' && stepIndex === 3)) {
+      return (
+        <Step3_Review
+          mode={state.mode}
+          localEmail={state.adminEmail}
+          databasePath={state.databasePath}
+          bindAddress={state.bindAddress}
+          port={state.port}
+          workosClientId={state.clientId}
+          workosApiKey={state.apiKey}
+          workosAuthkitDomain={state.authkitDomain}
+          workosAdminEmails={state.adminEmails.split(',').map((e) => e.trim()).filter(Boolean)}
+          workosSetupType={state.setupType || undefined}
+          onBack={() => dispatch({ type: 'PREV_STEP' })}
+          onComplete={handleComplete}
+          isUpgrade={isUpgrade}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center p-4">
+      <Card className="w-full max-w-4xl">
+        <CardContent className="p-8">
+          {/* Step Indicator */}
+          {state.mode !== null && (
+            <div className="mb-8">
+              <StepIndicator
+                steps={steps}
+                currentStep={state.currentStep}
+                completedSteps={state.completedSteps}
               />
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">WorkOS API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="sk_..."
-                value={workosApiKey}
-                onChange={(e) => setWorkosApiKey(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="authkitDomain">AuthKit Domain</Label>
-              <Input
-                id="authkitDomain"
-                placeholder="https://auth.example.com"
-                value={workosAuthkitDomain}
-                onChange={(e) => setWorkosAuthkitDomain(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="adminEmails">Super Admin Emails</Label>
-              <Input
-                id="adminEmails"
-                placeholder="admin1@example.com, admin2@example.com"
-                value={workosAdminEmails}
-                onChange={(e) => setWorkosAdminEmails(e.target.value)}
-                disabled={loading}
-              />
-              <p className="text-sm text-muted-foreground">
-                Comma-separated list of super admin email addresses
-              </p>
-            </div>
-
-            <Alert>
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-amber-600 dark:text-amber-400">
-                This configuration is <strong>irreversible</strong>. You cannot downgrade to local mode.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-          <CardFooter className="flex gap-2">
-            {!isUpgrade && (
-              <Button variant="outline" onClick={() => setMode(null)} disabled={loading}>
-                Back
-              </Button>
-            )}
-            <Button onClick={handleWorkOSSetup} disabled={loading} className="flex-1">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isUpgrade ? 'Upgrade Now' : 'Complete Setup'}
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-
-  return null;
+          {/* Current Step */}
+          {renderStep()}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

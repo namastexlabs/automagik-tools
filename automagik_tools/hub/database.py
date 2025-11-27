@@ -10,7 +10,7 @@ from .models import Base
 
 
 # Database configuration
-DATABASE_PATH = Path(os.getenv("HUB_DATABASE_PATH", "./hub_data/hub.db"))
+DATABASE_PATH = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
 # Ensure directory exists
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -19,7 +19,7 @@ DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
 # Create async engine
 engine = create_async_engine(
     DATABASE_URL,
-    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
+    echo=False,  # SQL logging disabled for production
     future=True,
 )
 
@@ -56,24 +56,26 @@ async def init_database():
     """Initialize database with auto-migration support."""
     # TEMPORARY: Reset to unconfigured if not in WORKOS mode
     # Local mode should not persist between restarts
-    db_path = Path("hub_data/hub.db")
-    if db_path.exists():
-        import sqlite3
-        try:
-            temp_conn = sqlite3.connect(db_path)
-            cursor = temp_conn.execute(
-                "SELECT config_value FROM system_config WHERE config_key='app_mode'"
-            )
-            result = cursor.fetchone()
-            temp_conn.close()
+    # Check both old (hub_data/hub.db) and new (data/hub.db) paths
+    import sqlite3
 
-            # Only preserve database if in WORKOS mode (irreversible)
-            if result and result[0] != 'workos':
-                db_path.unlink()
-                print("🔄 Reset database: local mode is not persistent")
-        except Exception:
-            # Table doesn't exist yet - first startup
-            pass
+    for db_path in [Path("hub_data/hub.db"), Path("data/hub.db")]:
+        if db_path.exists():
+            try:
+                temp_conn = sqlite3.connect(db_path)
+                cursor = temp_conn.execute(
+                    "SELECT config_value FROM system_config WHERE config_key='app_mode'"
+                )
+                result = cursor.fetchone()
+                temp_conn.close()
+
+                # Only preserve database if in WORKOS mode (irreversible)
+                if result and result[0] != 'workos':
+                    db_path.unlink()
+                    print(f"🔄 Reset database: local mode is not persistent ({db_path})")
+            except Exception:
+                # Table doesn't exist yet - first startup
+                pass
 
     # Run Alembic migrations first
     run_migrations()

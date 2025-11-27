@@ -25,8 +25,12 @@ class ConfigStore:
     KEY_WORKOS_CLIENT_ID = "workos_client_id"
     KEY_WORKOS_API_KEY = "workos_api_key"
     KEY_WORKOS_AUTHKIT_DOMAIN = "workos_authkit_domain"
+    KEY_WORKOS_SETUP_TYPE = "workos_setup_type"  # 'quick' or 'custom'
     KEY_SUPER_ADMIN_EMAILS = "super_admin_emails"
     KEY_LOCAL_ADMIN_EMAIL = "local_admin_email"
+    KEY_DATABASE_PATH = "database_path"
+    KEY_BIND_ADDRESS = "bind_address"
+    KEY_PORT = "port"
 
     def __init__(self, session: AsyncSession):
         """Initialize config store.
@@ -197,6 +201,62 @@ class ConfigStore:
         if mode not in ("unconfigured", "local", "workos"):
             raise ValueError(f"Invalid app mode: {mode}")
         await self.set(self.KEY_APP_MODE, mode)
+
+    async def get_database_path(self) -> str:
+        """Get database path.
+
+        Returns:
+            Database path (default: data/hub.db)
+        """
+        return await self.get(self.KEY_DATABASE_PATH, "data/hub.db")
+
+    async def set_database_path(self, path: str) -> None:
+        """Set database path.
+
+        Args:
+            path: Database file path
+        """
+        await self.set(self.KEY_DATABASE_PATH, path)
+
+    async def get_network_config(self) -> Dict[str, Any]:
+        """Get network configuration with fallback to env vars.
+
+        Returns:
+            Dict with bind_address and port
+        """
+        import os
+
+        bind_address = await self.get(self.KEY_BIND_ADDRESS)
+        port = await self.get(self.KEY_PORT)
+
+        # Fallback to environment variables
+        if not bind_address:
+            bind_address = os.getenv("HUB_HOST", "127.0.0.1")
+            # Normalize 0.0.0.0 to 'network', 127.0.0.1 to 'localhost'
+            bind_address = "network" if bind_address == "0.0.0.0" else "localhost"
+
+        if not port:
+            port = int(os.getenv("HUB_PORT", "8885"))
+
+        return {
+            "bind_address": bind_address,
+            "port": int(port) if isinstance(port, str) else port
+        }
+
+    async def set_network_config(self, bind_address: str, port: int) -> None:
+        """Set network configuration.
+
+        Args:
+            bind_address: 'localhost' (127.0.0.1) or 'network' (0.0.0.0)
+            port: Port number (1024-65535)
+        """
+        if bind_address not in ("localhost", "network"):
+            raise ValueError(f"Invalid bind address: {bind_address}")
+        if not (1024 <= port <= 65535):
+            raise ValueError(f"Port must be between 1024 and 65535, got {port}")
+
+        await self.set(self.KEY_BIND_ADDRESS, bind_address)
+        await self.set(self.KEY_PORT, str(port))
 
 
 async def get_config_store() -> ConfigStore:
