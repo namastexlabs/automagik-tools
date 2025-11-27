@@ -208,16 +208,21 @@ help: ## 🛠️ Show this help message
 	@echo -e "  $(FONT_PURPLE)docker-deploy$(FONT_RESET)   Deploy to cloud (PROVIDER=railway|aws|gcloud|render)"
 	@echo ""
 	@echo -e "$(FONT_CYAN)$(SPARKLES) Tool Commands:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)serve TOOL=name$(FONT_RESET)  Serve single tool (with optional TRANSPORT=)"
+	@echo -e "  $(FONT_PURPLE)serve TOOL=name$(FONT_RESET)  Serve single tool (TRANSPORT=stdio|sse|http)"
 	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on multi-tool server"
 	@echo -e "  $(FONT_PURPLE)dev-server$(FONT_RESET)      Development server with hot-reload"
 	@echo -e "  $(FONT_PURPLE)info TOOL=name$(FONT_RESET)  Show tool information"
 	@echo -e "  $(FONT_PURPLE)run TOOL=name$(FONT_RESET)   Run tool standalone"
-	@echo -e "  $(FONT_PURPLE)tool URL=url$(FONT_RESET)    Create tool from OpenAPI spec"
+	@echo -e "  $(FONT_PURPLE)openapi-serve$(FONT_RESET)   Serve OpenAPI spec dynamically (URL= API_KEY=)"
 	@echo -e "  $(FONT_PURPLE)new-tool$(FONT_RESET)        Create new tool interactively"
 	@echo -e "  $(FONT_PURPLE)test-tool$(FONT_RESET)       Test specific tool (use TOOL=name)"
 	@echo -e "  $(FONT_PURPLE)validate-tool$(FONT_RESET)   Validate tool compliance (TOOL=name)"
 	@echo -e "  $(FONT_PURPLE)mcp-config$(FONT_RESET)      Generate MCP config for Cursor/Claude (TOOL=name)"
+	@echo ""
+	@echo -e "$(FONT_CYAN)Valid Transport Options:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)stdio$(FONT_RESET)           # Standard input/output (default for single tools)"
+	@echo -e "  $(FONT_PURPLE)sse$(FONT_RESET)             # Server-Sent Events (default for hub)"
+	@echo -e "  $(FONT_PURPLE)http$(FONT_RESET)            # HTTP REST (for web integrations)"
 	@echo ""
 	@echo -e "$(FONT_CYAN)🌐 HTTP Development Deployment:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)http-start$(FONT_RESET)      Start HTTP development server (HOST= PORT= TOOLS=)"
@@ -230,7 +235,7 @@ help: ## 🛠️ Show this help message
 	@echo ""
 	@echo -e "$(FONT_GRAY)Examples:$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make serve TOOL=evolution-api$(FONT_RESET)"
-	@echo -e "  $(FONT_GRAY)make serve TOOL=automagik-agents TRANSPORT=streamable-http$(FONT_RESET)"
+	@echo -e "  $(FONT_GRAY)make serve TOOL=automagik-agents TRANSPORT=http$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make dev-server$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make new-tool$(FONT_RESET)"
 	@echo -e "  $(FONT_GRAY)make test-tool TOOL=evolution-api$(FONT_RESET)"
@@ -1055,6 +1060,9 @@ clean: ## 🧹 Clean build artifacts and cache
 # ===========================================
 # $(SPARKLES) Tool Commands
 # ===========================================
+# NOTE: All tool commands use the modern CLI: automagik-tools <command>
+# Valid transports: stdio (default for tools), sse (default for hub), http
+# Auto-discovery via entry points means any tool works with: make serve TOOL=name
 .PHONY: list info run serve serve-all
 list: ## 📋 List available tools
 	@$(UV) run automagik-tools list
@@ -1097,9 +1105,26 @@ serve-dual: ## 🌐 Serve all tools on dual transports (SSE:8884 + HTTP:8885)
 	$(UV) run automagik-tools hub --host $(HOST) --port 8885 --transport http & \
 	wait
 
+openapi-serve: ## 🌐 Serve OpenAPI spec dynamically (URL= API_KEY=)
+	@if [ -z "$(URL)" ]; then \
+		$(call print_error,Usage: make openapi-serve URL=<openapi-url> [API_KEY=<key>]); \
+		echo -e "$(FONT_GRAY)Example: make openapi-serve URL=https://api.example.com/openapi.json$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)This serves OpenAPI specs dynamically - no code generation$(FONT_RESET)"; \
+		exit 1; \
+	fi
+	$(call print_status,Serving OpenAPI spec: $(URL))
+	@if [ -n "$(API_KEY)" ]; then \
+		$(UV) run automagik-tools openapi "$(URL)" --api-key "$(API_KEY)" --transport sse; \
+	else \
+		$(UV) run automagik-tools openapi "$(URL)" --transport sse; \
+	fi
+
 # ===========================================
 # 🌐 HTTP Development Deployment
 # ===========================================
+# NOTE: These targets use shell scripts (scripts/deploy_http_dev.sh) which provide
+# convenient presets (dev, network, evolution, genie) and process management.
+# Shell scripts call: uv run automagik-tools hub --host HOST --port PORT
 .PHONY: http-start http-stop http-restart http-status http-logs http-dev http-network
 http-start: ## 🌐 Start HTTP development server (HOST=0.0.0.0 PORT=8000 TOOLS=all)
 	$(call print_status,Starting HTTP development server...)
@@ -1130,20 +1155,10 @@ http-network: ## 🌐 Network accessible setup (0.0.0.0:8000)
 # ===========================================
 # 🔧 Tool Creation
 # ===========================================
-.PHONY: tool new-tool test-tool validate-tool
-tool: ## 🔧 Create new tool from OpenAPI spec (use URL=<openapi-url> NAME=<tool-name>)
-	@if [ -z "$(URL)" ]; then \
-		$(call print_error,Usage: make tool URL=<openapi-json-url> [NAME=<tool-name>]); \
-		echo -e "$(FONT_GRAY)Example: make tool URL=https://api.example.com/openapi.json NAME=\"My API\"$(FONT_RESET)"; \
-		exit 1; \
-	fi
-	$(call print_status,Creating tool from OpenAPI specification...)
-	@if [ -n "$(NAME)" ]; then \
-		$(UV) run python scripts/create_tool_from_openapi_v2.py --url "$(URL)" --name "$(NAME)" --force; \
-	else \
-		$(UV) run python scripts/create_tool_from_openapi_v2.py --url "$(URL)" --force; \
-	fi
-	$(call print_success,Tool created successfully!)
+.PHONY: new-tool test-tool validate-tool openapi-serve
+# NOTE: The old 'make tool' command has been removed (referenced deleted script).
+# Migration: Use 'uvx automagik-tools openapi <URL>' for dynamic serving
+# Alternative: Use 'make new-tool' for interactive tool creation or 'make openapi-serve' for convenience
 
 new-tool: ## 🔧 Create new tool interactively
 	$(call print_status,Creating new tool interactively...)

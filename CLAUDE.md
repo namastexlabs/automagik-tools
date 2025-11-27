@@ -191,14 +191,41 @@ make publish              # Upload to PyPI (requires PYPI_TOKEN)
 - Works with all transports (stdio, SSE, HTTP)
 - Uses FastMCP's native `from_openapi()` support
 
-### Makefile Updates
-- Removed `serve-evolution` command (tool-specific, replaced by generic `tool` command)
+### Makefile Modernization (November 2025)
+
+**Removed Commands:**
+- `make tool URL=... NAME=...` - REMOVED (referenced deleted OpenAPI code generation scripts)
+  - **Migration**: Use `uvx automagik-tools openapi <URL>` for dynamic OpenAPI serving
+  - **Alternative**: Use `make openapi-serve URL=<url> [API_KEY=<key>]` for convenience wrapper
+  - **Background**: Script `scripts/create_tool_from_openapi_v2.py` was deleted ~5 months ago (commit 071a0f8) along with 3,532+ lines of static code generation
+
+**Valid Transport Values:**
+- ✅ Correct: `stdio`, `sse`, `http`
+- ❌ Invalid: `streamable-http` (old name, no longer supported)
+
+**Architecture Notes:**
+The project has fully migrated from "raw Python" execution to modern tooling:
+- All Python execution uses `uv`: `$(UV) run automagik-tools <command>`
+- Process management via PM2: `pm2 start ecosystem.config.cjs`
+- Dynamic OpenAPI via FastMCP: No code generation needed
+- Generic tool discovery: `make serve TOOL=name` works for any tool
+- CLI-first design: Most commands are thin wrappers around `automagik-tools` CLI
+
+**Shell Scripts:**
+Shell scripts in `scripts/` provide convenience wrappers with presets:
+- `scripts/deploy_http_dev.sh` - HTTP server deployment (dev, network, evolution, genie presets)
+- `scripts/install.sh` - System-level installation
+- `scripts/deploy.sh` - Production deployment
+- `scripts/smoke_test.sh` - Integration testing
+
+These are kept for complex orchestration that would be unwieldy in Makefile targets.
+
+**Previous Updates:**
+- Removed `serve-evolution` command (tool-specific, replaced by generic `serve` command)
 - Removed `test-working` command (was only testing 2 specific files)
 - Removed `fastmcp-*` commands (dead code - duplicated existing functionality)
-- Added generic `tool` command: `make tool TOOL=toolname TRANSPORT=stdio|sse|http`
 - Added `watch` command to help system (was missing from help but existed)
 - Kept `publish-test` command (uploads to TestPyPI for testing releases)
-- Updated help system, examples, and documentation references
 
 ## Design Principles
 
