@@ -15,7 +15,7 @@ import { Step0_ModeSelection, Step0Data } from '@/components/wizard/Step0_ModeSe
 import { Step1a_LocalConfig, Step1aData } from '@/components/wizard/Step1a_LocalConfig';
 import { Step1b_WorkOSConfig, Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
 import { Step2_NetworkConfig, Step2Data } from '@/components/wizard/Step2_NetworkConfig';
-import { Step3_Review } from '@/components/wizard/Step3_Review';
+import { Step3_Review, ApiKeyDialog } from '@/components/wizard/Step3_Review';
 
 // Wizard state type
 interface WizardState extends Step0Data, Step1aData, Step1bData, Step2Data {
@@ -35,9 +35,7 @@ type WizardAction =
 const initialState: WizardState = {
   // Step 0
   mode: null,
-  // Step 1a (Local)
-  adminEmail: '',
-  databasePath: 'data',
+  // Step 1a (Local) - no longer needs data
   // Step 1b (WorkOS)
   setupType: null,
   clientId: '',
@@ -92,6 +90,8 @@ export default function SetupNew() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(wizardReducer, initialState);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
   // Check if setup is already complete
@@ -137,15 +137,15 @@ export default function SetupNew() {
       const response = await fetch('/api/setup/local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          admin_email: state.adminEmail,
-        }),
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.detail || 'Local setup failed');
       }
+
+      const data = await response.json();
 
       // Save network config
       await fetch('/api/setup/network-config', {
@@ -157,17 +157,14 @@ export default function SetupNew() {
         }),
       });
 
-      // Save database path
-      await fetch('/api/setup/database-path', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: state.databasePath,
-        }),
-      });
-
-      // Redirect to dashboard
-      window.location.href = '/app/dashboard';
+      // Capture API key and show dialog
+      if (data.api_key) {
+        setApiKey(data.api_key);
+        setShowApiKey(true);
+      } else {
+        // Fallback: redirect to dashboard
+        window.location.href = '/app/dashboard';
+      }
     } else if (state.mode === 'workos') {
       // WorkOS mode setup
       const adminEmailsArray = state.adminEmails
@@ -228,10 +225,7 @@ export default function SetupNew() {
     if (state.mode === 'local' && stepIndex === 1) {
       return (
         <Step1a_LocalConfig
-          data={{
-            adminEmail: state.adminEmail,
-            databasePath: state.databasePath,
-          }}
+          data={{}}
           onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
           onNext={() => dispatch({ type: 'NEXT_STEP' })}
           onBack={() => dispatch({ type: 'PREV_STEP' })}
@@ -277,8 +271,6 @@ export default function SetupNew() {
       return (
         <Step3_Review
           mode={state.mode}
-          localEmail={state.adminEmail}
-          databasePath={state.databasePath}
           bindAddress={state.bindAddress}
           port={state.port}
           workosClientId={state.clientId}
@@ -315,6 +307,18 @@ export default function SetupNew() {
           {renderStep()}
         </CardContent>
       </Card>
+
+      {/* API Key Dialog for Local Mode */}
+      {apiKey && (
+        <ApiKeyDialog
+          apiKey={apiKey}
+          open={showApiKey}
+          onContinue={() => {
+            setShowApiKey(false);
+            window.location.href = '/app/dashboard';
+          }}
+        />
+      )}
     </div>
   );
 }

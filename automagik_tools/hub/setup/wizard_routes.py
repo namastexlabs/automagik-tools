@@ -33,7 +33,8 @@ class SetupStatusResponse(BaseModel):
 
 class LocalModeSetupRequest(BaseModel):
     """Local mode setup request."""
-    admin_email: EmailStr = Field(..., description="Admin email address")
+    # No fields needed - API key is auto-generated
+    pass
 
 
 class WorkOSModeSetupRequest(BaseModel):
@@ -66,6 +67,8 @@ class SetupSuccessResponse(BaseModel):
     success: bool
     mode: str
     message: str
+    api_key: Optional[str] = None  # Omni API key for local mode
+    workspace_id: Optional[str] = None
 
 
 async def get_mode_manager_dep():
@@ -103,22 +106,33 @@ async def setup_local_mode(
     """Configure local mode (single admin, no password).
 
     Args:
-        request: Local mode configuration
+        request: Local mode configuration (empty)
 
     Returns:
-        Setup success response
+        Setup success response with API key
 
     Raises:
         HTTPException: If setup fails
     """
     try:
-        config = LocalModeConfig(admin_email=request.admin_email)
-        await mode_manager.configure_local_mode(config)
+        # Import LocalAuthManager here to avoid circular imports
+        from .local_auth import LocalAuthManager
+
+        # Configure local mode and get API key
+        config = LocalModeConfig()  # Empty config
+        api_key = await mode_manager.configure_local_mode(config)
+
+        # Create local admin user
+        async with get_db_session() as session:
+            local_auth = LocalAuthManager(session, mode_manager)
+            user = await local_auth.get_or_create_local_admin()
 
         return SetupSuccessResponse(
             success=True,
             mode="local",
             message="Local mode configured successfully",
+            api_key=api_key,  # Return API key
+            workspace_id=user.workspace_id if user else None,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -271,9 +285,7 @@ async def get_current_mode(
         "is_configured": mode != AppMode.UNCONFIGURED,
     }
 
-    if mode == AppMode.LOCAL:
-        result["admin_email"] = await mode_manager.get_local_admin_email()
-    elif mode == AppMode.WORKOS:
+    if mode == AppMode.WORKOS:
         result["super_admin_emails"] = await mode_manager.get_super_admin_emails()
         creds = await mode_manager.get_workos_credentials()
         if creds:

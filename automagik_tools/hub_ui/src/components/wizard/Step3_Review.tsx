@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   CheckCircle,
   AlertCircle,
@@ -15,16 +16,14 @@ import {
   Home,
   Users,
   Network,
-  Folder,
   Mail,
   Key,
   Globe,
+  Copy,
 } from 'lucide-react';
 
 interface ReviewProps {
   mode: 'local' | 'workos';
-  localEmail?: string;
-  databasePath?: string;
   bindAddress: 'localhost' | 'network';
   port: number;
   workosClientId?: string;
@@ -39,8 +38,6 @@ interface ReviewProps {
 
 export function Step3_Review({
   mode,
-  localEmail,
-  databasePath,
   bindAddress,
   port,
   workosClientId,
@@ -54,6 +51,8 @@ export function Step3_Review({
 }: ReviewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const handleComplete = async () => {
     setSubmitting(true);
@@ -61,10 +60,21 @@ export function Step3_Review({
 
     try {
       await onComplete();
+      // Note: The onComplete callback should handle API key capture and display
+      // This is managed by the parent component (Setup.tsx)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Setup failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You can add a toast notification here if available
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -101,7 +111,7 @@ export function Step3_Review({
             <div>
               <div className="font-semibold">{modeConfig.title}</div>
               <div className="text-sm text-muted-foreground">
-                {mode === 'local' ? 'Single admin, passwordless' : 'Enterprise SSO with WorkOS'}
+                {mode === 'local' ? 'Single admin, API key auth' : 'Enterprise SSO with WorkOS'}
               </div>
             </div>
           </div>
@@ -114,33 +124,18 @@ export function Step3_Review({
           <>
             {/* Local Mode Config */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Mail className="h-4 w-4" />
-                Admin Email
-              </div>
-              <div className="bg-muted/50 rounded-md p-3 font-mono text-sm">
-                {localEmail}
-              </div>
+              <Alert>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>✅ Configuration persists across restarts</li>
+                    <li>✅ API key will be generated for authentication</li>
+                    <li>✅ SQLite database stored in data/hub.db</li>
+                    <li>✅ Single admin user with full access</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
             </div>
-
-            {databasePath && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Folder className="h-4 w-4" />
-                  Database Path
-                </div>
-                <div className="bg-muted/50 rounded-md p-3 font-mono text-sm">
-                  {databasePath}
-                </div>
-              </div>
-            )}
-
-            <Alert>
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-amber-600 dark:text-amber-400">
-                <strong>Remember:</strong> Local mode is not persistent. Configuration will reset on server restart.
-              </AlertDescription>
-            </Alert>
           </>
         ) : (
           <>
@@ -269,5 +264,77 @@ export function Step3_Review({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * API Key Display Dialog Component
+ * This should be used by the parent component after setup completes
+ */
+interface ApiKeyDialogProps {
+  apiKey: string;
+  open: boolean;
+  onContinue: () => void;
+}
+
+export function ApiKeyDialog({ apiKey, open, onContinue }: ApiKeyDialogProps) {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>🎉 Setup Complete!</DialogTitle>
+          <DialogDescription>
+            Save your Omni API key securely. You'll need it to authenticate.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+          <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            <strong>Important:</strong> This API key is shown only once.
+            Save it now - you cannot recover it later.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Your Omni API Key</label>
+            <div className="mt-2 p-3 bg-muted rounded-md font-mono text-sm break-all">
+              {apiKey}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={copyToClipboard}
+              variant={copied ? "secondary" : "default"}
+              className="flex-1"
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              {copied ? 'Copied!' : 'Copy API Key'}
+            </Button>
+            <Button
+              onClick={onContinue}
+              variant="outline"
+              className="flex-1"
+            >
+              Continue to Dashboard
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

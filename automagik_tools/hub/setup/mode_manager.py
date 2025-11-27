@@ -21,7 +21,8 @@ class AppMode(str, enum.Enum):
 
 class LocalModeConfig(BaseModel):
     """Configuration for local mode setup."""
-    admin_email: EmailStr = Field(..., description="Admin email address")
+    # No fields needed - API key is auto-generated
+    pass
 
 
 class WorkOSModeConfig(BaseModel):
@@ -61,11 +62,14 @@ class ModeManager:
         mode = await self.get_current_mode()
         return mode == AppMode.UNCONFIGURED
 
-    async def configure_local_mode(self, config: LocalModeConfig) -> None:
+    async def configure_local_mode(self, config: LocalModeConfig) -> str:
         """Configure local mode (single admin, no password).
 
         Args:
-            config: Local mode configuration
+            config: Local mode configuration (empty, for consistency)
+
+        Returns:
+            Generated Omni API key
 
         Raises:
             ValueError: If already configured in different mode
@@ -77,15 +81,22 @@ class ModeManager:
         # Initialize encryption if not done
         await self.config_store.initialize_encryption()
 
-        # Store local admin email
+        # Generate Omni API key
+        import secrets
+        api_key = f"omni_local_{secrets.token_urlsafe(32)}"
+
+        # Store API key (encrypted)
         await self.config_store.set(
-            ConfigStore.KEY_LOCAL_ADMIN_EMAIL,
-            config.admin_email
+            "local_omni_api_key",
+            api_key,
+            is_secret=True
         )
 
         # Set mode
         await self.config_store.set_app_mode(AppMode.LOCAL.value)
         await self.config_store.mark_setup_completed()
+
+        return api_key  # Return for display to user
 
     async def configure_workos_mode(self, config: WorkOSModeConfig) -> None:
         """Configure WorkOS mode (enterprise auth).
@@ -156,17 +167,6 @@ class ModeManager:
             "authkit_domain": authkit_domain,
         }
 
-    async def get_local_admin_email(self) -> Optional[str]:
-        """Get local mode admin email (if configured).
-
-        Returns:
-            Admin email or None
-        """
-        mode = await self.get_current_mode()
-        if mode != AppMode.LOCAL:
-            return None
-
-        return await self.config_store.get(ConfigStore.KEY_LOCAL_ADMIN_EMAIL)
 
     async def get_super_admin_emails(self) -> list[str]:
         """Get super admin emails (for WorkOS mode).

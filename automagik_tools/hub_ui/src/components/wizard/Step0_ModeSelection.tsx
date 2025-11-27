@@ -64,18 +64,19 @@ export function Step0_ModeSelection({ data, onUpdate, onNext, isUpgrade = false 
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-green-600" />
-                  <span>Single admin, passwordless access</span>
+                  <span>API key authentication</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-green-600" />
-                  <span>Zero configuration required</span>
+                  <span>Persistent SQLite storage</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-green-600" />
                   <span>Perfect for testing and development</span>
                 </li>
-                <li className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                  <span className="font-medium">⚠️ Not persistent (resets on restart)</span>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <span>Single admin user (full access)</span>
                 </li>
               </ul>
             </CardContent>

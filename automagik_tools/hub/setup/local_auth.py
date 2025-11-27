@@ -49,28 +49,23 @@ class LocalAuthManager:
         if mode != AppMode.LOCAL:
             return None
 
-        # Get configured admin email
-        admin_email = await self.mode_manager.get_local_admin_email()
-        if not admin_email:
-            return None
-
-        # Check if user exists
+        # Check if user already exists (should be exactly one)
         result = await self.session.execute(
-            select(User).where(User.email == admin_email)
+            select(User).where(User.role == UserRole.SUPER_ADMIN.value)
         )
         user = result.scalar_one_or_none()
 
         if user:
             return user
 
-        # Create user and workspace
+        # Create user and workspace (first-time setup)
         workspace_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 
         # Create workspace first
         workspace = Workspace(
             id=workspace_id,
-            name=f"{admin_email}'s Workspace",
+            name="Local Workspace",
             slug=f"local-{user_id[:8]}",
             owner_id=user_id,
             workos_org_id=None,  # No WorkOS in local mode
@@ -80,10 +75,10 @@ class LocalAuthManager:
         )
         self.session.add(workspace)
 
-        # Create user
+        # Create user (no email needed)
         user = User(
             id=user_id,
-            email=admin_email,
+            email="local@automagik.tools",  # Placeholder, not used
             first_name="Local",
             last_name="Admin",
             workspace_id=workspace_id,
@@ -121,18 +116,32 @@ class LocalAuthManager:
             is_super_admin=user.is_super_admin,
         )
 
-    async def is_local_admin(self, email: str) -> bool:
-        """Check if email is the local admin.
+    async def authenticate_with_api_key(self, api_key: str) -> Optional[LocalAuthSession]:
+        """Authenticate using Omni API key in local mode.
 
         Args:
-            email: Email to check
+            api_key: Omni API key from user
 
         Returns:
-            True if email is local admin
+            LocalAuthSession or None if invalid
         """
         mode = await self.mode_manager.get_current_mode()
         if mode != AppMode.LOCAL:
-            return False
+            return None
 
-        admin_email = await self.mode_manager.get_local_admin_email()
-        return email.lower() == admin_email.lower() if admin_email else False
+        # Verify API key
+        stored_key = await self.mode_manager.config_store.get("local_omni_api_key")
+        if not stored_key or stored_key != api_key:
+            return None
+
+        # Get or create local admin
+        user = await self.get_or_create_local_admin()
+        if not user:
+            return None
+
+        return LocalAuthSession(
+            user_id=user.id,
+            email=user.email,
+            workspace_id=user.workspace_id,
+            is_super_admin=True,
+        )
