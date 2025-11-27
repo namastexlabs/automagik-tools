@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { setAccessToken, isAuthenticated } from '@/lib/api';
+import { isAuthenticated } from '@/lib/api';
 import { setUserInfo, type UserInfo } from '@/lib/auth';
 
 export default function Login() {
@@ -40,6 +40,7 @@ export default function Login() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
+        credentials: 'include',  // Receive HTTP-only session cookie
       });
 
       if (!response.ok) {
@@ -49,7 +50,7 @@ export default function Login() {
 
       const data = await response.json();
 
-      setAccessToken(data.access_token);
+      // Session cookie set automatically by server - no client-side token storage needed
 
       if (data.user) {
         const userInfo: UserInfo = {

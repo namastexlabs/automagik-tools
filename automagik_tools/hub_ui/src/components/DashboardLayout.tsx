@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { removeAccessToken } from '@/lib/api';
+import { removeSession } from '@/lib/api';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -11,8 +11,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    removeAccessToken();
+    removeSession();  // Clears user info from localStorage
     navigate('/login');
+    // Server clears session cookie automatically
   };
 
   return (

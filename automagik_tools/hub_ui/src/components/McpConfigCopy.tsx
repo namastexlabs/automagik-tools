@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Wrench, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
-import { getAccessToken } from '@/lib/api';
 
 export function McpConfigCopy() {
   const [copied, setCopied] = useState(false);
 
   const getMcpConfig = () => {
-    const accessToken = getAccessToken();
+    // TODO: Implement /api/tokens/generate endpoint for MCP authentication
+    // MCP servers run outside browser context and cannot use HTTP-only cookies
+    const accessToken = 'your-access-token-here';
 
     // Construct the Hub URL - default to localhost:8884 for development
     // In production, this would typically be the same origin
@@ -22,7 +23,7 @@ export function McpConfigCopy() {
           env: {
             HUB_MODE: 'http',
             HUB_URL: hubUrl,
-            HUB_ACCESS_TOKEN: accessToken || 'your-access-token-here',
+            HUB_ACCESS_TOKEN: accessToken,  // Placeholder - see TODO above
           },
         },
       },

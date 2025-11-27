@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { api, getAccessToken, isAuthenticated } from '@/lib/api';
+import { api, isAuthenticated } from '@/lib/api';
 import { getUserInfo, isSuperAdmin } from '@/lib/auth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -44,9 +44,6 @@ export default function Settings() {
     }
   });
 
-  const hasToken = isAuthenticated();
-  const token = getAccessToken();
-  const maskedToken = token && hasToken ? `${token.substring(0, 12)}...${token.substring(token.length - 8)}` : 'Not authenticated';
   const user = getUserInfo();
   const isAdmin = isSuperAdmin();
   const isLocalMode = modeData?.mode === 'local';
@@ -233,8 +230,8 @@ export default function Settings() {
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
-                  <span className="text-sm font-medium text-foreground">Access Token</span>
-                  <code className="text-sm text-muted-foreground font-mono">{maskedToken}</code>
+                  <span className="text-sm font-medium text-foreground">Authentication</span>
+                  <span className="text-sm text-muted-foreground">Secure HTTP-only cookies</span>
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
