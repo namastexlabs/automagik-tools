@@ -83,7 +83,7 @@ module.exports = {
     {
       name: 'Tools Hub',
       cwd: PROJECT_ROOT,
-      script: '.venv/bin/uvicorn',
+      script: path.join(PROJECT_ROOT, '.venv/bin/uvicorn'),
       args: 'automagik_tools.hub_http:app --host 0.0.0.0 --port ' + (envVars.HUB_PORT || '8884'),
       interpreter: 'none',
       version: version,
