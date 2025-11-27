@@ -314,42 +314,36 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 	@# Phase 5: Configure PM2 and setup ecosystem
 	@if command -v pm2 >/dev/null 2>&1; then \
 		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Phase 5/6: Configuring PM2...$(FONT_RESET)"; \
-		pm2 install pm2-logrotate 2>/dev/null || true; \
-		pm2 set pm2-logrotate:max_size 100M 2>/dev/null || true; \
-		pm2 set pm2-logrotate:retain 7 2>/dev/null || true; \
-		pm2 update 2>/dev/null || true; \
-		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 configured!$(FONT_RESET)"; \
-		echo ""; \
-		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Phase 6/6: Service Setup$(FONT_RESET)"; \
-		read -p "Start automagik-tools service now? [y/N] " -n 1 -r REPLY; echo; \
-		if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
-			echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
-			echo -e "$(FONT_CYAN)$(INFO) Service not started$(FONT_RESET)"; \
-			echo ""; \
-			$(MAKE) install-complete-skipped; \
-			exit 0; \
-		fi; \
-		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Starting service...$(FONT_RESET)"; \
-		pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart "Tools Hub" 2>/dev/null; \
-		pm2 save --force; \
-		if [[ "$$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then \
-			pm2 startup systemd -u $$USER --hp $$HOME 2>/dev/null || true; \
-		fi; \
-		echo -e "$(FONT_GREEN)$(CHECKMARK) Service started!$(FONT_RESET)"; \
-		echo ""; \
-		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Running health checks...$(FONT_RESET)"; \
-		sleep 3; \
-		$(MAKE) health 2>/dev/null || echo -e "$(FONT_YELLOW)$(WARNING) Health check failed - service may need more time$(FONT_RESET)"; \
-		echo ""; \
-		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Service Status:$(FONT_RESET)"; \
+		pm2 install pm2-logrotate >/dev/null 2>&1 || true; \
+		pm2 set pm2-logrotate:max_size 100M >/dev/null 2>&1 || true; \
+		pm2 set pm2-logrotate:retain 7 >/dev/null 2>&1 || true; \
+		pm2 update >/dev/null 2>&1 || true; \
+		pm2 start ecosystem.config.cjs >/dev/null 2>&1 || pm2 restart "Tools Hub" >/dev/null 2>&1 || true; \
+		pm2 save --force >/dev/null 2>&1 || true; \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 configured and service started!$(FONT_RESET)"; \
 		pm2 status; \
 		echo ""; \
-		read -p "View recent logs? [y/N] " -n 1 -r REPLY; echo; \
-		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-			echo ""; \
-			pm2 logs "Tools Hub" --lines 50 --nostream; \
-			echo ""; \
+		echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Phase 6/6: System Service Setup$(FONT_RESET)"; \
+		if [[ "$$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then \
+			read -p "Install as system service (auto-start on boot)? [y/N] " -n 1 -r REPLY; echo; \
+			if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+				echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Installing systemd service...$(FONT_RESET)"; \
+				PM2_STARTUP_CMD=$$(pm2 startup systemd -u $$USER --hp $$HOME 2>/dev/null | grep "sudo" | head -1); \
+				if [ -n "$$PM2_STARTUP_CMD" ]; then \
+					echo -e "$(FONT_YELLOW)$(WARNING) Run this command to complete setup:$(FONT_RESET)"; \
+					echo -e "$(FONT_CYAN)$$PM2_STARTUP_CMD$(FONT_RESET)"; \
+					echo ""; \
+				else \
+					echo -e "$(FONT_GREEN)$(CHECKMARK) System service configured!$(FONT_RESET)"; \
+				fi; \
+			else \
+				echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+				echo -e "$(FONT_CYAN)$(INFO) Run 'pm2 startup' later to enable auto-start$(FONT_RESET)"; \
+			fi; \
+		else \
+			echo -e "$(FONT_CYAN)$(INFO) System service setup not available (Linux + systemd required)$(FONT_RESET)"; \
 		fi; \
+		echo ""; \
 		$(MAKE) install-complete; \
 	else \
 		echo -e "$(FONT_GREEN)$(CHECKMARK) Phase 5/6: Skipped (no PM2)$(FONT_RESET)"; \
@@ -358,7 +352,7 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 		$(MAKE) install-complete-no-pm2; \
 	fi
 
-.PHONY: install-complete install-complete-skipped install-complete-no-pm2
+.PHONY: install-complete install-complete-no-pm2
 
 install-complete:
 	@echo ""
@@ -379,20 +373,6 @@ install-complete:
 	@echo -e "  $(FONT_PURPLE)http://localhost:8884$(FONT_RESET)  # SSE Server"
 	@echo ""
 	@echo -e "$(FONT_GREEN)Happy automating! 🚀$(FONT_RESET)"
-	@echo ""
-
-install-complete-skipped:
-	@echo ""
-	$(call print_success_with_logo,Installation complete!)
-	@echo ""
-	@echo -e "$(FONT_CYAN)ℹ️  Service not started (as requested)$(FONT_RESET)"
-	@echo ""
-	@echo -e "$(FONT_CYAN)🚀 To start the service later:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)make start-local$(FONT_RESET)     # Start with PM2"
-	@echo ""
-	@echo -e "$(FONT_CYAN)📊 Other commands:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)make serve-all$(FONT_RESET)      # Run directly (no PM2)"
-	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)         # Check health"
 	@echo ""
 
 install-complete-no-pm2:
@@ -447,9 +427,9 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 
 	@# Configure PM2
 	$(call print_status,Configuring PM2...)
-	@pm2 install pm2-logrotate 2>/dev/null || true
-	@pm2 set pm2-logrotate:max_size 100M 2>/dev/null || true
-	@pm2 set pm2-logrotate:retain 7 2>/dev/null || true
+	@pm2 install pm2-logrotate >/dev/null 2>&1 || true
+	@pm2 set pm2-logrotate:max_size 100M >/dev/null 2>&1 || true
+	@pm2 set pm2-logrotate:retain 7 >/dev/null 2>&1 || true
 	$(call print_success,PM2 configured!)
 
 	@echo -e "$(FONT_CYAN)💡 Next steps:$(FONT_RESET)"
