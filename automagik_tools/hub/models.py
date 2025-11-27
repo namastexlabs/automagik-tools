@@ -47,12 +47,12 @@ class Workspace(Base):
     All tools and credentials are scoped to the workspace.
     Maps 1:1 with WorkOS Organization.
     """
-    __tablename__ = "workspaces"
+    __tablename__ = "tools_workspaces"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)  # URL-safe identifier
-    owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)  # Nullable for initial creation
+    owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_users.id"), nullable=True)  # Nullable for initial creation
     workos_org_id: Mapped[Optional[str]] = mapped_column(String(100), unique=True)  # WorkOS Organization ID
     settings: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -82,7 +82,7 @@ class User(Base):
     Users are members of exactly one workspace (their own by default).
     Super admins can access all workspaces.
     """
-    __tablename__ = "users"
+    __tablename__ = "tools_users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)  # WorkOS User ID
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
@@ -90,7 +90,7 @@ class User(Base):
     last_name: Mapped[Optional[str]] = mapped_column(String(255))
 
     # Multi-tenancy fields
-    workspace_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="SET NULL"))
+    workspace_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="SET NULL"))
     role: Mapped[str] = mapped_column(String(50), default=UserRole.WORKSPACE_OWNER.value)
     is_super_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -127,11 +127,11 @@ class User(Base):
 
 class UserTool(Base):
     """Tools enabled for each user, scoped to workspace."""
-    __tablename__ = "user_tools"
+    __tablename__ = "tools_user_tools"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -149,11 +149,11 @@ class UserTool(Base):
 
 class ToolConfig(Base):
     """Configuration key-value pairs for each user's tool, scoped to workspace."""
-    __tablename__ = "tool_configs"
+    __tablename__ = "tools_tool_configs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     config_key: Mapped[str] = mapped_column(String(100), nullable=False)
     config_value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON string
@@ -173,7 +173,7 @@ class ToolConfig(Base):
 
 class ToolRegistry(Base):
     """Metadata about available tools in the repository."""
-    __tablename__ = "tool_registry"
+    __tablename__ = "tools_tool_registry"
 
     tool_name: Mapped[str] = mapped_column(String(100), primary_key=True)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -189,11 +189,11 @@ class ToolRegistry(Base):
 
 class OAuthToken(Base):
     """Encrypted OAuth tokens for external tools (e.g., Google, GitHub), scoped to workspace."""
-    __tablename__ = "oauth_tokens"
+    __tablename__ = "tools_oauth_tokens"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     access_token: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
@@ -215,7 +215,7 @@ class OAuthToken(Base):
 
 class ToolPreset(Base):
     """Pre-configured tool bundles."""
-    __tablename__ = "tool_presets"
+    __tablename__ = "tools_tool_presets"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     preset_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -231,11 +231,11 @@ class ToolPreset(Base):
 
 class DirectorySyncUser(Base):
     """Users synced from Google Workspace via WorkOS Directory Sync."""
-    __tablename__ = "directory_sync_users"
+    __tablename__ = "tools_directory_sync_users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)  # WorkOS Directory User ID
     directory_id: Mapped[str] = mapped_column(String(100), nullable=False)  # WorkOS Directory ID
-    user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("tools_users.id", ondelete="SET NULL"))
     idp_id: Mapped[str] = mapped_column(String(255), nullable=False)  # Google Workspace user ID
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[Optional[str]] = mapped_column(String(255))
@@ -255,7 +255,7 @@ class DirectorySyncUser(Base):
 
 class DirectoryGroup(Base):
     """Groups synced from Google Workspace, mapped to roles."""
-    __tablename__ = "directory_groups"
+    __tablename__ = "tools_directory_groups"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)  # WorkOS Directory Group ID
     directory_id: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -274,11 +274,11 @@ class DirectoryGroup(Base):
 
 class DirectoryGroupMembership(Base):
     """Tracks which users belong to which directory groups."""
-    __tablename__ = "directory_group_memberships"
+    __tablename__ = "tools_directory_group_memberships"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    group_id: Mapped[str] = mapped_column(String(36), ForeignKey("directory_groups.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("directory_sync_users.id", ondelete="CASCADE"), nullable=False)
+    group_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_directory_groups.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_directory_sync_users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -307,10 +307,10 @@ class AuditLog(Base):
     Logs are scoped to workspace but can also be queried globally by super admins.
     Follows WorkOS Audit Logs event schema for potential future integration.
     """
-    __tablename__ = "audit_logs"
+    __tablename__ = "tools_audit_logs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    workspace_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="SET NULL"))
+    workspace_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="SET NULL"))
 
     # Event details
     action: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "tool.added", "auth.login_succeeded"
@@ -368,7 +368,7 @@ class SystemConfig(Base):
     - Encryption salt
     - Super admin emails
     """
-    __tablename__ = "system_config"
+    __tablename__ = "tools_system_config"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     config_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -383,11 +383,11 @@ class UserBaseFolder(Base):
 
     Each user can configure one or more base folders to scan for .git repositories.
     """
-    __tablename__ = "user_base_folders"
+    __tablename__ = "tools_user_base_folders"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)  # Absolute path to scan
     label: Mapped[Optional[str]] = mapped_column(String(255))  # Optional display name
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -408,11 +408,11 @@ class Project(Base):
     Projects are discovered by scanning base folders for .git directories.
     Each project can contain Genie agents in .genie/ folder.
     """
-    __tablename__ = "projects"
+    __tablename__ = "tools_projects"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    base_folder_id: Mapped[str] = mapped_column(String(36), ForeignKey("user_base_folders.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
+    base_folder_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_user_base_folders.id", ondelete="CASCADE"), nullable=False)
 
     # Project metadata
     name: Mapped[str] = mapped_column(String(255), nullable=False)  # Folder name
@@ -444,11 +444,11 @@ class Agent(Base):
     Agents are discovered by scanning .genie/ folders for .md files with valid frontmatter.
     No specific folder structure required - any .md with frontmatter is an agent.
     """
-    __tablename__ = "agents"
+    __tablename__ = "tools_agents"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_projects.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
 
     # File metadata
     filename: Mapped[str] = mapped_column(String(255), nullable=False)  # e.g., "developer.md"
@@ -492,11 +492,11 @@ class ProjectTool(Base):
     Many-to-many relationship: Projects can have multiple tools.
     Project-level tool enablement (agents can inherit or override).
     """
-    __tablename__ = "project_tools"
+    __tablename__ = "tools_project_tools"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_projects.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("tools_workspaces.id", ondelete="CASCADE"), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "evolution_api_v2"
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Tool-specific config
