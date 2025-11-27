@@ -168,6 +168,7 @@ help: ## 🛠️ Show this help message
 	@echo -e "$(FONT_CYAN)$(ROCKET) Quick Start:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)install-full$(FONT_RESET)    Full installation (system + deps + PM2 + systemd)"
 	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Install all dependencies (Python + Node.js UI)"
+	@echo -e "  $(FONT_PURPLE)update$(FONT_RESET)          Update installation (git pull + deps + restart)"
 	@echo -e "  $(FONT_PURPLE)install-pm2$(FONT_RESET)     Install PM2 globally (interactive)"
 	@echo -e "  $(FONT_PURPLE)install-systemd$(FONT_RESET) Install systemd service (interactive, Linux)"
 	@echo -e "  $(FONT_PURPLE)list$(FONT_RESET)            List available tools"
