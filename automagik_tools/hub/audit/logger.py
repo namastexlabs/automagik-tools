@@ -18,7 +18,7 @@ Retention Policies (configurable):
 import os
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Callable
 from functools import wraps
 from dataclasses import dataclass, field, asdict
@@ -131,7 +131,7 @@ class AuditLogger:
             Audit log entry ID
         """
         event_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         actor = actor or AuditActor(type="system")
         context = context or AuditContext()

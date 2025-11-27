@@ -21,7 +21,7 @@ import re
 import uuid
 from functools import wraps
 from typing import Optional, Callable, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from fastmcp import Context
@@ -178,7 +178,7 @@ async def get_or_create_user(
                 user.first_name = first_name
             if last_name:
                 user.last_name = last_name
-            user.updated_at = datetime.utcnow()
+            user.updated_at = datetime.now(timezone.utc)
         else:
             # Create new user
             user = User(
@@ -189,7 +189,7 @@ async def get_or_create_user(
                 role=UserRole.WORKSPACE_OWNER.value,
                 is_super_admin=is_super_admin(email),
                 provisioned_via=provisioned_via.value,
-                mfa_grace_period_end=datetime.utcnow() + timedelta(days=7),  # 7-day grace period
+                mfa_grace_period_end=datetime.now(timezone.utc) + timedelta(days=7),  # 7-day grace period
             )
             session.add(user)
             await session.flush()

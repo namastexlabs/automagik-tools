@@ -10,7 +10,7 @@ Tests the new FastMCP-inspired OAuth features:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 from google.auth.exceptions import RefreshError
 
@@ -56,7 +56,7 @@ def test_oauth_token_creation():
     token = OAuthToken(
         access_token="test_token_123",
         refresh_token="refresh_token_456",
-        expires_at=datetime.utcnow() + timedelta(hours=1),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         scopes=["email", "profile"],
     )
 
@@ -72,7 +72,7 @@ def test_oauth_token_expired():
     """Test expired token detection"""
     token = OAuthToken(
         access_token="test_token",
-        expires_at=datetime.utcnow() - timedelta(hours=1),  # Already expired
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),  # Already expired
     )
 
     assert token.is_expired()
@@ -238,7 +238,7 @@ def test_insufficient_scopes_error():
 
 def test_session_binding_creation():
     """Test SessionBinding creation"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires = now + timedelta(hours=24)
 
     binding = SessionBinding(
@@ -257,7 +257,7 @@ def test_session_binding_creation():
 
 def test_session_binding_expired():
     """Test expired session detection"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired = now - timedelta(hours=1)  # Already expired
 
     binding = SessionBinding(

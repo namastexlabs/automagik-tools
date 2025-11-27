@@ -7,7 +7,7 @@ import uuid
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,7 +73,7 @@ class ProjectScanner:
                 projects.append(project)
 
         # Update last scanned timestamp
-        base_folder.last_scanned_at = datetime.utcnow()
+        base_folder.last_scanned_at = datetime.now(timezone.utc)
         await self.session.commit()
 
         print(f"✅ Scanned {base_path}: Found {len(projects)} projects")
@@ -105,7 +105,7 @@ class ProjectScanner:
 
         if project:
             # Update existing project
-            project.last_synced_at = datetime.utcnow()
+            project.last_synced_at = datetime.now(timezone.utc)
             project.is_active = True
             await self.session.commit()
             return project
@@ -125,10 +125,10 @@ class ProjectScanner:
             has_genie_folder=has_genie,
             agent_count=0,
             is_active=True,
-            discovered_at=datetime.utcnow(),
-            last_synced_at=datetime.utcnow(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            discovered_at=datetime.now(timezone.utc),
+            last_synced_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         self.session.add(project)
@@ -188,7 +188,7 @@ class ProjectScanner:
         # Update metadata
         project.git_remote_url = self._get_git_remote(project_path)
         project.has_genie_folder = (project_path / ".genie").exists()
-        project.last_synced_at = datetime.utcnow()
+        project.last_synced_at = datetime.now(timezone.utc)
         project.is_active = True
 
         await self.session.commit()

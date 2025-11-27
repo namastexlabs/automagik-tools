@@ -8,7 +8,7 @@ Provides CRUD operations for workspaces:
 """
 import uuid
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select, func
 from fastmcp import Context
@@ -116,7 +116,7 @@ async def update_workspace_settings(
         current_settings = workspace.settings or {}
         current_settings.update(settings)
         workspace.settings = current_settings
-        workspace.updated_at = datetime.utcnow()
+        workspace.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
 
@@ -160,7 +160,7 @@ async def update_workspace_name(
 
         workspace.name = name
         workspace.slug = generate_workspace_slug(name, existing_slugs)
-        workspace.updated_at = datetime.utcnow()
+        workspace.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
 
@@ -214,7 +214,7 @@ async def get_workspace_stats(workspace_id: str) -> Dict[str, Any]:
 
         # Count audit logs (last 30 days)
         from datetime import timedelta
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         audit_result = await session.execute(
             select(func.count(AuditLog.id))
             .where(
@@ -324,7 +324,7 @@ async def link_workos_organization(
             raise ValueError(f"Workspace not found: {workspace_id}")
 
         workspace.workos_org_id = workos_org_id
-        workspace.updated_at = datetime.utcnow()
+        workspace.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
 

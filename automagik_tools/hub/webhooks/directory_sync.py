@@ -23,7 +23,7 @@ import hashlib
 import json
 import uuid
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Request, Header, HTTPException, BackgroundTasks
@@ -227,7 +227,7 @@ async def handle_user_created(data: Dict[str, Any]):
                 directory_sync_id=dsync_user_id,
                 idp_id=idp_id,
                 provisioned_via=ProvisioningMethod.DIRECTORY_SYNC.value,
-                mfa_grace_period_end=datetime.utcnow() + timedelta(days=7),
+                mfa_grace_period_end=datetime.now(timezone.utc) + timedelta(days=7),
             )
             session.add(user)
             await session.flush()
@@ -315,7 +315,7 @@ async def handle_user_updated(data: Dict[str, Any]):
         dsync_user.last_name = last_name
         dsync_user.state = state
         dsync_user.raw_data = directory_user
-        dsync_user.updated_at = datetime.utcnow()
+        dsync_user.updated_at = datetime.now(timezone.utc)
 
         # Update linked User if exists
         if dsync_user.user_id:
@@ -327,7 +327,7 @@ async def handle_user_updated(data: Dict[str, Any]):
             if user:
                 user.first_name = first_name
                 user.last_name = last_name
-                user.updated_at = datetime.utcnow()
+                user.updated_at = datetime.now(timezone.utc)
 
                 # If user is suspended in directory, we could disable them here
                 # For now, just log it
@@ -359,7 +359,7 @@ async def handle_user_deleted(data: Dict[str, Any]):
 
         if dsync_user:
             dsync_user.state = "deleted"
-            dsync_user.updated_at = datetime.utcnow()
+            dsync_user.updated_at = datetime.now(timezone.utc)
 
             # Log audit event
             if dsync_user.user_id:
@@ -431,7 +431,7 @@ async def handle_group_updated(data: Dict[str, Any]):
         if group:
             group.name = name
             group.raw_data = directory_group
-            group.updated_at = datetime.utcnow()
+            group.updated_at = datetime.now(timezone.utc)
             await session.commit()
 
 

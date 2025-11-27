@@ -1012,7 +1012,7 @@ class AuditLogger:
     ):
         """Log authorization check for audit trail."""
         await self.db.audit_logs.insert({
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "user_id": user_id,
             "permission": permission,
             "resource": resource,

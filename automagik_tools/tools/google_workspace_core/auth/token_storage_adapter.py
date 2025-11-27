@@ -8,7 +8,7 @@ Provides a unified interface for managing OAuth tokens across different storage 
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class OAuthToken:
         """Check if token is expired"""
         if not self.expires_at:
             return False
-        return datetime.utcnow() >= self.expires_at
+        return datetime.now(timezone.utc) >= self.expires_at
 
     def is_valid(self) -> bool:
         """Check if token is valid (has access token and not expired)"""

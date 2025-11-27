@@ -1030,27 +1030,9 @@ async def list_all_channels(channel_type: Optional[str] = None, ctx: Optional[Co
 # RESOURCES - Expose data for LLM access
 # ========================================
 
-@mcp.resource(
-    "omni://instances",
-    name="Messaging Instances",
-    description="List all configured messaging instances with their status",
-    mime_type="application/json",
-    annotations={"readOnlyHint": True, "idempotentHint": True}
-)
-async def get_instances_resource(ctx: Optional[Context] = None) -> Dict[str, Any]:
-    """Expose instances list as a resource for LLM access."""
-    client = _ensure_client(ctx)
-
-    try:
-        result = await client.list_instances(include_status=True)
-        return {
-            "timestamp": result.get("timestamp"),
-            "total_instances": len(result.get("instances", [])),
-            "instances": result.get("instances", [])
-        }
-    except Exception as e:
-        logger.error(f"Error fetching instances resource: {e}")
-        return {"error": str(e), "instances": []}
+# NOTE: Static resources (no URI parameters) removed - use manage_instances tool instead
+# FastMCP requires @mcp.resource() URIs to have at least one parameter like {instance_name}
+# The omni://instances functionality is available via manage_instances(operation="list")
 
 
 @mcp.resource(

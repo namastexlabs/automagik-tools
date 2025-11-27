@@ -13,7 +13,7 @@ import pytest
 import os
 import asyncio
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 import httpx
 
@@ -635,7 +635,7 @@ class TestSessionBindingHelpers:
 
     def test_session_binding_is_expired_at_boundary(self):
         """Test is_expired returns True AT expiry timestamp."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         binding = SessionBinding(
             user_email="test@example.com",
@@ -649,7 +649,7 @@ class TestSessionBindingHelpers:
 
     def test_session_binding_is_active(self):
         """Test is_active checks both status and expiry."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Active and not expired
         binding = SessionBinding(
@@ -672,7 +672,7 @@ class TestSessionBindingHelpers:
 
     def test_session_binding_refresh_reactivates_expired(self):
         """Test that refresh reactivates an expired session."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         binding = SessionBinding(
             user_email="test@example.com",

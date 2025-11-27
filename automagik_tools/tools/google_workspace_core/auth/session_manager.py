@@ -6,7 +6,7 @@ automatic cleanup of expired sessions with LRU eviction.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 import threading
 import logging
@@ -45,7 +45,7 @@ class SessionBinding:
 
     def is_expired(self) -> bool:
         """Check if session has expired"""
-        return datetime.utcnow() >= self.expires_at
+        return datetime.now(timezone.utc) >= self.expires_at
 
     def is_active(self) -> bool:
         """Check if session is active (not expired and not revoked)"""
@@ -59,8 +59,8 @@ class SessionBinding:
             ttl: New TTL for the session. If None, uses default from manager.
         """
         if ttl:
-            self.expires_at = datetime.utcnow() + ttl
-        self.last_accessed = datetime.utcnow()
+            self.expires_at = datetime.now(timezone.utc) + ttl
+        self.last_accessed = datetime.now(timezone.utc)
         self.access_count += 1
 
         # Reactivate if was previously expired
@@ -138,7 +138,7 @@ class SessionManager:
                 binding = self._bindings[session_id]
 
                 # Update last accessed time
-                binding.last_accessed = datetime.utcnow()
+                binding.last_accessed = datetime.now(timezone.utc)
                 binding.access_count += 1
 
                 # Check if bound to same user
@@ -173,7 +173,7 @@ class SessionManager:
                 )
 
             # Create new binding
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             ttl = ttl or self._default_ttl
 
             self._bindings[session_id] = SessionBinding(
@@ -207,7 +207,7 @@ class SessionManager:
                 return None
 
             # Check expiry
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if now >= binding.expires_at:
                 logger.debug(f"Session {session_id} expired at {binding.expires_at}")
                 binding.status = SessionStatus.EXPIRED
@@ -303,7 +303,7 @@ class SessionManager:
             Number of expired sessions removed
         """
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             expired = [
                 sid
                 for sid, binding in self._bindings.items()
@@ -433,7 +433,7 @@ class SessionManager:
             Dictionary with session metrics
         """
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             active = 0
             expired = 0

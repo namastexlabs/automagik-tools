@@ -45,7 +45,7 @@ class WorkOSModeSetupRequest(BaseModel):
     super_admin_emails: list[EmailStr] = Field(
         ...,
         description="Super admin email addresses",
-        min_items=1
+        min_length=1
     )
 
 

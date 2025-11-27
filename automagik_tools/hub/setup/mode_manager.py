@@ -30,7 +30,7 @@ class WorkOSModeConfig(BaseModel):
     client_id: str = Field(..., description="WorkOS Client ID", min_length=1)
     api_key: str = Field(..., description="WorkOS API Key", min_length=1)
     authkit_domain: str = Field(..., description="AuthKit domain URL", min_length=1)
-    super_admin_emails: list[EmailStr] = Field(..., description="Super admin email addresses", min_items=1)
+    super_admin_emails: list[EmailStr] = Field(..., description="Super admin email addresses", min_length=1)
 
 
 class ModeManager:

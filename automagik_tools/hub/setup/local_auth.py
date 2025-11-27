@@ -8,7 +8,7 @@ In local mode:
 """
 import uuid
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,8 +70,8 @@ class LocalAuthManager:
             owner_id=user_id,
             workos_org_id=None,  # No WorkOS in local mode
             settings={},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self.session.add(workspace)
 
@@ -89,8 +89,8 @@ class LocalAuthManager:
             provisioned_via="manual",
             mfa_enabled=False,
             mfa_grace_period_end=None,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self.session.add(user)
 

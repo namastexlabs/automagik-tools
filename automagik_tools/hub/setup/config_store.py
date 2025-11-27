@@ -5,7 +5,7 @@ Secrets are encrypted using Fernet with machine-derived keys.
 """
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,7 +98,7 @@ class ConfigStore:
             # Update existing
             config.config_value = value
             config.is_secret = is_secret
-            config.updated_at = datetime.utcnow()
+            config.updated_at = datetime.now(timezone.utc)
         else:
             # Create new
             config = SystemConfig(
@@ -106,8 +106,8 @@ class ConfigStore:
                 config_key=key,
                 config_value=value,
                 is_secret=is_secret,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             self.session.add(config)
 

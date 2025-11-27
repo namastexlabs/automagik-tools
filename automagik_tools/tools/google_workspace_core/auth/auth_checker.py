@@ -380,7 +380,7 @@ class AuthCheckCache:
         Args:
             ttl_seconds: How long to cache results (default: 5 minutes)
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         self._cache: Dict[str, tuple[bool, datetime]] = {}
         self._ttl = ttl_seconds
@@ -396,7 +396,7 @@ class AuthCheckCache:
         Returns:
             Cached result if valid, None if expired/not found
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         with self._lock:
             if url not in self._cache:
@@ -405,7 +405,7 @@ class AuthCheckCache:
             result, cached_at = self._cache[url]
 
             # Check if expired
-            if datetime.utcnow() - cached_at > timedelta(seconds=self._ttl):
+            if datetime.now(timezone.utc) - cached_at > timedelta(seconds=self._ttl):
                 del self._cache[url]
                 return None
 
@@ -419,10 +419,10 @@ class AuthCheckCache:
             url: URL that was checked
             auth_required: Whether auth is required
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         with self._lock:
-            self._cache[url] = (auth_required, datetime.utcnow())
+            self._cache[url] = (auth_required, datetime.now(timezone.utc))
 
     def clear(self, url: Optional[str] = None) -> None:
         """

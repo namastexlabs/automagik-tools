@@ -7,7 +7,7 @@ import uuid
 import hashlib
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -70,7 +70,7 @@ class AgentParser:
 
         # Update project agent count
         project.agent_count = len(agents)
-        project.last_synced_at = datetime.utcnow()
+        project.last_synced_at = datetime.now(timezone.utc)
         await self.session.commit()
 
         print(f"🤖 Scanned {project.name}: Found {len(agents)} agents")
@@ -131,8 +131,8 @@ class AgentParser:
                     agent.toolkit = hub_config.get("toolkit")
                     agent.raw_frontmatter = frontmatter
                     agent.sync_status = "synced"
-                    agent.synced_at = datetime.utcnow()
-                    agent.updated_at = datetime.utcnow()
+                    agent.synced_at = datetime.now(timezone.utc)
+                    agent.updated_at = datetime.now(timezone.utc)
 
                     await self.session.commit()
                     print(f"  ↻ Updated: {relative_path}")
@@ -157,9 +157,9 @@ class AgentParser:
                 toolkit=hub_config.get("toolkit"),
                 raw_frontmatter=frontmatter,
                 sync_status="synced",
-                synced_at=datetime.utcnow(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                synced_at=datetime.now(timezone.utc),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
 
             self.session.add(agent)

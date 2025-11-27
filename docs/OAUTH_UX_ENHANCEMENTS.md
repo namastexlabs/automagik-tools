@@ -390,7 +390,7 @@ class SessionManager:
                 binding = self._bindings[session_id]
 
                 # Update last accessed time
-                binding.last_accessed = datetime.utcnow()
+                binding.last_accessed = datetime.now(timezone.utc)
                 binding.access_count += 1
 
                 # Check if bound to same user
@@ -409,7 +409,7 @@ class SessionManager:
                 self._cleanup_lru()
 
             # Create new binding
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             ttl = ttl or self._default_ttl
 
             self._bindings[session_id] = SessionBinding(
@@ -431,7 +431,7 @@ class SessionManager:
                 return None
 
             # Check expiry
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if now > binding.expires_at:
                 logger.debug(f"Session {session_id} expired, removing binding")
                 del self._bindings[session_id]
@@ -456,7 +456,7 @@ class SessionManager:
     def cleanup_expired(self) -> int:
         """Remove expired sessions, return count"""
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             expired = [
                 sid for sid, binding in self._bindings.items()
                 if now > binding.expires_at
@@ -513,7 +513,7 @@ class SessionManager:
     def get_stats(self) -> dict:
         """Get session statistics"""
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             active = sum(1 for b in self._bindings.values() if now <= b.expires_at)
 
             return {

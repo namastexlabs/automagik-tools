@@ -520,14 +520,8 @@ async def genie_clear_memories(
 # MCP Resources
 # ===================================
 
-
-@mcp.resource("genie://memory-stats")
-async def genie_memory_stats_resource(
-    session_id: Optional[str] = None,
-    ctx: Optional[Context] = None,
-) -> str:
-    """Get Genie memory statistics as a resource."""
-    return await genie_memory_stats(session_id=session_id, ctx=ctx)
+# NOTE: Static resources (no URI parameters) removed - use genie_memory_stats tool instead
+# FastMCP requires @mcp.resource() URIs to have at least one parameter
 
 
 def get_metadata() -> Dict[str, Any]:

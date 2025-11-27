@@ -5,7 +5,7 @@ Adapts the existing CredentialStore interface to use the Hub's OAuthToken table.
 import json
 import logging
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from google.oauth2.credentials import Credentials
 from sqlalchemy import select, delete
 
@@ -205,7 +205,7 @@ class DatabaseCredentialStore(CredentialStore):
             if existing:
                 existing.access_token = creds_json
                 existing.refresh_token = credentials.refresh_token
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
             else:
                 import uuid
                 new_token = OAuthToken(
@@ -257,7 +257,7 @@ class DatabaseCredentialStore(CredentialStore):
             if existing:
                 existing.access_token = creds_json
                 existing.refresh_token = credentials.refresh_token
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
             else:
                 import uuid
                 new_token = OAuthToken(

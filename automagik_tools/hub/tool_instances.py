@@ -9,7 +9,7 @@ Manages running tool instances per user:
 import asyncio
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class ToolInstance:
 
             await asyncio.sleep(0.1)  # Simulate startup
             self.status = ToolStatus.RUNNING
-            self.started_at = datetime.utcnow()
+            self.started_at = datetime.now(timezone.utc)
             self.error_message = None
             logger.info(f"Started tool {self.tool_name} for user {self.user_id}")
 
@@ -111,7 +111,7 @@ class ToolInstance:
             "status": self.status.value,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "error_message": self.error_message,
-            "uptime_seconds": (datetime.utcnow() - self.started_at).total_seconds() if self.started_at else 0
+            "uptime_seconds": (datetime.now(timezone.utc) - self.started_at).total_seconds() if self.started_at else 0
         }
 
 

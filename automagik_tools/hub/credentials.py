@@ -1,7 +1,7 @@
 """Credential management tools for handling user secrets and OAuth tokens."""
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastmcp import Context
 from sqlalchemy import select, delete
@@ -57,7 +57,7 @@ async def store_credential(
         if existing:
             existing.access_token = access_token
             existing.refresh_token = refresh_token
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
         else:
             new_token = OAuthToken(
                 id=str(uuid.uuid4()),

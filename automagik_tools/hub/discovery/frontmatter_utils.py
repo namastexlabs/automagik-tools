@@ -6,7 +6,7 @@ when reading and writing .genie agent files.
 from pathlib import Path
 from typing import Tuple, Dict, Any, Optional
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from ruamel.yaml import YAML
@@ -149,7 +149,7 @@ class FrontmatterManager:
             frontmatter["hub"]["toolkit"] = toolkit_config
 
             # Add metadata
-            frontmatter["hub"]["toolkit"]["last_configured"] = datetime.utcnow().isoformat() + "Z"
+            frontmatter["hub"]["toolkit"]["last_configured"] = datetime.now(timezone.utc).isoformat() + "Z"
             if configured_by:
                 frontmatter["hub"]["toolkit"]["configured_by"] = configured_by
 

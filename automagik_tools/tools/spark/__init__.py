@@ -977,32 +977,6 @@ async def delete_source(source_id: str, ctx: Optional[Context] = None) -> str:
 # MCP Resources
 # ===================================
 
-
-@mcp.resource("spark://health")
-async def spark_health_resource(ctx: Optional[Context] = None) -> str:
-    """Get Spark server health status as a resource."""
-    return await get_health(ctx)
-
-
-@mcp.resource("spark://workflows")
-async def spark_workflows_resource(ctx: Optional[Context] = None) -> str:
-    """List all workflows as a resource."""
-    return await list_workflows(ctx=ctx)
-
-
-@mcp.resource("spark://tasks")
-async def spark_tasks_resource(ctx: Optional[Context] = None) -> str:
-    """List all tasks as a resource."""
-    return await list_tasks(ctx=ctx)
-
-
-@mcp.resource("spark://schedules")
-async def spark_schedules_resource(ctx: Optional[Context] = None) -> str:
-    """List all schedules as a resource."""
-    return await list_schedules(ctx=ctx)
-
-
-@mcp.resource("spark://sources")
-async def spark_sources_resource(ctx: Optional[Context] = None) -> str:
-    """List all workflow sources as a resource."""
-    return await list_sources(ctx=ctx)
+# NOTE: Static resources (no URI parameters) removed - use the equivalent tools instead
+# FastMCP requires @mcp.resource() URIs to have at least one parameter
+# Available tools: get_health, list_workflows, list_tasks, list_schedules, list_sources

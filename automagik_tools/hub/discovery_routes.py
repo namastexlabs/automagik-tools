@@ -144,7 +144,7 @@ async def create_base_folder(
 ):
     """Create new base folder."""
     import uuid
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     # Validate path exists
     path = Path(request.path)
@@ -168,8 +168,8 @@ async def create_base_folder(
         label=request.label,
         is_active=True,
         last_scanned_at=None,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
 
     session.add(folder)
