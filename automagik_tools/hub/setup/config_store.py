@@ -243,20 +243,80 @@ class ConfigStore:
             "port": int(port) if isinstance(port, str) else port
         }
 
-    async def set_network_config(self, bind_address: str, port: int) -> None:
+    async def set_network_config(self, config: Dict[str, Any]) -> None:
         """Set network configuration.
 
         Args:
-            bind_address: 'localhost' (127.0.0.1) or 'network' (0.0.0.0)
-            port: Port number (1024-65535)
+            config: Dict with bind_address and port
         """
-        if bind_address not in ("localhost", "network"):
-            raise ValueError(f"Invalid bind address: {bind_address}")
-        if not (1024 <= port <= 65535):
+        bind_address = config.get("bind_address", "127.0.0.1")
+        port = config.get("port", 8884)
+
+        # Validate
+        if not isinstance(port, int) or not (1024 <= port <= 65535):
             raise ValueError(f"Port must be between 1024 and 65535, got {port}")
 
         await self.set(self.KEY_BIND_ADDRESS, bind_address)
         await self.set(self.KEY_PORT, str(port))
+
+    async def get_or_generate_cookie_password(self) -> str:
+        """Get or generate WorkOS cookie password.
+
+        Cookie password is used for session encryption. If not set,
+        a secure random password is generated and stored.
+
+        Returns:
+            Cookie password string
+        """
+        import secrets
+
+        password = await self.get("workos_cookie_password")
+
+        if not password:
+            # Generate secure random password
+            password = secrets.token_urlsafe(32)
+            await self.set("workos_cookie_password", password, is_secret=True)
+
+        return password
+
+    async def get_runtime_config(self) -> Dict[str, Any]:
+        """Get complete runtime configuration from database.
+
+        Returns:
+            Dict with all runtime configuration values
+        """
+        import os
+
+        # Network
+        network = await self.get_network_config()
+
+        # Database
+        database_path = await self.get(
+            self.KEY_DATABASE_PATH,
+            os.getenv("HUB_DATABASE_PATH", "./data/hub.db")
+        )
+
+        # Security
+        allowed_origins = await self.get("allowed_origins", "*")
+        enable_hsts = await self.get("enable_hsts", "true") == "true"
+        csp_report_uri = await self.get("csp_report_uri")
+
+        # Super admins
+        super_admins = await self.get(self.KEY_SUPER_ADMIN_EMAILS, "")
+
+        # WorkOS
+        cookie_password = await self.get_or_generate_cookie_password()
+
+        return {
+            "host": network["bind_address"],
+            "port": network["port"],
+            "database_path": database_path,
+            "allowed_origins": allowed_origins,
+            "enable_hsts": enable_hsts,
+            "csp_report_uri": csp_report_uri,
+            "super_admin_emails": super_admins,
+            "workos_cookie_password": cookie_password,
+        }
 
 
 async def get_config_store() -> ConfigStore:

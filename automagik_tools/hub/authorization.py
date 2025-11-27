@@ -31,16 +31,30 @@ from .database import get_db_session
 from .models import User, Workspace, UserRole, ProvisioningMethod
 
 
-# Load super admin emails from environment
-SUPER_ADMIN_EMAILS = [
-    email.strip().lower()
-    for email in os.getenv("SUPER_ADMIN_EMAILS", "").split(",")
-    if email.strip()
-]
+async def get_super_admin_emails() -> list[str]:
+    """Get super admin emails from database.
+
+    Returns:
+        List of super admin email addresses (lowercased)
+    """
+    from .setup import ConfigStore
+
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        emails_str = await config_store.get(ConfigStore.KEY_SUPER_ADMIN_EMAILS, "")
+
+        if not emails_str:
+            return []
+
+        return [
+            email.strip().lower()
+            for email in emails_str.split(",")
+            if email.strip()
+        ]
 
 
-def is_super_admin(email: str) -> bool:
-    """Check if user is a platform super admin.
+async def is_super_admin(email: str) -> bool:
+    """Check if user is a platform super admin (async).
 
     Super admins can:
     - Access all workspaces
@@ -56,7 +70,33 @@ def is_super_admin(email: str) -> bool:
     """
     if not email:
         return False
-    return email.lower().strip() in SUPER_ADMIN_EMAILS
+
+    super_admins = await get_super_admin_emails()
+    return email.lower().strip() in super_admins
+
+
+def is_super_admin_sync(email: str) -> bool:
+    """Check if user is a platform super admin (synchronous fallback).
+
+    This is a compatibility function for sync contexts.
+    Prefer using the async version when possible.
+
+    Args:
+        email: User's email address
+
+    Returns:
+        True if user is a super admin
+    """
+    import asyncio
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Can't run async code in running loop, return False
+            return False
+        return loop.run_until_complete(is_super_admin(email))
+    except Exception:
+        return False
 
 
 def generate_workspace_slug(name: str, existing_slugs: list[str] = None) -> str:
