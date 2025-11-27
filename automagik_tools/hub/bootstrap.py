@@ -45,19 +45,37 @@ async def get_bootstrap_state() -> BootstrapState:
     Returns:
         Current bootstrap state
     """
-    # Get database path from environment (only time we read it)
-    db_path = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
+    from .database import _is_postgresql
 
-    # Check 1: Does database file exist?
-    if not db_path.exists():
-        return BootstrapState.NO_DATABASE
+    # Check 1: Does database exist?
+    if _is_postgresql():
+        # PostgreSQL: Try to connect
+        try:
+            async with get_db_session() as session:
+                await session.execute(text("SELECT 1"))
+        except Exception:
+            return BootstrapState.NO_DATABASE
+    else:
+        # SQLite: Check file exists
+        db_path = Path(os.getenv("HUB_DATABASE_PATH", "./data/hub.db"))
+        if not db_path.exists():
+            return BootstrapState.NO_DATABASE
 
     # Check 2: Does database have tables?
     try:
         async with get_db_session() as session:
-            result = await session.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='system_config'")
-            )
+            if _is_postgresql():
+                query = text("""
+                    SELECT table_name FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'tools_system_config'
+                """)
+            else:
+                query = text("""
+                    SELECT name FROM sqlite_master
+                    WHERE type='table' AND name='tools_system_config'
+                """)
+
+            result = await session.execute(query)
             if result.scalar_one_or_none() is None:
                 return BootstrapState.EMPTY_DATABASE
     except Exception:

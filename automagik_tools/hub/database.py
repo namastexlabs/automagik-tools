@@ -84,7 +84,7 @@ async def run_database_migrations() -> bool:
     print("🔄 Running database migrations...")
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            [sys.executable, "-m", "alembic", "-x", f"sqlalchemy.url={DATABASE_URL}", "upgrade", "head"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent.parent,  # Project root
