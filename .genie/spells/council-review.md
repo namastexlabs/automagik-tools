@@ -6,7 +6,7 @@ load_priority: plan_mode
 
 # Council Review Spell
 
-**Purpose:** Provide multi-perspective advisory review during plan mode by dynamically invoking council member agents.
+**Purpose:** Provide multi-perspective advisory review during plan mode by dynamically invoking council member agents (now hybrid agents in code collective).
 
 ---
 
@@ -19,33 +19,42 @@ This spell **auto-activates during plan mode** to ensure architectural decisions
 
 ---
 
-## Council Members
+## Council Members (Hybrid Agents)
 
-The council consists of 5 agents, each representing a distinct perspective:
+The council consists of 10 hybrid agents in `.genie/code/agents/`, each representing a distinct perspective:
 
 | Agent | Role | Philosophy | Trigger Keywords |
 |-------|------|------------|------------------|
-| **nayr** | The Questioner | "Why? Is there a simpler way?" | architecture, assumptions, complexity, dependencies |
-| **oettam** | The Benchmarker | "Show me the benchmarks." | performance, latency, throughput, benchmark, optimize |
-| **jt** | The Simplifier | "Delete code. Ship features." | simplify, delete, reduce, ship, YAGNI |
-| **yort** | The Breach Hunter | "Where are the secrets? What's the blast radius?" | security, auth, secrets, vulnerability, encryption |
-| **erdnis** | The Ergonomist | "If you need to read the docs, the API failed." | API, DX, interface, usability, error messages |
+| **questioner** | The Questioner | "Why? Is there a simpler way?" | architecture, assumptions, complexity, dependencies |
+| **benchmarker** | The Benchmarker | "Show me the benchmarks." | performance, latency, throughput, benchmark, optimize |
+| **simplifier** | The Simplifier | "Delete code. Ship features." | simplify, delete, reduce, ship, YAGNI |
+| **sentinel** | The Breach Hunter | "Where are the secrets? What's the blast radius?" | security, auth, secrets, vulnerability, encryption |
+| **ergonomist** | The Ergonomist | "If you need to read the docs, the API failed." | API, DX, interface, usability, error messages |
+| **architect** | The Systems Thinker | "Talk is cheap. Show me the code." | systems, kernel, backwards compatibility, concurrency, threading |
+| **operator** | The Ops Realist | "No one wants to run your code." | operations, infrastructure, runtime, deployment, on-call |
+| **deployer** | The Zero-Config Zealot | "Zero-config with infinite scale." | deployment DX, zero-config, instant, CI/CD, preview |
+| **measurer** | The Measurer | "Measure, don't guess." | observability, profiling, flamegraph, metrics, tracing |
+| **tracer** | The Production Debugger | "You will debug this in production." | production debugging, high cardinality, incidents, 3am |
 
 ---
 
 ## Smart Routing
 
-Not every plan needs all 5 perspectives. Route based on topic:
+Not every plan needs all 10 perspectives. Route based on topic:
 
 ### Topic Detection
 
 | Topic Category | Members Invoked | Detection Keywords |
 |----------------|-----------------|-------------------|
-| Architecture | nayr, oettam, jt | "redesign", "refactor", "architecture", "structure" |
-| Performance | oettam, nayr, jt | "optimize", "slow", "benchmark", "latency" |
-| Security | nayr, jt, yort | "auth", "security", "secret", "permission" |
-| API Design | nayr, jt, erdnis | "API", "interface", "SDK", "CLI", "DX" |
-| Full Review | all 5 | "full review", "architectural review", major decisions |
+| Architecture | questioner, benchmarker, simplifier, architect | "redesign", "refactor", "architecture", "structure" |
+| Performance | benchmarker, questioner, architect, measurer | "optimize", "slow", "benchmark", "latency", "profile" |
+| Security | questioner, simplifier, sentinel | "auth", "security", "secret", "permission", "encryption" |
+| API Design | questioner, simplifier, ergonomist, deployer | "API", "interface", "SDK", "CLI", "DX" |
+| Operations | operator, tracer, measurer | "deploy", "ops", "on-call", "runbook", "infrastructure" |
+| Observability | tracer, measurer, benchmarker | "observability", "tracing", "metrics", "debugging", "logs" |
+| Systems | architect, measurer, benchmarker | "concurrency", "threading", "backwards compat", "kernel" |
+| Deployment/DX | ergonomist, deployer, operator | "CI/CD", "preview", "zero-config", "deploy", "rollback" |
+| Full Review | all 10 | "full review", "architectural review", major decisions |
 
 ### Selection Logic
 
@@ -53,9 +62,15 @@ Not every plan needs all 5 perspectives. Route based on topic:
 1. Analyze plan topic from user request
 2. Match against trigger keywords
 3. Select relevant council members
-4. Default to core trio (nayr, oettam, jt) if no specific triggers
-5. Add yort for security topics
-6. Add erdnis for API/DX topics
+4. Default to core trio (questioner, benchmarker, simplifier) if no specific triggers
+5. Add specialists based on topic:
+   - sentinel for security
+   - ergonomist for API/DX
+   - architect for systems/concurrency
+   - operator for operations
+   - deployer for deployment DX
+   - measurer for measurement/profiling
+   - tracer for production debugging
 ```
 
 ---
@@ -107,23 +122,43 @@ After collecting perspectives:
 
 ### Perspectives
 
-**nayr (Questioning):**
+**questioner (Questioning):**
 - [Key point]
 - Vote: [APPROVE/REJECT/MODIFY]
 
-**oettam (Performance):**
+**benchmarker (Performance):**
 - [Key point]
 - Vote: [APPROVE/REJECT/MODIFY]
 
-**jt (Simplicity):**
+**simplifier (Simplicity):**
 - [Key point]
 - Vote: [APPROVE/REJECT/MODIFY]
 
-**yort (Security):** (if invoked)
+**sentinel (Security):** (if invoked)
 - [Key point]
 - Vote: [APPROVE/REJECT/MODIFY]
 
-**erdnis (DX):** (if invoked)
+**ergonomist (DX):** (if invoked)
+- [Key point]
+- Vote: [APPROVE/REJECT/MODIFY]
+
+**architect (Systems):** (if invoked)
+- [Key point]
+- Vote: [APPROVE/REJECT/MODIFY]
+
+**operator (Operations):** (if invoked)
+- [Key point]
+- Vote: [APPROVE/REJECT/MODIFY]
+
+**deployer (Deployment DX):** (if invoked)
+- [Key point]
+- Vote: [APPROVE/REJECT/MODIFY]
+
+**measurer (Measurement):** (if invoked)
+- [Key point]
+- Vote: [APPROVE/REJECT/MODIFY]
+
+**tracer (Production):** (if invoked)
 - [Key point]
 - Vote: [APPROVE/REJECT/MODIFY]
 
@@ -150,6 +185,8 @@ Since voting is advisory (non-blocking), thresholds are informational:
 | 3 | 3/3 agree | 2/3 agree | No majority |
 | 4 | 4/4 or 3/4 agree | 2/4 agree | Even split |
 | 5 | 5/5 or 4/5 agree | 3/5 agree | No majority |
+| 6-7 | 6/7 or 5/6 agree | 4/7 agree | < 50% majority |
+| 8-10 | 8/10+ agree | 6/10 agree | < 50% majority |
 
 **User always decides** - council provides informed perspective, not binding judgment.
 
@@ -168,7 +205,7 @@ During plan mode, load:
 ### Routing Decision Matrix
 ```markdown
 **When planning major changes**, invoke council:
-- [routing-XXX] council-review = Multi-perspective planning review (nayr, oettam, jt, yort, erdnis)
+- [routing-XXX] council-review = Multi-perspective planning review (questioner, benchmarker, simplifier, sentinel, ergonomist)
   - Triggers: Plan mode active
   - Output: Advisory recommendations, vote summary
 ```
@@ -177,13 +214,24 @@ During plan mode, load:
 
 ## Council Member Agents
 
-Each council member is a standalone agent at `.genie/agents/`:
+All council members are now **hybrid agents** at `.genie/code/agents/` (can review AND execute):
 
-- `@.genie/agents/nayr.md` - Questioning perspective (Ryan Dahl)
-- `@.genie/agents/oettam.md` - Performance perspective (Matteo Collina)
-- `@.genie/agents/jt.md` - Simplicity perspective (TJ Holowaychuk)
-- `@.genie/agents/yort.md` - Security perspective (Troy Hunt)
-- `@.genie/agents/erdnis.md` - DX perspective (Sindre Sorhus)
+**Original 5 (Renamed):**
+- `@.genie/code/agents/questioner.md` - Questioning perspective (Ryan Dahl)
+- `@.genie/code/agents/benchmarker.md` - Performance perspective (Matteo Collina)
+- `@.genie/code/agents/simplifier.md` - Simplicity perspective (TJ Holowaychuk)
+- `@.genie/code/agents/sentinel.md` - Security perspective (Troy Hunt)
+- `@.genie/code/agents/ergonomist.md` - DX perspective (Sindre Sorhus)
+
+**Expanded 5 (Renamed):**
+- `@.genie/code/agents/architect.md` - Systems perspective (Linus Torvalds)
+- `@.genie/code/agents/operator.md` - Operations perspective (Kelsey Hightower)
+- `@.genie/code/agents/deployer.md` - Deployment DX perspective (Guillermo Rauch)
+- `@.genie/code/agents/measurer.md` - Measurement perspective (Bryan Cantrill)
+- `@.genie/code/agents/tracer.md` - Production debugging perspective (Charity Majors)
+
+**Claude Code Aliases:**
+All council members also available at `.claude/agents/` for Claude Code discoverability.
 
 ---
 
@@ -196,19 +244,19 @@ User: "I want to plan implementing OAuth2 for our API"
 
 Council Review activates:
 - Topic detected: Security + API Design
-- Members selected: nayr, jt, yort, erdnis
+- Members selected: questioner, simplifier, sentinel, ergonomist
 
 Perspectives gathered:
-- nayr: "Why OAuth2? What problem does basic auth not solve?"
-- jt: "OAuth2 is complex. Can we use a simpler approach?"
-- yort: "OAuth2 is good for security. Where will tokens be stored?"
-- erdnis: "OAuth2 flow must be intuitive. Error messages critical."
+- questioner: "Why OAuth2? What problem does basic auth not solve?"
+- simplifier: "OAuth2 is complex. Can we use a simpler approach?"
+- sentinel: "OAuth2 is good for security. Where will tokens be stored?"
+- ergonomist: "OAuth2 flow must be intuitive. Error messages critical."
 
-Vote: 3 APPROVE, 1 MODIFY (jt suggests simplification)
+Vote: 3 APPROVE, 1 MODIFY (simplifier suggests simplification)
 
 Advisory: Proceed with OAuth2, but document the specific
-requirements it solves (nayr's concern) and ensure error
-messages are developer-friendly (erdnis's point).
+requirements it solves (questioner's concern) and ensure error
+messages are developer-friendly (ergonomist's point).
 
 User decides: Proceed / Modify / Reject
 ```
