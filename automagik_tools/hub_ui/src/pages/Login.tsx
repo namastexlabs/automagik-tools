@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setAccessToken, isAuthenticated } from '@/lib/api';
-import { setUserInfo, UserInfo } from '@/lib/auth';
+import { setUserInfo, type UserInfo } from '@/lib/auth';
 
 export default function Login() {
   const [searchParams] = useSearchParams();

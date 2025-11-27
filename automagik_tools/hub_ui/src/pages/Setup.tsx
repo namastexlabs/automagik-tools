@@ -10,11 +10,11 @@
 import { useState, useEffect, useReducer } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { StepIndicator, Step } from '@/components/StepIndicator';
-import { Step0_ModeSelection, Step0Data } from '@/components/wizard/Step0_ModeSelection';
-import { Step1a_LocalConfig, Step1aData } from '@/components/wizard/Step1a_LocalConfig';
-import { Step1b_WorkOSConfig, Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
-import { Step2_NetworkConfig, Step2Data } from '@/components/wizard/Step2_NetworkConfig';
+import { StepIndicator, type Step } from '@/components/StepIndicator';
+import { Step0_ModeSelection, type Step0Data } from '@/components/wizard/Step0_ModeSelection';
+import { Step1a_LocalConfig, type Step1aData } from '@/components/wizard/Step1a_LocalConfig';
+import { Step1b_WorkOSConfig, type Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
+import { Step2_NetworkConfig, type Step2Data } from '@/components/wizard/Step2_NetworkConfig';
 import { Step3_Review, ApiKeyDialog } from '@/components/wizard/Step3_Review';
 
 // Wizard state type

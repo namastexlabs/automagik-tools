@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageHeader } from '../components/PageHeader';
-import { api, UserTool } from '../lib/api';
+import { api, type UserTool } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';

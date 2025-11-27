@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { api, UserTool } from '@/lib/api';
+import { api, type UserTool } from '@/lib/api';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
 import { Package, Wrench, Activity, TrendingUp, Plus, ArrowRight } from 'lucide-react';

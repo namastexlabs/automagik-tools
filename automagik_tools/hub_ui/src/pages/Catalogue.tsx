@@ -4,7 +4,7 @@ import { Plus, Search, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageHeader } from '../components/PageHeader';
-import { api, Tool } from '../lib/api';
+import { api, type Tool } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
