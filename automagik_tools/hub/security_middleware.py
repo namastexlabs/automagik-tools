@@ -22,9 +22,11 @@ from starlette.responses import Response
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all HTTP responses.
 
-    Configurable via environment variables:
-    - HUB_ENABLE_HSTS: Enable HSTS header (default: false, set to 'true' in production)
-    - HUB_CSP_REPORT_URI: URI for CSP violation reports (optional)
+    Configuration:
+    - enable_hsts: Enable HSTS header (default: false, should be true in production)
+    - csp_report_uri: URI for CSP violation reports (default: empty string)
+
+    Settings should be passed from RuntimeConfig by the application.
     """
 
     def __init__(
@@ -34,14 +36,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp_report_uri: str = None
     ):
         super().__init__(app)
-        # Auto-detect HSTS from environment (fallback for bootstrap phase)
+        # Default to false for HSTS (should be enabled explicitly in production)
+        # These settings can be passed from RuntimeConfig by the caller
         if enable_hsts is None:
-            enable_hsts = os.getenv("HUB_ENABLE_HSTS", "false").lower() == "true"
+            enable_hsts = False
         self.enable_hsts = enable_hsts
 
-        # Auto-detect CSP report URI from environment (fallback for bootstrap phase)
+        # Default to empty CSP report URI
         if csp_report_uri is None:
-            csp_report_uri = os.getenv("HUB_CSP_REPORT_URI", "")
+            csp_report_uri = ""
         self.csp_report_uri = csp_report_uri
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

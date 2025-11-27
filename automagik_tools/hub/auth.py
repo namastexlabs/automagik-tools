@@ -27,10 +27,8 @@ def get_workos_client() -> WorkOSClient:
             if creds:
                 return creds["api_key"], creds["client_id"]
 
-            # Fallback to .env
-            api_key = os.getenv("WORKOS_API_KEY")
-            client_id = os.getenv("WORKOS_CLIENT_ID")
-            return api_key, client_id
+            # No credentials in database
+            return None, None
 
     # Run async function in sync context
     try:
@@ -45,9 +43,27 @@ def get_workos_client() -> WorkOSClient:
     return WorkOSClient(api_key=api_key, client_id=client_id)
 
 def get_cookie_password() -> str:
-    password = os.getenv("WORKOS_COOKIE_PASSWORD")
+    """Get WorkOS cookie password from database.
+
+    Cookie password is stored in the database (encrypted) during setup wizard.
+    """
+    from .setup import ConfigStore
+    from .database import get_db_session
+
+    async def _get_password():
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            return await config_store.get_or_generate_cookie_password()
+
+    # Run async function in sync context
+    try:
+        password = asyncio.get_running_loop().run_until_complete(_get_password())
+    except RuntimeError:
+        # No event loop running, create one
+        password = asyncio.run(_get_password())
+
     if not password:
-        raise ValueError("WORKOS_COOKIE_PASSWORD must be set")
+        raise ValueError("WorkOS cookie password not configured. Complete setup wizard at /setup")
     return password
 
 async def get_current_user(request: Request) -> Dict[str, Any]:

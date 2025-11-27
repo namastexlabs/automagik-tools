@@ -47,10 +47,7 @@ async def get_workos_config() -> Dict[str, str]:
 
         if creds:
             # Database has credentials
-            redirect_uri = os.getenv(
-                "WORKOS_REDIRECT_URI",
-                "https://tools.genieos.namastex.io/api/auth/callback"
-            )
+            redirect_uri = "https://tools.genieos.namastex.io/api/auth/callback"
             return {
                 "client_id": creds["client_id"],
                 "api_key": creds["api_key"],
@@ -58,28 +55,11 @@ async def get_workos_config() -> Dict[str, str]:
                 "redirect_uri": redirect_uri,
             }
 
-        # Fallback to .env (backwards compatibility)
-        client_id = os.getenv("WORKOS_CLIENT_ID")
-        api_key = os.getenv("WORKOS_API_KEY")
-
-        if not client_id or not api_key:
-            raise HTTPException(
-                status_code=500,
-                detail="WorkOS not configured. Complete setup wizard at /setup"
-            )
-
-        return {
-            "client_id": client_id,
-            "api_key": api_key,
-            "authkit_domain": os.getenv(
-                "WORKOS_AUTHKIT_DOMAIN",
-                "https://veracious-shadow-68.authkit.app"
-            ),
-            "redirect_uri": os.getenv(
-                "WORKOS_REDIRECT_URI",
-                "https://tools.genieos.namastex.io/api/auth/callback"
-            ),
-        }
+        # No credentials in database - setup required
+        raise HTTPException(
+            status_code=500,
+            detail="WorkOS not configured. Complete setup wizard at /setup"
+        )
 
 
 class AuthCallbackRequest(BaseModel):
