@@ -20,6 +20,8 @@ import {
   Key,
   Globe,
   Copy,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface ReviewProps {
@@ -53,6 +55,7 @@ export function Step3_Review({
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showWorkosApiKey, setShowWorkosApiKey] = useState(false);
 
   const handleComplete = async () => {
     setSubmitting(true);
@@ -167,8 +170,18 @@ export function Step3_Review({
                   <Key className="h-4 w-4" />
                   API Key
                 </div>
-                <div className="bg-muted/50 rounded-md p-3 font-mono text-sm">
-                  {workosApiKey ? '••••••••••••' + workosApiKey.slice(-4) : ''}
+                <div className="flex items-center gap-2">
+                  <div className="bg-muted/50 rounded-md p-3 font-mono text-sm flex-1">
+                    {workosApiKey ? (showWorkosApiKey ? workosApiKey : '••••••••••••' + workosApiKey.slice(-4)) : ''}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowWorkosApiKey(!showWorkosApiKey)}
+                    className="shrink-0"
+                  >
+                    {showWorkosApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
 

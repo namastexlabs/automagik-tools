@@ -12,13 +12,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { StepIndicator, type Step } from '@/components/StepIndicator';
 import { Step0_ModeSelection, type Step0Data } from '@/components/wizard/Step0_ModeSelection';
-import { Step1a_LocalConfig, type Step1aData } from '@/components/wizard/Step1a_LocalConfig';
 import { Step1b_WorkOSConfig, type Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
 import { Step2_NetworkConfig, type Step2Data } from '@/components/wizard/Step2_NetworkConfig';
 import { Step3_Review, ApiKeyDialog } from '@/components/wizard/Step3_Review';
 
 // Wizard state type
-interface WizardState extends Step0Data, Step1aData, Step1bData, Step2Data {
+interface WizardState extends Step0Data, Step1bData, Step2Data {
   currentStep: number;
   completedSteps: Set<number>;
 }
@@ -35,7 +34,6 @@ type WizardAction =
 const initialState: WizardState = {
   // Step 0
   mode: null,
-  // Step 1a (Local) - no longer needs data
   // Step 1b (WorkOS)
   setupType: null,
   clientId: '',
@@ -112,9 +110,7 @@ export default function SetupNew() {
       { id: 'mode', title: 'Mode', description: 'Choose setup type' },
     ];
 
-    if (state.mode === 'local') {
-      baseSteps.push({ id: 'local-config', title: 'Config', description: 'Local settings' });
-    } else if (state.mode === 'workos') {
+    if (state.mode === 'workos') {
       baseSteps.push({ id: 'workos-config', title: 'WorkOS', description: 'Credentials' });
     }
 
@@ -221,18 +217,6 @@ export default function SetupNew() {
       );
     }
 
-    // Step 1a: Local Config (if mode is local)
-    if (state.mode === 'local' && stepIndex === 1) {
-      return (
-        <Step1a_LocalConfig
-          data={{}}
-          onUpdate={(data) => dispatch({ type: 'UPDATE_DATA', payload: data })}
-          onNext={() => dispatch({ type: 'NEXT_STEP' })}
-          onBack={() => dispatch({ type: 'PREV_STEP' })}
-        />
-      );
-    }
-
     // Step 1b: WorkOS Config (if mode is workos)
     if (state.mode === 'workos' && stepIndex === 1) {
       return (
@@ -252,7 +236,7 @@ export default function SetupNew() {
     }
 
     // Step 2: Network Config
-    if ((state.mode === 'local' && stepIndex === 2) || (state.mode === 'workos' && stepIndex === 2)) {
+    if ((state.mode === 'local' && stepIndex === 1) || (state.mode === 'workos' && stepIndex === 2)) {
       return (
         <Step2_NetworkConfig
           data={{
@@ -267,7 +251,7 @@ export default function SetupNew() {
     }
 
     // Step 3: Review
-    if ((state.mode === 'local' && stepIndex === 3) || (state.mode === 'workos' && stepIndex === 3)) {
+    if ((state.mode === 'local' && stepIndex === 2) || (state.mode === 'workos' && stepIndex === 3)) {
       return (
         <Step3_Review
           mode={state.mode}

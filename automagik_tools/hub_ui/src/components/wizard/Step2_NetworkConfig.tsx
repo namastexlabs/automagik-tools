@@ -231,7 +231,7 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                   {portStatus.suggestions.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        Try these available ports:
+                        Click a suggested port below, or stop <strong>{portStatus.conflicts[0]?.process}</strong> to free port {data.port}.
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         {portStatus.suggestions.map((port) => (

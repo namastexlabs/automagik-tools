@@ -49,47 +49,8 @@ export function Step1b_WorkOSConfig({ data, onUpdate, onNext, onBack }: Step1bPr
     onUpdate({ setupType: type });
   };
 
-  const validateCredentials = async () => {
-    if (!data.clientId || !data.apiKey || !data.authkitDomain) {
-      setValidationResult({
-        valid: false,
-        error: 'Please fill in all required fields',
-      });
-      return;
-    }
-
-    setValidating(true);
-    setValidationResult(null);
-
-    try {
-      const response = await fetch('/api/setup/workos/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: data.clientId,
-          api_key: data.apiKey,
-          authkit_domain: data.authkitDomain,
-        }),
-      });
-
-      const result = await response.json();
-      setValidationResult(result);
-
-      if (result.valid) {
-        // Auto-advance if all fields are valid
-        setTimeout(() => handleNext(), 500);
-      }
-    } catch (err) {
-      setValidationResult({
-        valid: false,
-        error: err instanceof Error ? err.message : 'Validation failed',
-      });
-    } finally {
-      setValidating(false);
-    }
-  };
-
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Validate email first
     const emails = data.adminEmails
       .split(',')
       .map((e) => e.trim())
@@ -111,7 +72,50 @@ export function Step1b_WorkOSConfig({ data, onUpdate, onNext, onBack }: Step1bPr
       return;
     }
 
-    onNext();
+    // Run validation inline before advancing
+    setValidating(true);
+    setValidationResult(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch('/api/setup/workos/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: data.clientId,
+          api_key: data.apiKey,
+          authkit_domain: data.authkitDomain,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+
+      if (result.valid) {
+        // Advance to next step on success
+        onNext();
+      } else {
+        setValidationResult(result);
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        setValidationResult({
+          valid: false,
+          error: 'Validation timed out after 10 seconds. Check your internet connection.',
+        });
+      } else {
+        setValidationResult({
+          valid: false,
+          error: err instanceof Error ? err.message : 'Validation failed',
+        });
+      }
+    } finally {
+      setValidating(false);
+    }
   };
 
   // Show setup type selection if not chosen
@@ -315,12 +319,19 @@ export function Step1b_WorkOSConfig({ data, onUpdate, onNext, onBack }: Step1bPr
             <Mail className="h-4 w-4" />
             Super Admin Emails
           </Label>
-          <Input
-            id="admin-emails"
-            placeholder="admin1@example.com, admin2@example.com"
-            value={data.adminEmails}
-            onChange={(e) => onUpdate({ adminEmails: e.target.value })}
-          />
+          <div className="relative">
+            <Input
+              id="admin-emails"
+              placeholder="admin1@example.com, admin2@example.com"
+              value={data.adminEmails}
+              onChange={(e) => onUpdate({ adminEmails: e.target.value })}
+            />
+            {data.adminEmails && data.adminEmails.split(',').every(
+              (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
+            ) && (
+              <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Comma-separated list of email addresses with full admin access
           </p>
@@ -356,25 +367,19 @@ export function Step1b_WorkOSConfig({ data, onUpdate, onNext, onBack }: Step1bPr
         <Button variant="outline" onClick={onBack} disabled={validating}>
           Back
         </Button>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={validateCredentials}
-            disabled={validating || !data.clientId || !data.apiKey || !data.authkitDomain}
-          >
-            {validating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Validating...
-              </>
-            ) : (
-              'Validate'
-            )}
-          </Button>
-          <Button onClick={handleNext} disabled={validating}>
-            Next
-          </Button>
-        </div>
+        <Button
+          onClick={handleNext}
+          disabled={validating || !data.clientId || !data.apiKey || !data.authkitDomain}
+        >
+          {validating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Validating...
+            </>
+          ) : (
+            'Next'
+          )}
+        </Button>
       </div>
     </div>
   );

@@ -360,3 +360,41 @@ async def set_database_path(
             status_code=500,
             detail=f"Failed to save database path: {str(e)}"
         )
+
+
+class HealthCheckResponse(BaseModel):
+    """Health check response."""
+    status: str
+    mode: Optional[str] = None
+    setup_completed: bool
+    db_accessible: bool
+    error: Optional[str] = None
+
+
+@router.get("/health", response_model=HealthCheckResponse)
+async def get_setup_health():
+    """Health check for setup status.
+
+    Returns:
+        Health check response with database accessibility and setup status
+    """
+    try:
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            mode = await config_store.get_app_mode()
+            setup_completed = await config_store.is_setup_completed()
+
+        return HealthCheckResponse(
+            status="ok",
+            mode=mode.value if mode else None,
+            setup_completed=setup_completed,
+            db_accessible=True,
+        )
+    except Exception as e:
+        return HealthCheckResponse(
+            status="error",
+            mode=None,
+            setup_completed=False,
+            db_accessible=False,
+            error=str(e),
+        )
