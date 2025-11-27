@@ -422,6 +422,11 @@ from fastapi import FastAPI, HTTPException
 from starlette.routing import Mount
 
 api_app = FastAPI()
+
+# Add WorkOS token refresh middleware (automatic session refresh)
+from .hub.auth_middleware import token_refresh_middleware
+api_app.middleware("http")(token_refresh_middleware)
+
 api_app.include_router(api_router)
 api_app.include_router(auth_router)
 api_app.include_router(setup_router)  # Zero-config setup wizard API

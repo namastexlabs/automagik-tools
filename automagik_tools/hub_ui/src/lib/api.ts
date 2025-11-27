@@ -1,24 +1,17 @@
-import { clearUserInfo } from './auth';
+import { clearUserInfo, getUserInfo } from './auth';
 
-const TOKEN_STORAGE_KEY = 'hub_access_token';
 const API_BASE_URL = '/api';
 
-// Token management (WorkOS AuthKit)
-export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
-export function setAccessToken(token: string): void {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
-}
-
-export function removeAccessToken(): void {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+// Session management (HTTP-only cookies - no localStorage tokens)
+// Tokens are stored in HTTP-only cookies and sent automatically
+export function removeSession(): void {
+  // Clear local user info (non-sensitive metadata)
   clearUserInfo();
 }
 
 export function isAuthenticated(): boolean {
-  return !!getAccessToken();
+  // Check if user info exists (stored after login)
+  return !!getUserInfo();
 }
 
 // API client helper
@@ -26,12 +19,6 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getAccessToken();
-
-  if (!token && !endpoint.includes('/health') && !endpoint.includes('/info')) {
-    throw new Error('Not authenticated. Please login.');
-  }
-
   const url = `${API_BASE_URL}${endpoint}`;
 
   const headers: Record<string, string> = {
@@ -39,18 +26,16 @@ async function apiRequest<T>(
     ...options.headers as Record<string, string>,
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
+  // Include credentials (cookies) in all requests
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',  // Send HTTP-only session cookie
   });
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      removeAccessToken();
+      removeSession();
       window.location.href = '/login';
       throw new Error('Authentication failed');
     }

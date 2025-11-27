@@ -89,60 +89,46 @@ async def get_authorization_url() -> Dict[str, str]:
 
 
 @router.post("/callback")
-async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str, Any]:
-    """Handle OAuth callback and exchange code for token.
+async def auth_callback(request: AuthCallbackRequest, req: Request):
+    """Handle OAuth callback and exchange code for session.
 
     This endpoint:
-    1. Exchanges authorization code for access token
+    1. Exchanges authorization code for sealed session
     2. Creates user in database if they don't exist
     3. Creates workspace for new users
-    4. Logs authentication event for audit
+    4. Sets HTTP-only session cookie (secure)
+    5. Logs authentication event for audit
+
+    Returns user data (session stored in HTTP-only cookie).
     """
-    config = await get_workos_config()
+    from .auth import get_workos_client, get_cookie_password
+    from fastapi.responses import JSONResponse
 
     # Get client IP for audit logging
     client_ip = req.client.host if req.client else None
     user_agent = req.headers.get("user-agent")
 
     try:
-        # Exchange authorization code for access token
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{WORKOS_BASE_URL}/user_management/authenticate",
-                json={
-                    "client_id": config["client_id"],
-                    "client_secret": config["api_key"],
-                    "grant_type": "authorization_code",
-                    "code": request.code,
-                },
-                headers={"Content-Type": "application/json"}
-            )
+        # Get WorkOS client and cookie password
+        workos_client = get_workos_client()
+        cookie_password = get_cookie_password()
 
-            if response.status_code != 200:
-                logger.error(f"WorkOS authentication failed: {response.status_code} - {response.text}")
-
-                # Log failed login attempt
-                await audit_logger.log_auth(
-                    action="auth.login_failed",
-                    success=False,
-                    error_message=f"WorkOS error: {response.status_code}",
-                    ip_address=client_ip,
-                    user_agent=user_agent,
-                )
-
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"WorkOS authentication failed: {response.text}"
-                )
-
-            auth_data = response.json()
+        # Exchange authorization code for sealed session using WorkOS SDK
+        auth_response = workos_client.user_management.authenticate_with_code(
+            code=request.code,
+            session={
+                "seal_session": True,
+                "cookie_password": cookie_password,
+            }
+        )
 
         # Extract user info from WorkOS response
-        workos_user = auth_data.get("user", {})
-        user_id = workos_user.get("id")
-        email = workos_user.get("email")
-        first_name = workos_user.get("first_name")
-        last_name = workos_user.get("last_name")
+        workos_user = auth_response.user
+        user_id = workos_user.id
+        email = workos_user.email
+        first_name = workos_user.first_name or ""
+        last_name = workos_user.last_name or ""
+        sealed_session = auth_response.sealed_session
 
         if not user_id or not email:
             raise HTTPException(
@@ -176,10 +162,8 @@ async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str,
 
         logger.info(f"User authenticated: {email} (workspace: {workspace.slug})")
 
-        # Return access token and enriched user info
-        return {
-            "access_token": auth_data.get("access_token"),
-            "refresh_token": auth_data.get("refresh_token"),
+        # Create response with user info (NO tokens in JSON - security best practice)
+        response_data = {
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -193,8 +177,29 @@ async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str,
             },
         }
 
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error during WorkOS authentication: {e}")
+        # Set HTTP-only session cookie (prevents XSS attacks)
+        response = JSONResponse(response_data)
+        response.set_cookie(
+            key="wos_session",
+            value=sealed_session,
+            httponly=True,  # Cannot be accessed by JavaScript
+            secure=req.url.scheme == "https",  # HTTPS only in production
+            samesite="lax",  # CSRF protection
+            max_age=3600 * 24 * 7,  # 7 days
+        )
+
+        return response
+
+    except ValueError as e:
+        # WorkOS not configured or cookie password missing
+        logger.error(f"Configuration error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        logger.error(f"Authentication error: {e}")
 
         await audit_logger.log_auth(
             action="auth.login_failed",
@@ -211,91 +216,79 @@ async def auth_callback(request: AuthCallbackRequest, req: Request) -> Dict[str,
 
 
 @router.get("/user")
-async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Dict[str, Any]:
+async def get_user_info(req: Request) -> Dict[str, Any]:
     """Get current authenticated user info.
 
-    Requires valid JWT token in Authorization header.
+    Reads session from HTTP-only cookie (secure).
     Returns user details including workspace info and permissions.
     """
-    if not credentials:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-
-    token = credentials.credentials
-    config = await get_workos_config()
+    from .auth import get_current_user as get_user_from_cookie
 
     try:
-        # Verify token via WorkOS userinfo endpoint
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{config['authkit_domain']}/oauth2/userinfo",
-                headers={"Authorization": f"Bearer {token}"},
-            )
+        # Get user from cookie-based dependency
+        user_data = await get_user_from_cookie(req)
 
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid or expired token"
-                )
+        return {
+            "authenticated": True,
+            "user": user_data
+        }
 
-            user_data = response.json()
+    except HTTPException:
+        # Re-raise HTTP exceptions (401, etc.)
+        raise
 
-            # Get user from database
-            from .database import get_db_session
-            from sqlalchemy import select
-            from .models import User
-
-            async with get_db_session() as session:
-                result = await session.execute(
-                    select(User).where(User.id == user_data.get("sub"))
-                )
-                user = result.scalar_one_or_none()
-
-                if not user:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="User not found in database"
-                    )
-
-                return {
-                    "authenticated": True,
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                        "workspace_id": user.workspace_id,
-                        "is_super_admin": user.is_super_admin,
-                        "mfa_enabled": user.mfa_enabled,
-                    }
-                }
-
-    except httpx.HTTPError as e:
+    except Exception as e:
+        logger.error(f"Error getting user info: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to verify token: {str(e)}"
+            detail=f"Failed to get user info: {str(e)}"
         )
 
 
 @router.post("/logout")
-async def logout(
-    req: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Dict[str, str]:
+async def logout(req: Request):
     """Log out the current user.
 
-    Logs the logout event for audit purposes.
-    The frontend should also clear the stored token.
+    This endpoint:
+    1. Gets session ID from cookie
+    2. Deletes session cookie
+    3. Redirects to WorkOS logout URL (ends session at WorkOS)
+    4. Logs logout event for audit
+
+    WorkOS will redirect user to app homepage after logout.
     """
+    from .auth import get_logout_url as get_workos_logout_url
+    from fastapi.responses import RedirectResponse
+
     client_ip = req.client.host if req.client else None
     user_agent = req.headers.get("user-agent")
 
-    # Log logout event
-    # Note: Without proper JWT verification, we can't get user details
+    # Get session cookie
+    session_data = req.cookies.get("wos_session")
+
+    if session_data:
+        try:
+            # Get WorkOS logout URL
+            logout_url = await get_workos_logout_url(session_data)
+
+            # Log logout event
+            await audit_logger.log_auth(
+                action="auth.logout",
+                success=True,
+                ip_address=client_ip,
+                user_agent=user_agent,
+            )
+
+            # Delete session cookie and redirect to WorkOS logout
+            response = RedirectResponse(url=logout_url, status_code=302)
+            response.delete_cookie("wos_session")
+            return response
+
+        except Exception as e:
+            logger.error(f"Logout error: {e}")
+            # Continue to fallback logout
+
+    # Fallback: No session or error - just delete cookie
     await audit_logger.log_auth(
         action="auth.logout",
         success=True,
@@ -303,4 +296,6 @@ async def logout(
         user_agent=user_agent,
     )
 
-    return {"message": "Logged out successfully"}
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie("wos_session")
+    return response
