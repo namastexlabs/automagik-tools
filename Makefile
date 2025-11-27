@@ -106,12 +106,15 @@ define check_node
 endef
 
 # Interactive user prompt with yes/no question
+# Returns: exit 0 if Yes, exit 1 if No
 define prompt_user
 	@read -p "$(1) [y/N] " -n 1 -r REPLY; \
 	echo; \
-	if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
-		echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		exit 0; \
+	else \
+		echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+		exit 1; \
 	fi
 endef
 
@@ -243,47 +246,157 @@ help: ## 🛠️ Show this help message
 # 🚀 Installation & Setup
 # ===========================================
 .PHONY: install install-full install-deps install-pm2 install-systemd
-install: ## $(ROCKET) Install all dependencies (Python + Node.js UI)
-	$(call print_status,Installing automagik-tools...)
+install: ## $(ROCKET) Install automagik-tools (interactive)
+	@$(call show_automagik_logo)
+	$(call print_status,Starting automagik-tools installation...)
+	@echo ""
+
 	@# Phase 1: Prerequisites and environment
+	$(call print_status,Phase 1/6: Checking prerequisites...)
 	@$(call check_prerequisites)
 	@$(call ensure_env_file)
+	$(call print_success,Prerequisites verified!)
+	@echo ""
 
 	@# Phase 2: Python dependencies
-	$(call print_status,Installing Python dependencies...)
+	$(call print_status,Phase 2/6: Installing Python dependencies...)
 	@$(UV) sync --all-extras
 	@if [ ! -d ".venv" ]; then \
 		$(call print_error,Virtual environment creation failed); \
 		exit 1; \
 	fi
 	$(call print_success,Python dependencies installed!)
+	@echo ""
 
-	@# Phase 3: Node.js UI dependencies
-	$(call print_status,Installing Node.js UI dependencies...)
+	@# Phase 3: Node.js UI dependencies and build
+	$(call print_status,Phase 3/6: Installing and building Node.js UI...)
 	@$(call check_node)
-	@cd automagik_tools/hub_ui && pnpm install
-	@if [ ! -d "automagik_tools/hub_ui/node_modules" ]; then \
-		$(call print_error,Node.js dependencies installation failed); \
-		exit 1; \
-	fi
-	$(call print_success,Node.js UI dependencies installed!)
-
-	@# Phase 4: Build UI
-	$(call print_status,Building UI...)
+	@cd automagik_tools/hub_ui && pnpm install --silent
 	@cd automagik_tools/hub_ui && pnpm run build
 	@if [ ! -f "automagik_tools/hub_ui/dist/index.html" ]; then \
 		$(call print_error,UI build failed); \
 		exit 1; \
 	fi
 	$(call print_success,UI built successfully!)
+	@echo ""
 
-	@# Summary and next steps
-	$(call print_success_with_logo,Development environment ready!)
-	@echo -e "$(FONT_CYAN)💡 Optional: Install PM2 and systemd service$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)make install-pm2$(FONT_RESET)        # Install PM2 process manager"
-	@echo -e "  $(FONT_PURPLE)make install-systemd$(FONT_RESET)    # Install systemd service (Linux)"
-	@echo -e "$(FONT_CYAN)💡 Or install everything:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)make install-full$(FONT_RESET)"
+	@# Phase 4: PM2 Setup (optional, smart detection)
+	$(call print_status,Phase 4/6: PM2 Process Manager)
+	@if command -v pm2 >/dev/null 2>&1; then \
+		PM2_VERSION=$$(pm2 --version 2>/dev/null || echo "unknown"); \
+		$(call print_success,PM2 $$PM2_VERSION already installed); \
+	else \
+		$(call print_warning,PM2 not installed); \
+		echo -e "$(FONT_CYAN)PM2 is a process manager for Node.js applications.$(FONT_RESET)"; \
+		echo -e "$(FONT_CYAN)Features: auto-restart, log management, monitoring$(FONT_RESET)"; \
+		$(call prompt_user,Install PM2 globally?) || exit 0; \
+		$(call print_status,Installing PM2...); \
+		npm install -g pm2 || { \
+			$(call print_error,PM2 installation failed); \
+			echo -e "$(FONT_YELLOW)💡 Try: sudo npm install -g pm2$(FONT_RESET)"; \
+			exit 1; \
+		}; \
+		PM2_VERSION=$$(pm2 --version); \
+		$(call print_success,PM2 $$PM2_VERSION installed!); \
+		pm2 update 2>/dev/null || true; \
+	fi
+	@echo ""
+
+	@# Phase 5: Configure PM2 and setup ecosystem
+	@if command -v pm2 >/dev/null 2>&1; then \
+		$(call print_status,Phase 5/6: Configuring PM2...); \
+		pm2 install pm2-logrotate 2>/dev/null || true; \
+		pm2 set pm2-logrotate:max_size 100M 2>/dev/null || true; \
+		pm2 set pm2-logrotate:retain 7 2>/dev/null || true; \
+		pm2 update 2>/dev/null || true; \
+		$(call print_success,PM2 configured!); \
+		echo ""; \
+		$(call print_status,Phase 6/6: Service Setup); \
+		$(call prompt_user,Start automagik-tools service now?) || { \
+			$(call print_info,Service not started); \
+			echo ""; \
+			$(MAKE) install-complete-skipped; \
+			exit 0; \
+		}; \
+		$(call print_status,Starting service...); \
+		pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart "Tools Hub" 2>/dev/null; \
+		pm2 save --force; \
+		if [[ "$$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then \
+			pm2 startup systemd -u $$USER --hp $$HOME 2>/dev/null || true; \
+		fi; \
+		$(call print_success,Service started!); \
+		echo ""; \
+		$(call print_status,Running health checks...); \
+		sleep 3; \
+		$(MAKE) health 2>/dev/null || $(call print_warning,Health check failed - service may need more time); \
+		echo ""; \
+		$(call print_status,Service Status:); \
+		pm2 status; \
+		echo ""; \
+		$(call prompt_user,View recent logs?) && { \
+			echo ""; \
+			pm2 logs "Tools Hub" --lines 50 --nostream; \
+			echo ""; \
+		} || true; \
+		$(MAKE) install-complete; \
+	else \
+		$(call print_success,Phase 5/6: Skipped (no PM2)); \
+		$(call print_success,Phase 6/6: Skipped (no PM2)); \
+		echo ""; \
+		$(MAKE) install-complete-no-pm2; \
+	fi
+
+.PHONY: install-complete install-complete-skipped install-complete-no-pm2
+
+install-complete:
+	@echo ""
+	$(call print_success_with_logo,Installation complete! 🎉)
+	@echo ""
+	@echo -e "$(FONT_GREEN)✨ automagik-tools is now running!$(FONT_RESET)"
+	@echo ""
+	@echo -e "$(FONT_CYAN)📊 Useful commands:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)pm2 status$(FONT_RESET)           # Check service status"
+	@echo -e "  $(FONT_PURPLE)pm2 logs \"Tools Hub\"$(FONT_RESET)  # View live logs"
+	@echo -e "  $(FONT_PURPLE)pm2 restart \"Tools Hub\"$(FONT_RESET) # Restart service"
+	@echo -e "  $(FONT_PURPLE)pm2 stop \"Tools Hub\"$(FONT_RESET)    # Stop service"
+	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)          # Run health checks"
+	@echo -e "  $(FONT_PURPLE)make update$(FONT_RESET)          # Update to latest version"
+	@echo ""
+	@echo -e "$(FONT_CYAN)🌐 Access the Hub:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)http://localhost:8885$(FONT_RESET)  # Web UI"
+	@echo -e "  $(FONT_PURPLE)http://localhost:8884$(FONT_RESET)  # SSE Server"
+	@echo ""
+	@echo -e "$(FONT_GREEN)Happy automating! 🚀$(FONT_RESET)"
+	@echo ""
+
+install-complete-skipped:
+	@echo ""
+	$(call print_success_with_logo,Installation complete!)
+	@echo ""
+	@echo -e "$(FONT_CYAN)ℹ️  Service not started (as requested)$(FONT_RESET)"
+	@echo ""
+	@echo -e "$(FONT_CYAN)🚀 To start the service later:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make start-local$(FONT_RESET)     # Start with PM2"
+	@echo ""
+	@echo -e "$(FONT_CYAN)📊 Other commands:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make serve-all$(FONT_RESET)      # Run directly (no PM2)"
+	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)         # Check health"
+	@echo ""
+
+install-complete-no-pm2:
+	@echo ""
+	$(call print_success_with_logo,Installation complete!)
+	@echo ""
+	@echo -e "$(FONT_CYAN)ℹ️  Dependencies installed (PM2 not installed)$(FONT_RESET)"
+	@echo ""
+	@echo -e "$(FONT_CYAN)🚀 To run automagik-tools:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make serve-all$(FONT_RESET)      # Start SSE server"
+	@echo -e "  $(FONT_PURPLE)make serve-dual$(FONT_RESET)     # Start SSE + HTTP"
+	@echo ""
+	@echo -e "$(FONT_CYAN)💡 To install PM2 later:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)npm install -g pm2$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make start-local$(FONT_RESET)    # Start with PM2"
+	@echo ""
 
 install-pm2: ## 🔧 Install PM2 globally (interactive)
 	$(call print_status,Checking PM2 installation...)
@@ -295,7 +408,7 @@ install-pm2: ## 🔧 Install PM2 globally (interactive)
 	fi
 
 	@# Interactive prompt
-	$(call print_warning,PM2 not found)
+	@$(call print_warning,PM2 not found)
 	@echo -e "$(FONT_CYAN)PM2 is a process manager for Node.js applications.$(FONT_RESET)"
 	@echo -e "$(FONT_CYAN)Features: auto-restart, log management, monitoring$(FONT_RESET)"
 	@echo -e "$(FONT_CYAN)Will install globally: npm install -g pm2$(FONT_RESET)"
@@ -803,19 +916,19 @@ start-local: ## 🚀 Start service using local PM2 ecosystem
 		exit 1; \
 	fi
 	@$(call ensure_env_file)
-	@pm2 start ecosystem.config.js
+	@pm2 start ecosystem.config.cjs
 	@$(call print_success,Service started with local PM2!)
 
 stop-local: ## 🛑 Stop service using local PM2 ecosystem
 	$(call print_status,Stopping automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 stop automagik-tools 2>/dev/null || true
+	@pm2 stop "Tools Hub" 2>/dev/null || true
 	@$(call print_success,Service stopped!)
 
 restart-local: ## 🔄 Restart service using local PM2 ecosystem
 	$(call print_status,Restarting automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 restart automagik-tools 2>/dev/null || pm2 start ecosystem.config.js
+	@pm2 restart "Tools Hub" 2>/dev/null || pm2 start ecosystem.config.cjs
 	@$(call print_success,Service restarted!)
 
 install-service: ## 🔧 Install local PM2 service for automagik-tools
@@ -840,7 +953,7 @@ restart-service: ## 🔄 Restart local PM2 service
 uninstall-service: ## 🗑️ Uninstall local PM2 service
 	$(call print_status,Uninstalling local PM2 service)
 	@$(call check_pm2)
-	@pm2 delete automagik-tools 2>/dev/null || true
+	@pm2 delete "Tools Hub" 2>/dev/null || true
 	@pm2 save --force
 	@$(call print_success,Local PM2 service uninstalled!)
 
@@ -855,30 +968,32 @@ endef
 service-status: ## 📊 Check automagik-tools PM2 service status
 	$(call print_status,Checking PM2 service status)
 	@$(call check_pm2)
-	@pm2 show automagik-tools 2>/dev/null || echo "Service not found"
+	@pm2 show "Tools Hub" 2>/dev/null || echo "Service not found"
 
 .PHONY: logs logs-follow
 logs: ## 📄 Show service logs (N=lines)
 	$(eval N := $(or $(N),30))
 	$(call print_status,Recent logs)
-	@pm2 logs automagik-tools --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "Tools Hub" --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 logs-follow: ## 📄 Follow service logs in real-time
 	$(call print_status,Following logs)
 	@echo -e "$(FONT_YELLOW)Press Ctrl+C to stop following logs$(FONT_RESET)"
-	@pm2 logs automagik-tools 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "Tools Hub" 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 .PHONY: health
 health: ## 🩺 Check service health endpoints
 	$(call print_status,Checking automagik-tools health endpoints)
-	@echo -e "$(FONT_CYAN)Testing SSE endpoint (port $(PORT)):$(FONT_RESET)"
-	@curl -s http://$(HOST):$(PORT)/tools > /dev/null && \
+	@FAILED=0; \
+	echo -e "$(FONT_CYAN)Testing SSE endpoint (port 8884):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):8884/tools > /dev/null && \
 		echo -e "  $(FONT_GREEN)✅ SSE endpoint responding$(FONT_RESET)" || \
-		echo -e "  $(FONT_RED)❌ SSE endpoint not responding$(FONT_RESET)"
-	@echo -e "$(FONT_CYAN)Testing HTTP endpoint (port 8885):$(FONT_RESET)"
-	@curl -s http://$(HOST):8885/tools > /dev/null && \
-		echo -e "  $(FONT_GREEN)✅ HTTP endpoint responding$(FONT_RESET)" || \
-		echo -e "  $(FONT_RED)❌ HTTP endpoint not responding$(FONT_RESET)"
+		{ echo -e "  $(FONT_RED)❌ SSE endpoint not responding$(FONT_RESET)"; FAILED=1; }; \
+	echo -e "$(FONT_CYAN)Testing HTTP Hub endpoint (port 8885):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):8885/api/health > /dev/null && \
+		echo -e "  $(FONT_GREEN)✅ HTTP Hub endpoint responding$(FONT_RESET)" || \
+		{ echo -e "  $(FONT_RED)❌ HTTP Hub endpoint not responding$(FONT_RESET)"; FAILED=1; }; \
+	exit $$FAILED
 
 .PHONY: update
 update: ## 🔄 Update installation (git pull + deps + restart + health check)
@@ -898,7 +1013,7 @@ update: ## 🔄 Update installation (git pull + deps + restart + health check)
 
 	@# Step 3: Restart PM2 service if running
 	$(call print_status,Restarting PM2 service...)
-	@if command -v pm2 >/dev/null 2>&1 && pm2 show automagik-tools >/dev/null 2>&1; then \
+	@if command -v pm2 >/dev/null 2>&1 && pm2 show "Tools Hub" >/dev/null 2>&1; then \
 		$(MAKE) restart-local; \
 		echo -e "$(FONT_CYAN)⏳ Waiting for service to restart...$(FONT_RESET)"; \
 		sleep 3; \
