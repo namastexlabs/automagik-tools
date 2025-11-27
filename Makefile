@@ -85,6 +85,36 @@ define ensure_env_file
 	fi
 endef
 
+# Check Node.js and pnpm availability
+define check_node
+	@if ! command -v node >/dev/null 2>&1; then \
+		$(call print_error,Node.js not found); \
+		echo -e "$(FONT_YELLOW)💡 Install Node.js:$(FONT_RESET)"; \
+		echo -e "  • Download from: https://nodejs.org/"; \
+		echo -e "  • Or use nvm: https://github.com/nvm-sh/nvm"; \
+		exit 1; \
+	fi; \
+	if ! command -v pnpm >/dev/null 2>&1; then \
+		$(call print_error,pnpm not found); \
+		echo -e "$(FONT_YELLOW)💡 Install pnpm:$(FONT_RESET)"; \
+		echo -e "  • Run: npm install -g pnpm"; \
+		exit 1; \
+	fi; \
+	NODE_VERSION=$$(node --version); \
+	PNPM_VERSION=$$(pnpm --version); \
+	echo -e "$(FONT_GREEN)$(CHECKMARK) Node.js $$NODE_VERSION, pnpm $$PNPM_VERSION$(FONT_RESET)"
+endef
+
+# Interactive user prompt with yes/no question
+define prompt_user
+	@read -p "$(1) [y/N] " -n 1 -r REPLY; \
+	echo; \
+	if [[ ! $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo -e "$(FONT_YELLOW)Skipped.$(FONT_RESET)"; \
+		exit 0; \
+	fi
+endef
+
 define show_automagik_logo
 	[ -z "$$AUTOMAGIK_QUIET_LOGO" ] && { \
 		echo ""; \
@@ -136,8 +166,10 @@ help: ## 🛠️ Show this help message
 	@echo -e "$(FONT_PURPLE)✨ \"The largest collection of MCP tools, with trivially easy development\"$(FONT_RESET)"
 	@echo ""
 	@echo -e "$(FONT_CYAN)$(ROCKET) Quick Start:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)install-full$(FONT_RESET)    Full system install (recommended for new setups)"
-	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Quick install (if dependencies already exist)"
+	@echo -e "  $(FONT_PURPLE)install-full$(FONT_RESET)    Full installation (system + deps + PM2 + systemd)"
+	@echo -e "  $(FONT_PURPLE)install$(FONT_RESET)         Install all dependencies (Python + Node.js UI)"
+	@echo -e "  $(FONT_PURPLE)install-pm2$(FONT_RESET)     Install PM2 globally (interactive)"
+	@echo -e "  $(FONT_PURPLE)install-systemd$(FONT_RESET) Install systemd service (interactive, Linux)"
 	@echo -e "  $(FONT_PURPLE)list$(FONT_RESET)            List available tools"
 	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on single transport (SSE)"
 	@echo -e "  $(FONT_PURPLE)serve-dual$(FONT_RESET)      Serve all tools on dual transports (SSE+HTTP)"
@@ -209,23 +241,199 @@ help: ## 🛠️ Show this help message
 # ===========================================
 # 🚀 Installation & Setup
 # ===========================================
-.PHONY: install install-full install-deps
-install: ## $(ROCKET) Quick install (assumes dependencies exist)
-	$(call print_status,Installing automagik-tools (quick mode)...)
+.PHONY: install install-full install-deps install-pm2 install-systemd
+install: ## $(ROCKET) Install all dependencies (Python + Node.js UI)
+	$(call print_status,Installing automagik-tools...)
+	@# Phase 1: Prerequisites and environment
 	@$(call check_prerequisites)
 	@$(call ensure_env_file)
-	@$(UV) sync --all-extras
-	$(call print_success_with_logo,Development environment ready!)
-	@echo -e "$(FONT_CYAN)💡 Try: make list$(FONT_RESET)"
 
-install-full: ## $(ROCKET) Full system install (dependencies + environment)
+	@# Phase 2: Python dependencies
+	$(call print_status,Installing Python dependencies...)
+	@$(UV) sync --all-extras
+	@if [ ! -d ".venv" ]; then \
+		$(call print_error,Virtual environment creation failed); \
+		exit 1; \
+	fi
+	$(call print_success,Python dependencies installed!)
+
+	@# Phase 3: Node.js UI dependencies
+	$(call print_status,Installing Node.js UI dependencies...)
+	@$(call check_node)
+	@cd automagik_tools/hub_ui && pnpm install
+	@if [ ! -d "automagik_tools/hub_ui/node_modules" ]; then \
+		$(call print_error,Node.js dependencies installation failed); \
+		exit 1; \
+	fi
+	$(call print_success,Node.js UI dependencies installed!)
+
+	@# Phase 4: Build UI
+	$(call print_status,Building UI...)
+	@cd automagik_tools/hub_ui && pnpm run build
+	@if [ ! -f "automagik_tools/hub_ui/dist/index.html" ]; then \
+		$(call print_error,UI build failed); \
+		exit 1; \
+	fi
+	$(call print_success,UI built successfully!)
+
+	@# Summary and next steps
+	$(call print_success_with_logo,Development environment ready!)
+	@echo -e "$(FONT_CYAN)💡 Optional: Install PM2 and systemd service$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make install-pm2$(FONT_RESET)        # Install PM2 process manager"
+	@echo -e "  $(FONT_PURPLE)make install-systemd$(FONT_RESET)    # Install systemd service (Linux)"
+	@echo -e "$(FONT_CYAN)💡 Or install everything:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make install-full$(FONT_RESET)"
+
+install-pm2: ## 🔧 Install PM2 globally (interactive)
+	$(call print_status,Checking PM2 installation...)
+	@# Check if already installed
+	@if command -v pm2 >/dev/null 2>&1; then \
+		PM2_VERSION=$$(pm2 --version 2>/dev/null || echo "unknown"); \
+		$(call print_success,PM2 $$PM2_VERSION already installed); \
+		exit 0; \
+	fi
+
+	@# Interactive prompt
+	$(call print_warning,PM2 not found)
+	@echo -e "$(FONT_CYAN)PM2 is a process manager for Node.js applications.$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)Features: auto-restart, log management, monitoring$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)Will install globally: npm install -g pm2$(FONT_RESET)"
+	@$(call prompt_user,Install PM2 globally?)
+
+	@# Install PM2
+	$(call print_status,Installing PM2...)
+	@npm install -g pm2 || { \
+		$(call print_error,PM2 installation failed); \
+		echo -e "$(FONT_YELLOW)💡 Check npm permissions:$(FONT_RESET)"; \
+		echo -e "  • May need sudo: sudo npm install -g pm2"; \
+		echo -e "  • Or fix npm permissions: https://docs.npmjs.com/resolving-eacces-permissions-errors"; \
+		exit 1; \
+	}
+
+	@# Verify installation
+	@if ! command -v pm2 >/dev/null 2>&1; then \
+		$(call print_error,PM2 installation verification failed); \
+		exit 1; \
+	fi
+
+	@PM2_VERSION=$$(pm2 --version)
+	$(call print_success,PM2 $$PM2_VERSION installed successfully!)
+
+	@# Configure PM2
+	$(call print_status,Configuring PM2...)
+	@pm2 install pm2-logrotate 2>/dev/null || true
+	@pm2 set pm2-logrotate:max_size 100M 2>/dev/null || true
+	@pm2 set pm2-logrotate:retain 7 2>/dev/null || true
+	$(call print_success,PM2 configured!)
+
+	@echo -e "$(FONT_CYAN)💡 Next steps:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make setup-pm2$(FONT_RESET)          # Configure PM2 ecosystem"
+	@echo -e "  $(FONT_PURPLE)make start-local$(FONT_RESET)        # Start with PM2"
+
+install-systemd: ## 🔧 Install systemd service (interactive, Linux only)
+	@# OS check - Linux only
+	@if [[ "$$(uname -s)" != "Linux" ]]; then \
+		$(call print_info,systemd service only available on Linux); \
+		echo -e "$(FONT_CYAN)💡 On macOS, use: make start-local$(FONT_RESET)"; \
+		exit 0; \
+	fi
+
+	@# systemd availability check
+	@if ! command -v systemctl >/dev/null 2>&1; then \
+		$(call print_warning,systemd not found - skipping service installation); \
+		exit 0; \
+	fi
+
+	@# PM2 prerequisite check
+	@if ! command -v pm2 >/dev/null 2>&1; then \
+		$(call print_error,PM2 not found - install PM2 first); \
+		echo -e "$(FONT_YELLOW)💡 Run: make install-pm2$(FONT_RESET)"; \
+		exit 1; \
+	fi
+
+	@# Interactive prompt
+	$(call print_status,systemd service installation)
+	@echo -e "$(FONT_CYAN)This will install automagik-tools as a systemd service.$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)Benefits: Auto-start on system boot$(FONT_RESET)"
+	@echo -e "$(FONT_YELLOW)⚠️  Requires sudo permissions$(FONT_RESET)"
+	@$(call prompt_user,Install systemd service?)
+
+	@# Detect paths
+	$(call print_status,Detecting system configuration...)
+	@USER=$$(whoami); \
+	WORKDIR=$$(pwd); \
+	PM2_PATH=$$(command -v pm2); \
+	PM2_DIR=$$(dirname "$$PM2_PATH"); \
+	\
+	echo -e "$(FONT_CYAN)Configuration:$(FONT_RESET)"; \
+	echo -e "  User: $$USER"; \
+	echo -e "  WorkDir: $$WORKDIR"; \
+	echo -e "  PM2: $$PM2_PATH"; \
+	\
+	$(call print_status,Creating service file...); \
+	sed -e "s|User=.*|User=$$USER|" \
+	    -e "s|WorkingDirectory=.*|WorkingDirectory=$$WORKDIR|" \
+	    -e "s|Environment=\"PATH=.*|Environment=\"PATH=$$PM2_DIR:/usr/local/bin:/usr/bin:/bin\"|" \
+	    -e "s|Environment=\"PM2_HOME=.*|Environment=\"PM2_HOME=$$HOME/.pm2\"|" \
+	    -e "s|ExecStart=.*|ExecStart=$$PM2_PATH start ecosystem.config.cjs|" \
+	    -e "s|ExecStop=.*|ExecStop=$$PM2_PATH stop ecosystem.config.cjs|" \
+	    -e "s|ExecReload=.*|ExecReload=$$PM2_PATH restart ecosystem.config.cjs|" \
+	    automagik-tools.service > /tmp/automagik-tools.service.tmp; \
+	\
+	$(call print_status,Installing service (requires sudo)...); \
+	if sudo cp /tmp/automagik-tools.service.tmp /etc/systemd/system/automagik-tools.service; then \
+		sudo systemctl daemon-reload; \
+		sudo systemctl enable automagik-tools; \
+		rm /tmp/automagik-tools.service.tmp; \
+		$(call print_success,systemd service installed and enabled!); \
+		echo -e "$(FONT_CYAN)💡 Control the service:$(FONT_RESET)"; \
+		echo -e "  $(FONT_PURPLE)sudo systemctl start automagik-tools$(FONT_RESET)"; \
+		echo -e "  $(FONT_PURPLE)sudo systemctl stop automagik-tools$(FONT_RESET)"; \
+		echo -e "  $(FONT_PURPLE)sudo systemctl status automagik-tools$(FONT_RESET)"; \
+		echo -e "  $(FONT_PURPLE)sudo systemctl restart automagik-tools$(FONT_RESET)"; \
+	else \
+		rm /tmp/automagik-tools.service.tmp 2>/dev/null || true; \
+		$(call print_error,Failed to install systemd service); \
+		echo -e "$(FONT_YELLOW)💡 Check sudo permissions$(FONT_RESET)"; \
+		exit 1; \
+	fi
+
+install-full: ## $(ROCKET) Full installation (system + deps + PM2 + systemd)
 	$(call print_status,Running full system installation...)
+
+	@# Phase 1: System dependencies (Python, uv, make, git)
 	@if [ -x "./scripts/install.sh" ]; then \
 		./scripts/install.sh; \
 	else \
 		$(call print_error,scripts/install.sh not found or not executable); \
-		echo -e "$(FONT_YELLOW)Please ensure scripts/install.sh exists and is executable$(FONT_RESET)"; \
 		exit 1; \
+	fi
+
+	@# Phase 2: Application dependencies
+	@$(MAKE) install
+
+	@# Phase 3: Process management (interactive, optional)
+	@echo ""
+	@echo -e "$(FONT_CYAN)=== Optional: Process Management ===$(FONT_RESET)"
+	@$(MAKE) install-pm2 || $(call print_warning,PM2 installation skipped - you can install later with: make install-pm2)
+
+	@# Phase 4: PM2 setup (if PM2 was installed)
+	@if command -v pm2 >/dev/null 2>&1; then \
+		$(MAKE) setup-pm2 || $(call print_warning,PM2 setup skipped); \
+	fi
+
+	@# Phase 5: systemd service (interactive, optional, Linux only)
+	@echo ""
+	@echo -e "$(FONT_CYAN)=== Optional: System Service ===$(FONT_RESET)"
+	@$(MAKE) install-systemd || $(call print_warning,systemd installation skipped - you can install later with: make install-systemd)
+
+	@# Summary
+	$(call print_success_with_logo,Complete installation finished!)
+	@echo -e "$(FONT_CYAN)💡 Quick start:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make list$(FONT_RESET)            # List available tools"
+	@echo -e "  $(FONT_PURPLE)make serve-all$(FONT_RESET)       # Serve all tools via stdio"
+	@if command -v pm2 >/dev/null 2>&1; then \
+		echo -e "  $(FONT_PURPLE)make start-local$(FONT_RESET)     # Start with PM2"; \
 	fi
 
 install-deps: install-full ## $(ROCKET) Alias for install-full
@@ -637,7 +845,8 @@ uninstall-service: ## 🗑️ Uninstall local PM2 service
 
 define check_pm2
 	@if ! command -v pm2 >/dev/null 2>&1; then \
-		$(call print_error,PM2 not found. Install with: npm install -g pm2); \
+		$(call print_error,PM2 not found); \
+		echo -e "$(FONT_YELLOW)💡 Install with: make install-pm2$(FONT_RESET)"; \
 		exit 1; \
 	fi
 endef
@@ -669,6 +878,47 @@ health: ## 🩺 Check service health endpoints
 	@curl -s http://$(HOST):8885/tools > /dev/null && \
 		echo -e "  $(FONT_GREEN)✅ HTTP endpoint responding$(FONT_RESET)" || \
 		echo -e "  $(FONT_RED)❌ HTTP endpoint not responding$(FONT_RESET)"
+
+.PHONY: update
+update: ## 🔄 Update installation (git pull + deps + restart + health check)
+	$(call print_status,Updating automagik-tools...)
+
+	@# Step 1: Git pull
+	$(call print_status,Pulling latest changes from git...)
+	@git pull || { \
+		$(call print_error,Git pull failed); \
+		exit 1; \
+	}
+	$(call print_success,Latest changes pulled!)
+
+	@# Step 2: Update dependencies and rebuild
+	$(call print_status,Updating dependencies and rebuilding...)
+	@$(MAKE) install
+
+	@# Step 3: Restart PM2 service if running
+	$(call print_status,Restarting PM2 service...)
+	@if command -v pm2 >/dev/null 2>&1 && pm2 show automagik-tools >/dev/null 2>&1; then \
+		$(MAKE) restart-local; \
+		echo -e "$(FONT_CYAN)⏳ Waiting for service to restart...$(FONT_RESET)"; \
+		sleep 3; \
+	else \
+		$(call print_warning,PM2 service not running - skipping restart); \
+	fi
+
+	@# Step 4: Health check
+	$(call print_status,Running health checks...)
+	@sleep 2
+	@$(MAKE) health || { \
+		$(call print_warning,Health check failed - service may need more time to start); \
+	}
+
+	@# Success summary
+	@echo ""
+	$(call print_success_with_logo,Update completed successfully!)
+	@echo -e "$(FONT_CYAN)💡 Useful commands:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)make logs$(FONT_RESET)              # View recent logs"
+	@echo -e "  $(FONT_PURPLE)make service-status$(FONT_RESET)   # Check PM2 status"
+	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)           # Run health check again"
 
 # ===========================================
 # 🧹 Maintenance
