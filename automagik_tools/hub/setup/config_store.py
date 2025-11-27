@@ -318,6 +318,41 @@ class ConfigStore:
             "workos_cookie_password": cookie_password,
         }
 
+    async def get_google_oauth_credentials(self, workspace_id: str) -> Optional[Dict[str, str]]:
+        """Get Google OAuth credentials for a workspace.
+
+        Args:
+            workspace_id: Workspace identifier
+
+        Returns:
+            Dict with client_id and client_secret, or None if not configured
+        """
+        key_prefix = f"google_oauth.{workspace_id}"
+        client_id = await self.get(f"{key_prefix}.client_id")
+        client_secret = await self.get(f"{key_prefix}.client_secret")
+
+        if not client_id or not client_secret:
+            return None
+
+        return {
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+
+    async def set_google_oauth_credentials(
+        self, workspace_id: str, client_id: str, client_secret: str
+    ) -> None:
+        """Set Google OAuth credentials for a workspace.
+
+        Args:
+            workspace_id: Workspace identifier
+            client_id: Google OAuth client ID
+            client_secret: Google OAuth client secret (will be encrypted)
+        """
+        key_prefix = f"google_oauth.{workspace_id}"
+        await self.set(f"{key_prefix}.client_id", client_id, is_secret=False)
+        await self.set(f"{key_prefix}.client_secret", client_secret, is_secret=True)
+
 
 async def get_config_store() -> ConfigStore:
     """Get config store with database session.

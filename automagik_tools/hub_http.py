@@ -259,7 +259,9 @@ from .hub.auth.google import google_auth, credential_store
 
 # Initialize and inject DatabaseCredentialStore
 # This ensures Google tools use our DB instead of local files
-db_store = DatabaseCredentialStore()
+# TODO: Make workspace-aware for multi-tenant support
+# For now, use "default" workspace for single-tenant setups
+db_store = DatabaseCredentialStore(workspace_id="default")
 credential_store.set_credential_store(db_store)
 
 

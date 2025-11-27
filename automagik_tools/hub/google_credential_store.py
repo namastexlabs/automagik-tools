@@ -18,27 +18,86 @@ logger = logging.getLogger(__name__)
 class DatabaseCredentialStore(CredentialStore):
     """Credential store that uses the Hub's database (OAuthToken table)."""
 
-    def __init__(self, user_id_map: Optional[dict] = None):
+    def __init__(self, workspace_id: str, user_id_map: Optional[dict] = None):
         """
         Initialize the database credential store.
-        
+
         Args:
-            user_id_map: Optional mapping of email -> user_id. 
-                        If not provided, we might need a way to resolve user_id from email 
+            workspace_id: Workspace identifier for OAuth credential lookup
+            user_id_map: Optional mapping of email -> user_id.
+                        If not provided, we might need a way to resolve user_id from email
                         or assume email IS the user identifier for legacy compatibility.
         """
+        self.workspace_id = workspace_id
         self.user_id_map = user_id_map or {}
-        logger.info("DatabaseCredentialStore initialized")
+        self._credential_cache = {}  # In-memory cache for CLIENT_ID/SECRET
+        self._cache_expiry = None
+        logger.info(f"DatabaseCredentialStore initialized for workspace {workspace_id}")
 
     def _get_user_id(self, user_email: str) -> str:
         """
         Resolve user_email to user_id.
         For now, we'll assume the user_email IS the user_id if not found in map,
         or we need to look it up in the Users table.
-        
+
         TODO: robust user lookup.
         """
         return self.user_id_map.get(user_email, user_email)
+
+    def _get_oauth_credentials(self) -> dict:
+        """Get OAuth CLIENT_ID/SECRET from database with 5-minute caching.
+
+        Returns:
+            Dict with client_id and client_secret
+
+        Raises:
+            ValueError: If credentials not configured for this workspace
+        """
+        import time
+        from datetime import timedelta
+
+        # Check cache
+        now = time.time()
+        if self._credential_cache and self._cache_expiry and now < self._cache_expiry:
+            return self._credential_cache
+
+        # Load from database
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            raise RuntimeError(
+                "Cannot load OAuth credentials synchronously from async context. "
+                "Use async initialization pattern instead."
+            )
+
+        # Load asynchronously
+        creds = asyncio.run(self._get_oauth_credentials_async())
+
+        # Cache for 5 minutes
+        self._credential_cache = creds
+        self._cache_expiry = now + 300  # 5 minutes
+
+        return creds
+
+    async def _get_oauth_credentials_async(self) -> dict:
+        """Async implementation of OAuth credential loading."""
+        from automagik_tools.hub.setup import ConfigStore
+
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            creds = await config_store.get_google_oauth_credentials(self.workspace_id)
+
+            if not creds:
+                raise ValueError(
+                    f"Google OAuth credentials not configured for workspace {self.workspace_id}. "
+                    "Configure in tool catalogue settings."
+                )
+
+            return creds
 
     def get_credential(self, user_email: str) -> Optional[Credentials]:
         """Get credentials from database."""
@@ -103,12 +162,15 @@ class DatabaseCredentialStore(CredentialStore):
                     except (ValueError, TypeError):
                         pass
 
+                # Get OAuth credentials from database (workspace-scoped)
+                oauth_creds = self._get_oauth_credentials()
+
                 return Credentials(
                     token=creds_data.get("token"),
                     refresh_token=creds_data.get("refresh_token"),
-                    token_uri=creds_data.get("token_uri"),
-                    client_id=creds_data.get("client_id"),
-                    client_secret=creds_data.get("client_secret"),
+                    token_uri=creds_data.get("token_uri", "https://oauth2.googleapis.com/token"),
+                    client_id=oauth_creds["client_id"],
+                    client_secret=oauth_creds["client_secret"],
                     scopes=creds_data.get("scopes"),
                     expiry=expiry,
                 )
@@ -137,7 +199,7 @@ class DatabaseCredentialStore(CredentialStore):
                 # For this implementation, let's assume we store the full credentials dict in access_token
                 # to match LocalDirectoryCredentialStore's behavior of storing full JSON.
                 creds_data = json.loads(token_row.access_token)
-                
+
                 expiry = None
                 if creds_data.get("expiry"):
                     try:
@@ -147,12 +209,15 @@ class DatabaseCredentialStore(CredentialStore):
                     except (ValueError, TypeError):
                         pass
 
+                # Get OAuth credentials from database (workspace-scoped)
+                oauth_creds = await self._get_oauth_credentials_async()
+
                 return Credentials(
                     token=creds_data.get("token"),
                     refresh_token=creds_data.get("refresh_token"),
-                    token_uri=creds_data.get("token_uri"),
-                    client_id=creds_data.get("client_id"),
-                    client_secret=creds_data.get("client_secret"),
+                    token_uri=creds_data.get("token_uri", "https://oauth2.googleapis.com/token"),
+                    client_id=oauth_creds["client_id"],
+                    client_secret=oauth_creds["client_secret"],
                     scopes=creds_data.get("scopes"),
                     expiry=expiry,
                 )
