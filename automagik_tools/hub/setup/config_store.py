@@ -236,7 +236,7 @@ class ConfigStore:
             bind_address = "network" if bind_address == "0.0.0.0" else "localhost"
 
         if not port:
-            port = int(os.getenv("HUB_PORT", "8885"))
+            port = int(os.getenv("HUB_PORT", "8884"))
 
         return {
             "bind_address": bind_address,

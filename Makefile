@@ -369,8 +369,7 @@ install-complete:
 	@echo -e "  $(FONT_PURPLE)make update$(FONT_RESET)          # Update to latest version"
 	@echo ""
 	@echo -e "$(FONT_CYAN)🌐 Access the Hub:$(FONT_RESET)"
-	@echo -e "  $(FONT_PURPLE)http://localhost:8885$(FONT_RESET)  # Web UI"
-	@echo -e "  $(FONT_PURPLE)http://localhost:8884$(FONT_RESET)  # SSE Server"
+	@echo -e "  $(FONT_PURPLE)http://localhost:8884$(FONT_RESET)  # Hub (Web UI + API)"
 	@echo ""
 	@echo -e "$(FONT_GREEN)Happy automating! 🚀$(FONT_RESET)"
 	@echo ""
@@ -977,14 +976,14 @@ logs-follow: ## 📄 Follow service logs in real-time
 health: ## 🩺 Check service health endpoints
 	$(call print_status,Checking automagik-tools health endpoints)
 	@FAILED=0; \
-	echo -e "$(FONT_CYAN)Testing SSE endpoint (port 8884):$(FONT_RESET)"; \
-	curl -s --max-time 5 http://$(HOST):8884/tools > /dev/null && \
-		echo -e "  $(FONT_GREEN)✅ SSE endpoint responding$(FONT_RESET)" || \
-		{ echo -e "  $(FONT_RED)❌ SSE endpoint not responding$(FONT_RESET)"; FAILED=1; }; \
-	echo -e "$(FONT_CYAN)Testing HTTP Hub endpoint (port 8885):$(FONT_RESET)"; \
-	curl -s --max-time 5 http://$(HOST):8885/api/health > /dev/null && \
-		echo -e "  $(FONT_GREEN)✅ HTTP Hub endpoint responding$(FONT_RESET)" || \
-		{ echo -e "  $(FONT_RED)❌ HTTP Hub endpoint not responding$(FONT_RESET)"; FAILED=1; }; \
+	echo -e "$(FONT_CYAN)Testing health endpoint (port 8884):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):8884/api/health > /dev/null && \
+		echo -e "  $(FONT_GREEN)✅ Hub health check passed$(FONT_RESET)" || \
+		{ echo -e "  $(FONT_RED)❌ Hub health check failed$(FONT_RESET)"; FAILED=1; }; \
+	echo -e "$(FONT_CYAN)Testing info endpoint (port 8884):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):8884/api/info > /dev/null && \
+		echo -e "  $(FONT_GREEN)✅ Hub info endpoint responding$(FONT_RESET)" || \
+		{ echo -e "  $(FONT_YELLOW)⚠️  Hub info endpoint not responding (non-critical)$(FONT_RESET)"; }; \
 	exit $$FAILED
 
 .PHONY: update
