@@ -988,7 +988,23 @@ health: ## 🩺 Check service health endpoints
 .PHONY: update
 update: ## 🔄 Update installation (git pull + deps + restart + health check)
 	$(call print_status,Updating automagik-tools...)
+	$(call print_status,Checking for remote updates...)
+	@UP_TO_DATE=0; \
+	if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then \
+		if git fetch --quiet >/dev/null 2>&1 && git diff --quiet HEAD..@{u}; then \
+			UP_TO_DATE=1; \
+		fi; \
+	else \
+		echo -e "$(FONT_YELLOW)$(WARNING) No upstream tracking branch; running full update$(FONT_RESET)"; \
+	fi; \
+	if [ $$UP_TO_DATE -eq 1 ]; then \
+		echo -e "$(FONT_GREEN)$(CHECKMARK) Repository already up to date. Skipping dependency rebuild and service restart.$(FONT_RESET)"; \
+	else \
+		$(MAKE) _update_run; \
+	fi
 
+.PHONY: _update_run
+_update_run:
 	@# Step 1: Git pull
 	$(call print_status,Pulling latest changes from git...)
 	@git pull || { \
