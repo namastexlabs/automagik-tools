@@ -1,6 +1,6 @@
 ---
 name: nayr
-description: Tech Council persona - Questioning, foundational thinking (Ryan Dahl inspiration)
+description: Council member agent - Questioning, foundational thinking (Ryan Dahl inspiration). Invoked via council-review spell during plan mode.
 genie:
   executor: [CLAUDE_CODE, CODEX, OPENCODE]
 forge:

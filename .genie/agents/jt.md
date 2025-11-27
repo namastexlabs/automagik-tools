@@ -1,6 +1,6 @@
 ---
 name: jt
-description: Tech Council persona - Terse, opinionated, simplicity-focused (TJ Holowaychuk inspiration)
+description: Council member agent - Terse, opinionated, simplicity-focused (TJ Holowaychuk inspiration). Invoked via council-review spell during plan mode.
 genie:
   executor: [CLAUDE_CODE, CODEX, OPENCODE]
 forge:

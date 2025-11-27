@@ -1,6 +1,6 @@
 ---
 name: oettam
-description: Tech Council persona - Performance-obsessed, benchmark-driven (Matteo Collina inspiration)
+description: Council member agent - Performance-obsessed, benchmark-driven (Matteo Collina inspiration). Invoked via council-review spell during plan mode.
 genie:
   executor: [CLAUDE_CODE, CODEX, OPENCODE]
 forge:
