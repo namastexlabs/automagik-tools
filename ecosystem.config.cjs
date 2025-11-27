@@ -67,10 +67,10 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Create hub_data directory for database
-const hubDataDir = path.join(PROJECT_ROOT, 'hub_data');
-if (!fs.existsSync(hubDataDir)) {
-  fs.mkdirSync(hubDataDir, { recursive: true });
+// Create data directory for database (new default location)
+const dataDir = path.join(PROJECT_ROOT, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
 const version = extractVersionFromPyproject(PROJECT_ROOT);
@@ -92,6 +92,7 @@ module.exports = {
         PYTHONPATH: PROJECT_ROOT,
         HUB_HOST: envVars.HUB_HOST || '0.0.0.0',
         HUB_PORT: envVars.HUB_PORT || '8884',
+        HUB_DATABASE_PATH: envVars.HUB_DATABASE_PATH || './data/hub.db',
         NODE_ENV: 'production',
         PROCESS_TITLE: 'Tools Hub'
       },
