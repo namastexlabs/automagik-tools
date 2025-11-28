@@ -41,7 +41,7 @@ class TestPortResponse(BaseModel):
     suggestions: List[int] = []
 
 
-router = APIRouter(prefix="/api/network", tags=["network"])
+router = APIRouter(prefix="/network", tags=["network"])
 
 
 def get_network_interfaces() -> List[NetworkInterface]:

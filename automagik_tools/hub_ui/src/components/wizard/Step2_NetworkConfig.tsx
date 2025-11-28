@@ -1,22 +1,29 @@
 /**
  * Step 2: Network Configuration
  *
- * Configure bind address and port with conflict detection.
+ * Zero-config approach: Default port 8884 works out of the box.
+ * Advanced settings (port, bind address) collapsed by default.
  */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Network,
-  Wifi,
   Lock,
   AlertCircle,
   CheckCircle,
   Loader2,
-  Info,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export interface Step2Data {
@@ -41,18 +48,33 @@ interface PortTestResult {
   suggestions: number[];
 }
 
+const DEFAULT_PORT = 8884;
+
 export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Props) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const [portStatus, setPortStatus] = useState<PortTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Test port on mount and when port changes
+  // Only test port when advanced is open and port changes
   useEffect(() => {
+    if (!advancedOpen) {
+      // When advanced is closed, assume default port is available
+      setPortStatus({ available: true, conflicts: [], suggestions: [] });
+      return;
+    }
+
     const timer = setTimeout(() => {
       testPort(data.port);
     }, 500);
     return () => clearTimeout(timer);
-  }, [data.port]);
+  }, [data.port, advancedOpen]);
+
+  // Test default port on mount
+  useEffect(() => {
+    testPort(data.port);
+  }, []);
 
   const testPort = async (port: number) => {
     if (port < 1024 || port > 65535) {
@@ -78,6 +100,11 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
 
       const result: PortTestResult = await response.json();
       setPortStatus(result);
+
+      // If port is in use and we're still on default, open advanced to show
+      if (!result.available && !advancedOpen) {
+        setAdvancedOpen(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to test port');
       setPortStatus(null);
@@ -99,10 +126,35 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
     }
   };
 
+  const getHubUrl = () => {
+    const host = data.bindAddress === 'localhost' ? 'localhost' : '0.0.0.0';
+    return `http://${host}:${data.port}`;
+  };
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(getHubUrl());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = getHubUrl();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const canProceed = portStatus?.available === true;
+  const isDefaultConfig = data.port === DEFAULT_PORT && data.bindAddress === 'localhost';
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
+      {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">🌐 Network Configuration</h2>
         <p className="text-muted-foreground">
@@ -110,116 +162,168 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
         </p>
       </div>
 
+      {/* Main Content */}
       <div className="space-y-4">
-        {/* Bind Address Selection */}
-        <div className="space-y-3">
-          <Label>Bind Address</Label>
+        {/* Hub URL Preview - Always Visible */}
+        <div className="bg-muted/50 rounded-lg p-6 space-y-3">
+          <Label className="text-sm text-muted-foreground">Hub will be accessible at:</Label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-background rounded-md border px-4 py-3 font-mono text-sm">
+              {getHubUrl()}
+            </div>
             <Button
-              variant={data.bindAddress === 'localhost' ? 'default' : 'outline'}
-              className="h-auto py-4 flex-col items-start"
-              onClick={() => onUpdate({ bindAddress: 'localhost' })}
+              variant="outline"
+              size="icon"
+              onClick={copyUrl}
+              title="Copy URL"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <Lock className="h-4 w-4" />
-                <span className="font-semibold">Localhost</span>
-              </div>
-              <span className="text-xs text-left">
-                127.0.0.1 - Local machine only
-              </span>
-            </Button>
-
-            <Button
-              variant={data.bindAddress === 'network' ? 'default' : 'outline'}
-              className="h-auto py-4 flex-col items-start"
-              onClick={() => onUpdate({ bindAddress: 'network' })}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Network className="h-4 w-4" />
-                <span className="font-semibold">Network</span>
-              </div>
-              <span className="text-xs text-left">
-                0.0.0.0 - All network interfaces
-              </span>
+              {copied ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
             </Button>
           </div>
 
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              {data.bindAddress === 'localhost' ? (
-                <>
-                  <strong>Recommended for security.</strong> Hub will only be accessible from this machine.
-                </>
-              ) : (
-                <>
-                  <strong>Use with caution.</strong> Hub will be accessible from other devices on your network.
-                  Only use if you understand the security implications.
-                </>
-              )}
-            </AlertDescription>
-          </Alert>
+          {/* Status indicator */}
+          <div className="flex items-center gap-2 text-sm">
+            {testing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">Checking port availability...</span>
+              </>
+            ) : portStatus?.available ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-green-600 dark:text-green-400">
+                  {isDefaultConfig
+                    ? 'Default settings work for most users'
+                    : `Port ${data.port} is available`}
+                </span>
+              </>
+            ) : portStatus && !portStatus.available ? (
+              <>
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <span className="text-red-600">
+                  Port {data.port} is in use
+                  {portStatus.conflicts[0]?.process && (
+                    <> by {portStatus.conflicts[0].process}</>
+                  )}
+                </span>
+              </>
+            ) : null}
+          </div>
         </div>
 
-        <Separator />
+        {/* Advanced Settings - Collapsed by Default */}
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+            >
+              {advancedOpen ? (
+                <ChevronDown className="h-4 w-4 mr-2" />
+              ) : (
+                <ChevronRight className="h-4 w-4 mr-2" />
+              )}
+              Advanced Settings
+            </Button>
+          </CollapsibleTrigger>
 
-        {/* Port Configuration */}
-        <div className="space-y-3">
-          <Label htmlFor="port">Port</Label>
+          <CollapsibleContent className="space-y-4 pt-4">
+            {/* Bind Address Selection */}
+            <div className="space-y-3">
+              <Label>Who can access the Hub?</Label>
 
-          <div className="flex gap-2">
-            <Input
-              id="port"
-              type="number"
-              value={data.port}
-              onChange={(e) => handlePortChange(e.target.value)}
-              min={1024}
-              max={65535}
-              className="font-mono"
-            />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant={data.bindAddress === 'localhost' ? 'default' : 'outline'}
+                  className="h-auto py-4 flex-col items-start text-left"
+                  onClick={() => onUpdate({ bindAddress: 'localhost' })}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Lock className="h-4 w-4" />
+                    <span className="font-semibold">Just This Computer</span>
+                  </div>
+                  <span className="text-xs opacity-80">
+                    Most secure. Only you can access.
+                  </span>
+                </Button>
 
-            {testing && (
-              <div className="flex items-center px-3">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <Button
+                  variant={data.bindAddress === 'network' ? 'default' : 'outline'}
+                  className="h-auto py-4 flex-col items-start text-left"
+                  onClick={() => onUpdate({ bindAddress: 'network' })}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Network className="h-4 w-4" />
+                    <span className="font-semibold">Other Devices on Network</span>
+                  </div>
+                  <span className="text-xs opacity-80">
+                    Allow phones, tablets, other computers.
+                  </span>
+                </Button>
               </div>
-            )}
 
-            {!testing && portStatus?.available && (
-              <div className="flex items-center px-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-            )}
-
-            {!testing && portStatus && !portStatus.available && (
-              <div className="flex items-center px-3">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-              </div>
-            )}
-          </div>
-
-          {/* Port Status Messages */}
-          {!testing && portStatus && (
-            <>
-              {portStatus.available ? (
+              {data.bindAddress === 'network' && (
                 <Alert>
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-600 dark:text-green-400">
-                    Port {data.port} is available
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Security warning:</strong> Hub will be accessible from any device on your network.
+                    Make sure your network is trusted.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <>
+              )}
+            </div>
+
+            {/* Port Configuration */}
+            <div className="space-y-3">
+              <Label htmlFor="port">Port</Label>
+
+              <div className="flex gap-2">
+                <Input
+                  id="port"
+                  type="number"
+                  value={data.port}
+                  onChange={(e) => handlePortChange(e.target.value)}
+                  min={1024}
+                  max={65535}
+                  className="font-mono max-w-32"
+                />
+
+                {testing && (
+                  <div className="flex items-center px-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+
+                {!testing && portStatus?.available && (
+                  <div className="flex items-center px-3">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                )}
+
+                {!testing && portStatus && !portStatus.available && (
+                  <div className="flex items-center px-3">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                )}
+              </div>
+
+              {/* Port Conflict Details */}
+              {!testing && portStatus && !portStatus.available && (
+                <div className="space-y-3">
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Port {data.port} is already in use
                       {portStatus.conflicts.length > 0 && (
                         <>
-                          {' '}by{' '}
-                          <strong>{portStatus.conflicts[0].process}</strong>
+                          {' '}by <strong>{portStatus.conflicts[0].process}</strong>
                           {portStatus.conflicts[0].command && (
-                            <div className="mt-1 font-mono text-xs">
+                            <div className="mt-1 font-mono text-xs truncate">
                               {portStatus.conflicts[0].command}
                             </div>
                           )}
@@ -231,7 +335,7 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                   {portStatus.suggestions.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        Click a suggested port below, or stop <strong>{portStatus.conflicts[0]?.process}</strong> to free port {data.port}.
+                        Try one of these available ports:
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         {portStatus.suggestions.map((port) => (
@@ -248,28 +352,18 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
-            </>
-          )}
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Connection URL Preview */}
-        <div className="bg-muted/50 rounded-md p-4 space-y-2">
-          <Label className="text-xs text-muted-foreground">Hub will be accessible at:</Label>
-          <div className="font-mono text-sm">
-            http://{data.bindAddress === 'localhost' ? '127.0.0.1' : '<your-ip>'}:{data.port}
-          </div>
-        </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Navigation */}

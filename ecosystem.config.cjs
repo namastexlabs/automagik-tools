@@ -78,20 +78,22 @@ const version = extractVersionFromPyproject(PROJECT_ROOT);
 module.exports = {
   apps: [
     // ===================================================================
-    // Tools Hub - HTTP Server with Auto-Migration
+    // Tools Hub - HTTP Server with Database-First Configuration
     // ===================================================================
+    // Uses Python startup wrapper that reads port/host from database.
+    // This enables zero-configuration: database is the only source of truth.
+    // Port/host no longer need to be set in .env after initial setup.
     {
       name: 'Tools Hub',
       cwd: PROJECT_ROOT,
-      script: path.join(PROJECT_ROOT, '.venv/bin/uvicorn'),
-      args: 'automagik_tools.hub_http:app --host 0.0.0.0 --port ' + (envVars.HUB_PORT || '8884'),
+      script: path.join(PROJECT_ROOT, '.venv/bin/python'),
+      args: '-m automagik_tools.hub.start',
       interpreter: 'none',
       version: version,
       env: {
         ...envVars,
         PYTHONPATH: PROJECT_ROOT,
-        HUB_HOST: envVars.HUB_HOST || '0.0.0.0',
-        HUB_PORT: envVars.HUB_PORT || '8884',
+        // Database path is still read from .env for bootstrap, but host/port come from DB
         HUB_DATABASE_PATH: envVars.HUB_DATABASE_PATH || './data/hub.db',
         NODE_ENV: 'production',
         PROCESS_TITLE: 'Tools Hub'

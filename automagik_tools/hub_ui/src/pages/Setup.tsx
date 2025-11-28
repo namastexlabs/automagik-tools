@@ -15,6 +15,7 @@ import { Step0_ModeSelection, type Step0Data } from '@/components/wizard/Step0_M
 import { Step1b_WorkOSConfig, type Step1bData } from '@/components/wizard/Step1b_WorkOSConfig';
 import { Step2_NetworkConfig, type Step2Data } from '@/components/wizard/Step2_NetworkConfig';
 import { Step3_Review, ApiKeyDialog } from '@/components/wizard/Step3_Review';
+import { RestartTransition, type RestartConfig } from '@/components/wizard/RestartTransition';
 
 // Wizard state type
 interface WizardState extends Step0Data, Step1bData, Step2Data {
@@ -42,7 +43,7 @@ const initialState: WizardState = {
   adminEmails: '',
   // Step 2 (Network)
   bindAddress: 'localhost',
-  port: 8885,
+  port: 8884,
   // State management
   currentStep: 0,
   completedSteps: new Set(),
@@ -90,6 +91,8 @@ export default function SetupNew() {
   const [state, dispatch] = useReducer(wizardReducer, initialState);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showRestartDialog, setShowRestartDialog] = useState(false);
+  const [pendingRestartConfig, setPendingRestartConfig] = useState<RestartConfig | null>(null);
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
   // Check if setup is already complete
@@ -126,6 +129,25 @@ export default function SetupNew() {
 
   const steps = getSteps();
 
+  // Check if network config change requires restart
+  const checkRestartRequired = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/server/status');
+      if (!response.ok) return false;
+      const status = await response.json();
+
+      // Compare running config with desired config
+      const runningBindAddress = status.running.bind_address;
+      const runningPort = status.running.port;
+      const desiredBindAddress = state.bindAddress === 'localhost' ? '127.0.0.1' : '0.0.0.0';
+
+      return runningBindAddress !== desiredBindAddress || runningPort !== state.port;
+    } catch {
+      // If we can't check, assume no restart needed (first-time setup)
+      return false;
+    }
+  };
+
   // Handle complete setup
   const handleComplete = async () => {
     if (state.mode === 'local') {
@@ -143,7 +165,7 @@ export default function SetupNew() {
 
       const data = await response.json();
 
-      // Save network config
+      // Save network config (this just saves to DB, doesn't apply yet)
       await fetch('/api/setup/network-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,12 +175,29 @@ export default function SetupNew() {
         }),
       });
 
+      // Check if restart is needed to apply network config
+      const needsRestart = await checkRestartRequired();
+
       // Capture API key and show dialog
       if (data.api_key) {
         setApiKey(data.api_key);
         setShowApiKey(true);
+        // If restart is needed, we'll trigger it after API key dialog closes
+        if (needsRestart) {
+          setPendingRestartConfig({
+            bindAddress: state.bindAddress,
+            port: state.port,
+          });
+        }
+      } else if (needsRestart) {
+        // No API key to show, go straight to restart
+        setPendingRestartConfig({
+          bindAddress: state.bindAddress,
+          port: state.port,
+        });
+        setShowRestartDialog(true);
       } else {
-        // Fallback: redirect to dashboard
+        // No restart needed, redirect to dashboard
         window.location.href = '/app/dashboard';
       }
     } else if (state.mode === 'workos') {
@@ -196,8 +235,29 @@ export default function SetupNew() {
         }),
       });
 
-      // Redirect to login
-      window.location.href = '/app/login';
+      // Check if restart is needed
+      const needsRestart = await checkRestartRequired();
+
+      if (needsRestart) {
+        setPendingRestartConfig({
+          bindAddress: state.bindAddress,
+          port: state.port,
+        });
+        setShowRestartDialog(true);
+      } else {
+        // Redirect to login
+        window.location.href = '/app/login';
+      }
+    }
+  };
+
+  // Handle restart success
+  const handleRestartSuccess = (newUrl: string) => {
+    // Redirect to appropriate page on new URL
+    if (state.mode === 'workos') {
+      window.location.href = `${newUrl}/app/login`;
+    } else {
+      window.location.href = `${newUrl}/app/dashboard`;
     }
   };
 
@@ -299,8 +359,23 @@ export default function SetupNew() {
           open={showApiKey}
           onContinue={() => {
             setShowApiKey(false);
-            window.location.href = '/app/dashboard';
+            // Check if restart is pending
+            if (pendingRestartConfig) {
+              setShowRestartDialog(true);
+            } else {
+              window.location.href = '/app/dashboard';
+            }
           }}
+        />
+      )}
+
+      {/* Restart Transition Dialog */}
+      {pendingRestartConfig && (
+        <RestartTransition
+          open={showRestartDialog}
+          onOpenChange={setShowRestartDialog}
+          config={pendingRestartConfig}
+          onSuccess={handleRestartSuccess}
         />
       )}
     </div>

@@ -442,8 +442,10 @@ api_app.include_router(directory_sync_router)
 # Add setup wizard support routes
 from .hub.filesystem_routes import router as filesystem_router
 from .hub.network_routes import router as network_router
+from .hub.server_control import router as server_control_router
 api_app.include_router(filesystem_router)
 api_app.include_router(network_router)
+api_app.include_router(server_control_router)
 
 app.mount("/api", api_app)
 
