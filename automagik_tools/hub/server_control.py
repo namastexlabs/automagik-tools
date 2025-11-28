@@ -13,7 +13,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 
-from .setup import ConfigStore, get_mode_manager_dep
+from .setup import ConfigStore
+from .setup.wizard_routes import get_mode_manager_dep
 
 
 class ServerStatusResponse(BaseModel):
@@ -72,12 +73,13 @@ def trigger_restart() -> RestartResult:
     Returns:
         RestartResult with method used and success status
     """
-    # Try PM2 first
+    # Try PM2 first with naming convention: {port}-automagik-tools
     pm2 = shutil.which("pm2")
     if pm2:
         try:
+            # Try primary name: 8884-automagik-tools
             result = subprocess.run(
-                [pm2, "restart", "Tools Hub"],
+                [pm2, "restart", "8884-automagik-tools"],
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -89,7 +91,7 @@ def trigger_restart() -> RestartResult:
                     message="PM2 restart triggered successfully"
                 )
             else:
-                # PM2 found but restart failed, try with different name
+                # Fallback: try automagik-tools pattern
                 result = subprocess.run(
                     [pm2, "restart", "automagik-tools"],
                     capture_output=True,
