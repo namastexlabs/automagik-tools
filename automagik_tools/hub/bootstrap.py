@@ -10,7 +10,7 @@ from typing import Optional
 from dataclasses import dataclass
 from sqlalchemy import text
 
-from .database import get_db_session, run_database_migrations
+from .database import get_db_session, run_database_migrations, engine
 from .setup import ConfigStore, ModeManager
 
 
@@ -125,7 +125,7 @@ async def run_migrations_once() -> bool:
         async with get_db_session() as session:
             # Try to query system_config table
             result = await session.execute(
-                text("SELECT COUNT(*) FROM system_config")
+                text("SELECT COUNT(*) FROM tools_system_config")
             )
             result.scalar_one()
             # Table exists and is queryable
@@ -135,6 +135,9 @@ async def run_migrations_once() -> bool:
         # Migrations needed
         print("🔄 Running database migrations...")
         await run_database_migrations()
+        # Force connection pool refresh after subprocess migration
+        # (subprocess creates tables, main process needs fresh connections)
+        await engine.dispose()
         print("✅ Database migrations complete")
         return True
 
