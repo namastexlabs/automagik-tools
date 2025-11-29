@@ -93,22 +93,39 @@ export default function SetupNew() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [pendingRestartConfig, setPendingRestartConfig] = useState<RestartConfig | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
   // Set local mode user info so isAuthenticated() returns true
   // Key must match USER_STORAGE_KEY in auth.ts = 'hub_user'
-  const setLocalModeUser = () => {
-    localStorage.setItem('hub_user', JSON.stringify({
-      id: 'local',
-      email: 'local@localhost',
-      first_name: 'Local',
-      last_name: 'User',
-      workspace_id: 'local',
-      workspace_name: 'Local Mode',
-      workspace_slug: 'local',
-      is_super_admin: true,
-      mfa_enabled: false
-    }));
+  // Returns boolean for success/failure - RACE CONDITION FIX
+  const setLocalModeUser = (): boolean => {
+    try {
+      const user = {
+        id: 'local',
+        email: 'local@localhost',
+        first_name: 'Local',
+        last_name: 'User',
+        workspace_id: 'local',
+        workspace_name: 'Local Mode',
+        workspace_slug: 'local',
+        is_super_admin: true,
+        mfa_enabled: false
+      };
+      localStorage.setItem('hub_user', JSON.stringify(user));
+
+      // RACE CONDITION FIX: Verify write committed by reading back
+      // This forces browser to flush the pending setItem before we redirect
+      const stored = localStorage.getItem('hub_user');
+      if (!stored) {
+        console.error('localStorage write verification failed - storage may be restricted');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('setLocalModeUser failed:', e);
+      return false;
+    }
   };
 
   // Check if setup is already complete
@@ -214,8 +231,11 @@ export default function SetupNew() {
         setShowRestartDialog(true);
       } else {
         // No restart needed, redirect to dashboard
-        setLocalModeUser();
-        window.location.href = '/app/dashboard';
+        if (setLocalModeUser()) {
+          window.location.href = '/app/dashboard';
+        } else {
+          setAuthError('Failed to save authentication. Check browser privacy settings or try a different browser.');
+        }
       }
     } else if (state.mode === 'workos') {
       // WorkOS mode setup
@@ -274,8 +294,12 @@ export default function SetupNew() {
     if (state.mode === 'workos') {
       window.location.href = `${newUrl}/app/login`;
     } else {
-      setLocalModeUser();
-      window.location.href = `${newUrl}/app/dashboard`;
+      if (setLocalModeUser()) {
+        window.location.href = `${newUrl}/app/dashboard`;
+      } else {
+        setAuthError('Failed to save authentication. Check browser privacy settings or try a different browser.');
+        setShowRestartDialog(false);
+      }
     }
   };
 
@@ -370,6 +394,22 @@ export default function SetupNew() {
         </CardContent>
       </Card>
 
+      {/* Auth Error Display */}
+      {authError && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-red-600 mb-2">Authentication Error</h3>
+            <p className="text-gray-600 mb-4">{authError}</p>
+            <button
+              onClick={() => setAuthError(null)}
+              className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* API Key Dialog for Local Mode */}
       {apiKey && (
         <ApiKeyDialog
@@ -381,8 +421,11 @@ export default function SetupNew() {
             if (pendingRestartConfig) {
               setShowRestartDialog(true);
             } else {
-              setLocalModeUser();
-              window.location.href = '/app/dashboard';
+              if (setLocalModeUser()) {
+                window.location.href = '/app/dashboard';
+              } else {
+                setAuthError('Failed to save authentication. Check browser privacy settings or try a different browser.');
+              }
             }
           }}
         />
