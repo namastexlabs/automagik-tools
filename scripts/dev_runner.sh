@@ -1,6 +1,10 @@
 #!/bin/bash
 # Development environment runner with graceful shutdown
 # Usage: ./scripts/dev_runner.sh
+#
+# Dynamically allocates ports starting from:
+#   Backend:  8000
+#   Frontend: 3000
 
 set -e
 
@@ -20,6 +24,20 @@ cd "$PROJECT_ROOT"
 BACKEND_PID=""
 FRONTEND_PID=""
 
+# Dynamic ports (set in main)
+BACKEND_PORT=""
+FRONTEND_PORT=""
+
+# Find next available port starting from a given port
+find_available_port() {
+    local start_port=$1
+    local port=$start_port
+    while lsof -i:$port >/dev/null 2>&1; do
+        port=$((port + 1))
+    done
+    echo $port
+}
+
 # Cleanup function
 cleanup() {
     echo -e "\n${YELLOW}Shutting down development servers...${NC}"
@@ -36,9 +54,13 @@ cleanup() {
         wait "$FRONTEND_PID" 2>/dev/null || true
     fi
 
-    # Kill any orphaned processes on our ports
-    lsof -ti:8884 | xargs kill -9 2>/dev/null || true
-    lsof -ti:9884 | xargs kill -9 2>/dev/null || true
+    # Kill any orphaned processes on our allocated ports
+    if [ -n "$BACKEND_PORT" ]; then
+        lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null || true
+    fi
+    if [ -n "$FRONTEND_PORT" ]; then
+        lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
+    fi
 
     echo -e "${GREEN}Development servers stopped.${NC}"
     exit 0
@@ -73,13 +95,13 @@ check_prerequisites() {
 }
 
 start_backend() {
-    echo -e "${CYAN}Starting backend on http://localhost:8884...${NC}"
+    echo -e "${CYAN}Starting backend on http://localhost:$BACKEND_PORT...${NC}"
 
     (
         cd "$PROJECT_ROOT"
-        uv run uvicorn automagik_tools.hub_http:app \
+        HUB_PORT=$BACKEND_PORT uv run uvicorn automagik_tools.hub_http:app \
             --host 0.0.0.0 \
-            --port 8884 \
+            --port $BACKEND_PORT \
             --reload \
             --reload-dir automagik_tools \
             --log-level info \
@@ -90,11 +112,11 @@ start_backend() {
 }
 
 start_frontend() {
-    echo -e "${CYAN}Starting frontend on http://localhost:9884...${NC}"
+    echo -e "${CYAN}Starting frontend on http://localhost:$FRONTEND_PORT...${NC}"
 
     (
         cd "$PROJECT_ROOT/automagik_tools/hub_ui"
-        pnpm dev 2>&1 | sed 's/^/[FRONTEND] /'
+        VITE_BACKEND_PORT=$BACKEND_PORT pnpm dev --port $FRONTEND_PORT 2>&1 | sed 's/^/[FRONTEND] /'
     ) &
     FRONTEND_PID=$!
     echo -e "${GREEN}Frontend started (PID: $FRONTEND_PID)${NC}"
@@ -109,12 +131,20 @@ main() {
 
     check_prerequisites
 
+    # Find available ports
+    echo ""
+    echo -e "${BLUE}Finding available ports...${NC}"
+    BACKEND_PORT=$(find_available_port 8000)
+    FRONTEND_PORT=$(find_available_port 3000)
+    echo -e "${GREEN}  Backend:  $BACKEND_PORT${NC}"
+    echo -e "${GREEN}  Frontend: $FRONTEND_PORT${NC}"
+
     echo ""
     start_backend
 
     echo -e "${YELLOW}Waiting for backend to start...${NC}"
     for i in {1..30}; do
-        if curl -sf http://localhost:8884/api/health >/dev/null 2>&1; then
+        if curl -sf http://localhost:$BACKEND_PORT/api/health >/dev/null 2>&1; then
             echo -e "${GREEN}Backend is ready!${NC}"
             break
         fi
@@ -129,9 +159,9 @@ main() {
     echo -e "${GREEN}  Development servers are running!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     echo ""
-    echo -e "${CYAN}  Backend:  http://localhost:8884${NC}"
-    echo -e "${CYAN}  Frontend: http://localhost:9884${NC}"
-    echo -e "${CYAN}  API Docs: http://localhost:8884/docs${NC}"
+    echo -e "${CYAN}  Backend:  http://localhost:$BACKEND_PORT${NC}"
+    echo -e "${CYAN}  Frontend: http://localhost:$FRONTEND_PORT${NC}"
+    echo -e "${CYAN}  API Docs: http://localhost:$BACKEND_PORT/docs${NC}"
     echo ""
     echo -e "${YELLOW}  Press Ctrl+C to stop all servers${NC}"
     echo ""

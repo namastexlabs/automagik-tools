@@ -11,9 +11,9 @@ export function McpConfigCopy() {
     // MCP servers run outside browser context and cannot use HTTP-only cookies
     const accessToken = 'your-access-token-here';
 
-    // Construct the Hub URL - default to localhost:8884 for development
+    // Construct the Hub URL - default to localhost:8000 for development
     // In production, this would typically be the same origin
-    const hubUrl = import.meta.env.VITE_HUB_URL || 'http://localhost:8884';
+    const hubUrl = import.meta.env.VITE_HUB_URL || 'http://localhost:8000';
 
     return {
       mcpServers: {

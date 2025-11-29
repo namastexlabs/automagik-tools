@@ -225,7 +225,7 @@ export default function Settings() {
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
                   <span className="text-sm font-medium text-foreground">Hub URL</span>
                   <code className="text-sm text-muted-foreground">
-                    {import.meta.env.VITE_HUB_URL || 'http://localhost:8884'}
+                    {import.meta.env.VITE_HUB_URL || 'http://localhost:8000'}
                   </code>
                 </div>
 

@@ -236,7 +236,7 @@ class ConfigStore:
             bind_address = "network" if bind_address == "0.0.0.0" else "localhost"
 
         if not port:
-            port = int(os.getenv("HUB_PORT", "8884"))
+            port = int(os.getenv("HUB_PORT", "8000"))
 
         return {
             "bind_address": bind_address,
@@ -250,7 +250,7 @@ class ConfigStore:
             config: Dict with bind_address and port
         """
         bind_address = config.get("bind_address", "127.0.0.1")
-        port = config.get("port", 8884)
+        port = config.get("port", 8000)
 
         # Validate
         if not isinstance(port, int) or not (1024 <= port <= 65535):

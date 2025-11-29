@@ -1,7 +1,7 @@
 /**
  * Step 2: Network Configuration
  *
- * Zero-config approach: Default port 8884 works out of the box.
+ * Zero-config approach: Default port 8000 works out of the box.
  * Advanced settings (port, bind address) collapsed by default.
  */
 import React, { useState, useEffect } from 'react';
@@ -49,7 +49,7 @@ interface PortTestResult {
   suggestions: number[];
 }
 
-const DEFAULT_PORT = 8884;
+const DEFAULT_PORT = 8000;
 
 export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);

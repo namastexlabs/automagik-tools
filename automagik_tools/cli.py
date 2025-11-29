@@ -341,7 +341,7 @@ def hub(
         import uvicorn
 
         serve_host = host or os.getenv("HUB_HOST", "0.0.0.0")
-        serve_port = port or int(os.getenv("HUB_PORT", "8884"))
+        serve_port = port or int(os.getenv("HUB_PORT", "8000"))
 
         console.print(f"[blue]Starting Automagik Tools Hub (HTTP mode)...[/blue]")
         console.print(f"[blue]Server: http://{serve_host}:{serve_port}[/blue]")
@@ -381,7 +381,7 @@ def hub(
 
             # Get HTTP server config
             http_host = os.getenv("HUB_HOST", "127.0.0.1")
-            http_port = int(os.getenv("HUB_PORT", "8884"))
+            http_port = int(os.getenv("HUB_PORT", "8000"))
 
             # Start HTTP server in background thread (for UI/API access)
             def run_http_server():
@@ -484,7 +484,7 @@ def tool(
 
     # Get host and port from environment variables or defaults
     serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
-    serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
+    serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8000"))
 
     # Only print to console for non-stdio transports
     if transport != "stdio":
@@ -562,7 +562,7 @@ def openapi(
 
         # Get host and port
         serve_host = host or os.getenv("AUTOMAGIK_TOOLS_HOST", "127.0.0.1")
-        serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8884"))
+        serve_port = port or int(os.getenv("AUTOMAGIK_TOOLS_SSE_PORT", "8000"))
 
         # Start the server
         os.environ["MCP_TRANSPORT"] = transport

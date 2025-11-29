@@ -48,7 +48,7 @@ class TestRuntimeConfig:
         """Test that RuntimeConfig is immutable."""
         config = RuntimeConfig(
             host="127.0.0.1",
-            port=8884,
+            port=8000,
             database_path="data/hub.db",
             allowed_origins=["http://localhost:3000"],
             enable_hsts=False,

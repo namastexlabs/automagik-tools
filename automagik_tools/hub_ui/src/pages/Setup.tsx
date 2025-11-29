@@ -43,7 +43,7 @@ const initialState: WizardState = {
   adminEmails: '',
   // Step 2 (Network)
   bindAddress: 'localhost',
-  port: 8884,
+  port: 8000,
   // State management
   currentStep: 0,
   completedSteps: new Set(),

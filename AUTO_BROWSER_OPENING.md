@@ -77,10 +77,10 @@ $ uvx automagik-tools hub
 ⚠️  Setup required! Navigate to /app/setup to configure.
 ✅ Hub ready!
 ⚙️  Setup required - opening setup wizard in browser
-🌐 Opening browser to http://localhost:8884/app/setup
+🌐 Opening browser to http://localhost:8000/setup
 ```
 
-**Result**: Browser automatically opens to setup wizard at `http://localhost:8884/app/setup`
+**Result**: Browser automatically opens to setup wizard at `http://localhost:8000/setup`
 
 ### After Configuration (LOCAL or WORKOS)
 
@@ -91,10 +91,10 @@ $ uvx automagik-tools hub
 📋 App Mode: local
 🏠 Local Mode: Admin = admin@example.com
 ✅ Hub ready!
-🌐 Opening browser to http://localhost:8884
+🌐 Opening browser to http://localhost:8000
 ```
 
-**Result**: Browser opens to main app at `http://localhost:8884`
+**Result**: Browser opens to main app at `http://localhost:8000`
 
 ## Cross-Platform Compatibility
 

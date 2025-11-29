@@ -127,12 +127,12 @@ async def suggest_alternative_ports(port: int, count: int = 3) -> List[int]:
     """Suggest alternative ports based on the requested port.
 
     Uses memorable prefix pattern (like email suggestions):
-    8884 -> 18884, 28884, 38884
+    8000 -> 18000, 28000, 38000
     """
     suggestions = []
 
     # Gmail-style: prefix the port with 1, 2, 3...
-    # e.g., 8884 -> 18884, 28884, 38884
+    # e.g., 8000 -> 18000, 28000, 38000
     for prefix in range(1, 10):
         candidate = int(f"{prefix}{port}")
         if 1024 <= candidate <= 65535:

@@ -1,5 +1,6 @@
 #!/bin/bash
-BASE_URL="http://localhost:8884"
+# Accept port as argument or use default 8000
+BASE_URL="${1:-http://localhost:8000}"
 ERRORS=0
 
 echo "🧪 Running smoke tests..."

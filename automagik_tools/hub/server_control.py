@@ -29,7 +29,7 @@ class ServerStatusResponse(BaseModel):
 class ApplyConfigRequest(BaseModel):
     """Request to apply network configuration."""
     bind_address: str = Field(default="127.0.0.1", description="Bind address (127.0.0.1 or 0.0.0.0)")
-    port: int = Field(default=8884, ge=1024, le=65535, description="Port number")
+    port: int = Field(default=8000, ge=1024, le=65535, description="Port number")
 
 
 class ApplyConfigResponse(BaseModel):
@@ -77,9 +77,9 @@ def trigger_restart() -> RestartResult:
     pm2 = shutil.which("pm2")
     if pm2:
         try:
-            # Try primary name: 8884-automagik-tools
+            # Try primary name: 8000-automagik-tools
             result = subprocess.run(
-                [pm2, "restart", "8884-automagik-tools"],
+                [pm2, "restart", "8000-automagik-tools"],
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -161,7 +161,7 @@ async def get_server_status(mode_manager=Depends(get_mode_manager_dep)):
         # Get running config from environment (what was loaded at startup)
         # These are set by the startup wrapper based on database values
         running_host = os.getenv("HUB_HOST", "0.0.0.0")
-        running_port = int(os.getenv("HUB_PORT", "8884"))
+        running_port = int(os.getenv("HUB_PORT", "8000"))
 
         running = {
             "bind_address": running_host,
@@ -170,7 +170,7 @@ async def get_server_status(mode_manager=Depends(get_mode_manager_dep)):
 
         saved = {
             "bind_address": saved_config.get("bind_address", "127.0.0.1"),
-            "port": int(saved_config.get("port", 8884))
+            "port": int(saved_config.get("port", 8000))
         }
 
         # Compare to determine if restart needed
@@ -256,7 +256,7 @@ async def health():
     """
     # Get current host/port from environment (set by startup wrapper)
     host = os.getenv("HUB_HOST", "0.0.0.0")
-    port = int(os.getenv("HUB_PORT", "8884"))
+    port = int(os.getenv("HUB_PORT", "8000"))
 
     return HealthResponse(
         status="ok",

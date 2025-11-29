@@ -40,7 +40,7 @@ export
 
 # Default values  
 AUTOMAGIK_TOOLS_HOST ?= 127.0.0.1
-AUTOMAGIK_TOOLS_SSE_PORT ?= 8884
+AUTOMAGIK_TOOLS_SSE_PORT ?= 8000
 AUTOMAGIK_TOOLS_HTTP_PORT ?= 8885
 
 # Simplified aliases for command-line use
@@ -180,8 +180,8 @@ help: ## 🛠️ Show this help message
 	@echo ""
 	@echo -e "$(FONT_CYAN)🔥 Development Mode:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)dev$(FONT_RESET)             Start full dev environment (backend + frontend)"
-	@echo -e "  $(FONT_PURPLE)dev-backend$(FONT_RESET)     Start backend only with hot reload (port 8884)"
-	@echo -e "  $(FONT_PURPLE)dev-frontend$(FONT_RESET)    Start frontend only with Vite HMR (port 9884)"
+	@echo -e "  $(FONT_PURPLE)dev-backend$(FONT_RESET)     Start backend only with hot reload (port 8000)"
+	@echo -e "  $(FONT_PURPLE)dev-frontend$(FONT_RESET)    Start frontend only with Vite HMR (port 3000)"
 	@echo -e "  $(FONT_PURPLE)dev-install$(FONT_RESET)     Install all dev dependencies"
 	@echo ""
 	@echo -e "$(FONT_CYAN)$(TOOLS_SYMBOL) Testing:$(FONT_RESET)"
@@ -323,7 +323,7 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 		pm2 set pm2-logrotate:max_size 100M >/dev/null 2>&1 || true; \
 		pm2 set pm2-logrotate:retain 7 >/dev/null 2>&1 || true; \
 		pm2 update >/dev/null 2>&1 || true; \
-		pm2 start ecosystem.config.cjs >/dev/null 2>&1 || pm2 restart "8884-automagik-tools" >/dev/null 2>&1 || true; \
+		pm2 start ecosystem.config.cjs >/dev/null 2>&1 || pm2 restart "8000-automagik-tools" >/dev/null 2>&1 || true; \
 		pm2 save --force >/dev/null 2>&1 || true; \
 		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 configured and service started!$(FONT_RESET)"; \
 		pm2 status; \
@@ -367,9 +367,9 @@ install-complete:
 	@echo ""
 	@echo -e "$(FONT_CYAN)📊 Useful commands:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)pm2 status$(FONT_RESET)           # Check service status"
-	@echo -e "  $(FONT_PURPLE)pm2 logs \"8884-automagik-tools\"$(FONT_RESET)  # View live logs"
-	@echo -e "  $(FONT_PURPLE)pm2 restart \"8884-automagik-tools\"$(FONT_RESET) # Restart service"
-	@echo -e "  $(FONT_PURPLE)pm2 stop \"8884-automagik-tools\"$(FONT_RESET)    # Stop service"
+	@echo -e "  $(FONT_PURPLE)pm2 logs \"8000-automagik-tools\"$(FONT_RESET)  # View live logs"
+	@echo -e "  $(FONT_PURPLE)pm2 restart \"8000-automagik-tools\"$(FONT_RESET) # Restart service"
+	@echo -e "  $(FONT_PURPLE)pm2 stop \"8000-automagik-tools\"$(FONT_RESET)    # Stop service"
 	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)          # Run health checks"
 	@echo -e "  $(FONT_PURPLE)make update$(FONT_RESET)          # Update to latest version"
 	@echo ""
@@ -561,7 +561,7 @@ uninstall: ## 🗑️ Uninstall automagik-tools (interactive)
 	@echo -e "  • Python virtual environment (.venv/)"
 	@echo -e "  • Node.js dependencies (hub_ui/node_modules/)"
 	@echo -e "  • UI build artifacts (hub_ui/dist/)"
-	@echo -e "  • PM2 process (8884-automagik-tools)"
+	@echo -e "  • PM2 process (8000-automagik-tools)"
 	@echo -e "  • systemd service (if installed)"
 	@echo ""
 	@read -p "Proceed with uninstall? [y/N] " -n 1 -r REPLY; echo; \
@@ -572,7 +572,7 @@ uninstall: ## 🗑️ Uninstall automagik-tools (interactive)
 	echo ""; \
 	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Stopping PM2 process...$(FONT_RESET)"; \
 	if command -v pm2 >/dev/null 2>&1; then \
-		pm2 delete "8884-automagik-tools" 2>/dev/null || true; \
+		pm2 delete "8000-automagik-tools" 2>/dev/null || true; \
 		pm2 save --force 2>/dev/null || true; \
 		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 process removed$(FONT_RESET)"; \
 	else \
@@ -997,18 +997,18 @@ start-local: ## 🚀 Start service using local PM2 ecosystem
 stop-local: ## 🛑 Stop service using local PM2 ecosystem
 	$(call print_status,Stopping automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 stop "8884-automagik-tools" 2>/dev/null || true
+	@pm2 stop "8000-automagik-tools" 2>/dev/null || true
 	@$(call print_success,Service stopped!)
 
 restart-local: ## 🔄 Restart service using local PM2 ecosystem
 	$(call print_status,Restarting automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 restart "8884-automagik-tools" 2>/dev/null || pm2 start ecosystem.config.cjs
+	@pm2 restart "8000-automagik-tools" 2>/dev/null || pm2 start ecosystem.config.cjs
 	@$(call print_success,Service restarted!)
 
 reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
 	$(call print_status,Stopping service...)
-	@pm2 stop 8884-automagik-tools 2>/dev/null || true
+	@pm2 stop 8000-automagik-tools 2>/dev/null || true
 	$(call print_status,Clearing caches...)
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf automagik_tools/hub_ui/dist 2>/dev/null || true
@@ -1017,10 +1017,10 @@ reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
 	@cd automagik_tools/hub_ui && pnpm install --silent
 	@cd automagik_tools/hub_ui && pnpm run build
 	$(call print_status,Starting service...)
-	@pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart 8884-automagik-tools
+	@pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart 8000-automagik-tools
 	$(call print_status,Waiting for health (up to 30s)...)
 	@for i in $$(seq 1 30); do \
-		if curl -sf http://localhost:8884/api/health >/dev/null 2>&1; then \
+		if curl -sf http://localhost:$(PORT)/api/health >/dev/null 2>&1; then \
 			echo -e "$(FONT_GREEN)$(CHECKMARK) Reload complete! Health check passed$(FONT_RESET)"; \
 			exit 0; \
 		fi; \
@@ -1031,7 +1031,7 @@ reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
 	echo -e "$(FONT_CYAN)🐛 Debug with: @.genie/code/spells/debug.md$(FONT_RESET)"; \
 	echo ""; \
 	echo -e "$(FONT_YELLOW)📋 Last 10 log lines:$(FONT_RESET)"; \
-	pm2 logs 8884-automagik-tools --lines 10 --nostream 2>/dev/null || true; \
+	pm2 logs 8000-automagik-tools --lines 10 --nostream 2>/dev/null || true; \
 	exit 1
 
 install-service: ## 🔧 Install local PM2 service for automagik-tools
@@ -1056,7 +1056,7 @@ restart-service: ## 🔄 Restart local PM2 service
 uninstall-service: ## 🗑️ Uninstall local PM2 service
 	$(call print_status,Uninstalling local PM2 service)
 	@$(call check_pm2)
-	@pm2 delete "8884-automagik-tools" 2>/dev/null || true
+	@pm2 delete "8000-automagik-tools" 2>/dev/null || true
 	@pm2 save --force
 	@$(call print_success,Local PM2 service uninstalled!)
 
@@ -1071,29 +1071,29 @@ endef
 service-status: ## 📊 Check automagik-tools PM2 service status
 	$(call print_status,Checking PM2 service status)
 	@$(call check_pm2)
-	@pm2 show "8884-automagik-tools" 2>/dev/null || echo "Service not found"
+	@pm2 show "8000-automagik-tools" 2>/dev/null || echo "Service not found"
 
 .PHONY: logs logs-follow
 logs: ## 📄 Show service logs (N=lines)
 	$(eval N := $(or $(N),30))
 	$(call print_status,Recent logs)
-	@pm2 logs "8884-automagik-tools" --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "8000-automagik-tools" --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 logs-follow: ## 📄 Follow service logs in real-time
 	$(call print_status,Following logs)
 	@echo -e "$(FONT_YELLOW)Press Ctrl+C to stop following logs$(FONT_RESET)"
-	@pm2 logs "8884-automagik-tools" 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "8000-automagik-tools" 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 .PHONY: health
 health: ## 🩺 Check service health endpoints
 	$(call print_status,Checking automagik-tools health endpoints)
 	@FAILED=0; \
-	echo -e "$(FONT_CYAN)Testing health endpoint (port 8884):$(FONT_RESET)"; \
-	curl -s --max-time 5 http://$(HOST):8884/api/health > /dev/null && \
+	echo -e "$(FONT_CYAN)Testing health endpoint (port $(PORT)):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):$(PORT)/api/health > /dev/null && \
 		echo -e "  $(FONT_GREEN)✅ Hub health check passed$(FONT_RESET)" || \
 		{ echo -e "  $(FONT_RED)❌ Hub health check failed$(FONT_RESET)"; FAILED=1; }; \
-	echo -e "$(FONT_CYAN)Testing info endpoint (port 8884):$(FONT_RESET)"; \
-	curl -s --max-time 5 http://$(HOST):8884/api/info > /dev/null && \
+	echo -e "$(FONT_CYAN)Testing info endpoint (port $(PORT)):$(FONT_RESET)"; \
+	curl -s --max-time 5 http://$(HOST):$(PORT)/api/info > /dev/null && \
 		echo -e "  $(FONT_GREEN)✅ Hub info endpoint responding$(FONT_RESET)" || \
 		{ echo -e "  $(FONT_YELLOW)⚠️  Hub info endpoint not responding (non-critical)$(FONT_RESET)"; }; \
 	exit $$FAILED
@@ -1132,7 +1132,7 @@ _update_run:
 
 	@# Step 3: Restart PM2 service if running
 	$(call print_status,Restarting PM2 service...)
-	@if command -v pm2 >/dev/null 2>&1 && pm2 show "8884-automagik-tools" >/dev/null 2>&1; then \
+	@if command -v pm2 >/dev/null 2>&1 && pm2 show "8000-automagik-tools" >/dev/null 2>&1; then \
 		$(MAKE) restart-local; \
 		echo -e "$(FONT_CYAN)⏳ Waiting for service to restart...$(FONT_RESET)"; \
 		sleep 3; \
@@ -1211,7 +1211,7 @@ serve-all: ## 🌐 Serve all tools on single server (hub SSE)
 	$(call print_status,Starting multi-tool hub server on $(HOST):$(PORT)...)
 	@$(UV) run automagik-tools hub --host $(HOST) --port $(PORT) --transport sse
 
-serve-dual: ## 🌐 Serve all tools on dual transports (SSE:8884 + HTTP:8885)
+serve-dual: ## 🌐 Serve all tools on dual transports (SSE:8000 + HTTP:8885)
 	$(call print_status,Starting dual-transport hub servers...)
 	$(call print_info,SSE server: $(HOST):$(PORT))
 	$(call print_info,HTTP server: $(HOST):8885)
@@ -1319,16 +1319,16 @@ dev: ## 🔥 Start full dev environment (backend + frontend with hot reload)
 	@chmod +x scripts/dev_runner.sh
 	@./scripts/dev_runner.sh
 
-dev-backend: ## 🐍 Start backend only with hot reload (port 8884)
+dev-backend: ## 🐍 Start backend only with hot reload (port 8000)
 	$(call print_status,Starting backend with hot reload...)
 	@$(UV) run uvicorn automagik_tools.hub_http:app \
 		--host 0.0.0.0 \
-		--port 8884 \
+		--port $(PORT) \
 		--reload \
 		--reload-dir automagik_tools \
 		--log-level info
 
-dev-frontend: ## ⚛️ Start frontend only with Vite HMR (port 9884)
+dev-frontend: ## ⚛️ Start frontend only with Vite HMR (port 3000)
 	$(call print_status,Starting frontend with Vite HMR...)
 	@cd automagik_tools/hub_ui && pnpm dev
 

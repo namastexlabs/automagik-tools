@@ -103,7 +103,7 @@ async def lifespan(server: FastMCP):
 
     # Auto-open browser after server is ready
     host = os.getenv("HUB_HOST", "0.0.0.0")
-    port = int(os.getenv("HUB_PORT", 8884))
+    port = int(os.getenv("HUB_PORT", 8000))
 
     # Use localhost for browser open (0.0.0.0 won't work in browser)
     browser_host = "localhost" if host == "0.0.0.0" else host
