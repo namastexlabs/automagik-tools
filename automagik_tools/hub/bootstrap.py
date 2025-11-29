@@ -329,14 +329,25 @@ Copy this block when reporting issues.
         print("✅ Bootstrap complete - configuration stored in database")
 
     elif state == BootstrapState.UNCONFIGURED:
-        # SETUP PHASE - Wait for wizard
+        # SETUP PHASE - Return minimal defaults, don't try to load from database
+        # (encryption isn't initialized yet, so loading would fail)
         print("⚠️  Setup required! Navigate to /setup to configure application mode")
+        return RuntimeConfig(
+            host=os.getenv("HUB_HOST", "0.0.0.0"),
+            port=int(os.getenv("HUB_PORT", "8884")),
+            database_path=os.getenv("HUB_DATABASE_PATH", "./data/hub.db"),
+            allowed_origins=["*"],
+            enable_hsts=False,
+            csp_report_uri=None,
+            super_admin_emails=[],
+            workos_cookie_password="",  # Empty until configured
+        )
 
     elif state == BootstrapState.CONFIGURED:
         # RUNNING PHASE
         print("✅ Application configured - loading from database")
 
-    # Load and return runtime configuration from database
+    # Load and return runtime configuration from database (only for CONFIGURED state now)
     config = await load_runtime_config_from_db()
 
     print(f"📊 Runtime config loaded:")
