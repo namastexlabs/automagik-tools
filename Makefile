@@ -1012,9 +1012,21 @@ reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
 	@cd automagik_tools/hub_ui && pnpm run build
 	$(call print_status,Starting service...)
 	@pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart 8884-automagik-tools
-	@sleep 3
-	$(call print_success,Reload complete!)
-	@$(MAKE) health
+	$(call print_status,Waiting for health (up to 30s)...)
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost:8884/api/health >/dev/null 2>&1; then \
+			echo -e "$(FONT_GREEN)$(CHECKMARK) Reload complete! Health check passed$(FONT_RESET)"; \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo -e "$(FONT_RED)❌ Health check failed after 30s$(FONT_RESET)"; \
+	echo ""; \
+	echo -e "$(FONT_CYAN)🐛 Debug with: @.genie/code/spells/debug.md$(FONT_RESET)"; \
+	echo ""; \
+	echo -e "$(FONT_YELLOW)📋 Last 10 log lines:$(FONT_RESET)"; \
+	pm2 logs 8884-automagik-tools --lines 10 --nostream 2>/dev/null || true; \
+	exit 1
 
 install-service: ## 🔧 Install local PM2 service for automagik-tools
 	$(call print_status,Installing local PM2 service)
