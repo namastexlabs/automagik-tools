@@ -1,6 +1,6 @@
 """REST API routes for Hub UI."""
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from fastmcp.server.dependencies import get_access_token, AccessToken
@@ -9,8 +9,8 @@ from .credentials import store_credential, get_credential, list_credentials, del
 from .tool_instances import get_instance_manager
 
 
-# Security scheme
-security = HTTPBearer()
+# Security scheme (optional - for backward compatibility with bearer tokens)
+security = HTTPBearer(auto_error=False)
 
 
 # Request/Response Models
@@ -30,20 +30,29 @@ class CredentialRequest(BaseModel):
     secrets: Dict[str, Any]
 
 
-# Helper to extract user_id from token
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Extract user ID from access token."""
-    # In production, verify token with WorkOS
-    # For now, extract from token claims
-    token = get_access_token()
-    if not token:
+# Helper to extract user_id from session cookie (supports both modes)
+async def get_current_user_id(request: Request) -> str:
+    """Extract user ID from session cookie.
+
+    Supports both WorkOS mode (wos_session cookie) and Local Mode (local_session cookie).
+    Falls back to bearer token if cookies are not present (for backward compatibility).
+    """
+    from .auth import get_current_user
+
+    try:
+        # Try cookie-based authentication first (both WorkOS and Local Mode)
+        user = await get_current_user(request)
+        return user.get("id") or user.get("user_id")
+    except HTTPException:
+        # Fall back to bearer token (for backward compatibility)
+        token = get_access_token()
+        if token:
+            user_id = token.claims.get("sub")
+            if user_id:
+                return user_id
+
+        # No valid authentication
         raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user_id = token.claims.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token: no user ID")
-
-    return user_id
 
 
 # Create router (no prefix - will be mounted at /api in hub_http.py)

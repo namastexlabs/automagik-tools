@@ -215,6 +215,151 @@ async def auth_callback(request: AuthCallbackRequest, req: Request):
         )
 
 
+@router.post("/local-login")
+async def local_login(req: Request) -> Dict[str, Any]:
+    """Authenticate in Local Mode and set session cookie.
+
+    This endpoint:
+    1. Verifies app is in Local Mode
+    2. Gets/creates local admin user
+    3. Creates signed session token
+    4. Sets HTTP-only session cookie
+    5. Returns user info (same format as WorkOS callback)
+
+    Only available when app is configured in Local Mode.
+    """
+    from fastapi.responses import JSONResponse
+    from .setup.local_auth import LocalAuthManager, sign_local_session
+
+    client_ip = req.client.host if req.client else None
+    user_agent = req.headers.get("user-agent")
+
+    try:
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            mode_manager = ModeManager(config_store)
+
+            # Verify we're in Local Mode
+            mode = await mode_manager.get_current_mode()
+            if mode != AppMode.LOCAL:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Local login only available in Local Mode. Use WorkOS authentication."
+                )
+
+            # Get local admin user
+            local_auth = LocalAuthManager(session, mode_manager)
+            auth_session = await local_auth.authenticate_local()
+
+            if not auth_session:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create local admin user"
+                )
+
+            # Get the user and workspace objects for full info
+            user = await local_auth.get_or_create_local_admin()
+            if not user:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to get local admin user"
+                )
+
+            # Get workspace
+            from sqlalchemy import select
+            from .models import Workspace
+            workspace_result = await session.execute(
+                select(Workspace).where(Workspace.id == user.workspace_id)
+            )
+            workspace = workspace_result.scalar_one_or_none()
+
+            if not workspace:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Workspace not found for local admin"
+                )
+
+            # Get secret for signing (local_omni_api_key)
+            api_key = await config_store.get("local_omni_api_key")
+            if not api_key:
+                # Generate a fallback secret if API key not set
+                import secrets
+                api_key = secrets.token_urlsafe(32)
+
+            # Create session payload
+            session_payload = {
+                "user_id": user.id,
+                "email": user.email,
+                "workspace_id": workspace.id,
+                "is_super_admin": user.is_super_admin,
+                "mode": "local",
+            }
+
+            # Sign the session
+            signed_session = sign_local_session(session_payload, api_key)
+
+            # Log successful login
+            await audit_logger.log_auth(
+                action="auth.local_login_succeeded",
+                user_id=user.id,
+                email=user.email,
+                workspace_id=workspace.id,
+                success=True,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                metadata={"mode": "local"}
+            )
+
+            logger.info(f"[LocalAuth] User authenticated: {user.email} (workspace: {workspace.slug})")
+
+            # Create response with user info
+            response_data = {
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "workspace_id": workspace.id,
+                    "workspace_name": workspace.name,
+                    "workspace_slug": workspace.slug,
+                    "is_super_admin": user.is_super_admin,
+                    "mfa_enabled": user.mfa_enabled,
+                },
+            }
+
+            # Set HTTP-only session cookie
+            response = JSONResponse(response_data)
+            response.set_cookie(
+                key="local_session",
+                value=signed_session,
+                httponly=True,  # Cannot be accessed by JavaScript
+                secure=False,   # Local dev is typically HTTP
+                samesite="strict",  # Maximum CSRF protection for local
+                max_age=3600 * 24 * 30,  # 30 days for convenience
+            )
+
+            return response
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"[LocalAuth] Login error: {e}")
+
+        await audit_logger.log_auth(
+            action="auth.local_login_failed",
+            success=False,
+            error_message=str(e),
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Local authentication failed: {str(e)}"
+        )
+
+
 @router.get("/user")
 async def get_user_info(req: Request) -> Dict[str, Any]:
     """Get current authenticated user info.

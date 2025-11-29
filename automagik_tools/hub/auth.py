@@ -68,38 +68,89 @@ def get_cookie_password() -> str:
 
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """
-    Dependency to get the current authenticated user from the session cookie.
+    Dependency to get the current authenticated user from session cookie.
+
+    Supports both WorkOS mode (wos_session cookie) and Local Mode (local_session cookie).
     """
-    cookie_password = get_cookie_password()
-    session_data = request.cookies.get("wos_session")
-    
-    if not session_data:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-        
+    # Try WorkOS session first
+    wos_session_data = request.cookies.get("wos_session")
+    if wos_session_data:
+        return await _validate_workos_session(wos_session_data)
+
+    # Try Local Mode session
+    local_session_data = request.cookies.get("local_session")
+    if local_session_data:
+        return await _validate_local_session(local_session_data)
+
+    # No valid session found
+    raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+async def _validate_workos_session(session_data: str) -> Dict[str, Any]:
+    """Validate WorkOS session cookie and return user data."""
     try:
+        cookie_password = get_cookie_password()
         client = get_workos_client()
         session = client.user_management.load_sealed_session(
             sealed_session=session_data,
             cookie_password=cookie_password,
         )
-        
+
         auth_response = session.authenticate()
-        
+
         if not auth_response.authenticated:
             # Try to refresh
             refresh_result = session.refresh()
             if not refresh_result.authenticated:
                 raise HTTPException(status_code=401, detail="Session expired")
-            
+
             # Note: In a real FastAPI dependency, we can't easily set the cookie on the response here
             # The middleware or endpoint needs to handle the refresh and cookie setting
             # For now, we assume the session is valid or return 401
             return refresh_result.user.to_dict()
-            
+
         return auth_response.user.to_dict()
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"WorkOS authentication failed: {str(e)}")
+
+
+async def _validate_local_session(session_data: str) -> Dict[str, Any]:
+    """Validate Local Mode session cookie and return user data."""
+    from .setup.local_auth import verify_local_session
+    from .setup import ConfigStore
+    from .database import get_db_session
+
+    try:
+        # Get the signing secret
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            api_key = await config_store.get("local_omni_api_key")
+
+            if not api_key:
+                raise HTTPException(status_code=401, detail="Local Mode not configured")
+
+            # Verify the session token
+            payload = verify_local_session(session_data, api_key)
+            if not payload:
+                raise HTTPException(status_code=401, detail="Invalid or expired local session")
+
+            # Return user data in same format as WorkOS
+            return {
+                "id": payload.get("user_id"),
+                "user_id": payload.get("user_id"),  # Include both for compatibility
+                "email": payload.get("email"),
+                "workspace_id": payload.get("workspace_id"),
+                "is_super_admin": payload.get("is_super_admin", True),
+                "mode": "local",
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Local authentication failed: {str(e)}")
 
 def get_auth_url(redirect_uri: str) -> str:
     """Generate AuthKit authorization URL."""

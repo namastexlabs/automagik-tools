@@ -7,7 +7,12 @@ In local mode:
 - Full access to everything
 """
 import uuid
-from typing import Optional
+import hmac
+import hashlib
+import json
+import base64
+import logging
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -15,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import User, Workspace, UserRole
 from .mode_manager import AppMode, ModeManager
+
+logger = logging.getLogger(__name__)
 
 
 class LocalAuthSession(BaseModel):
@@ -145,3 +152,73 @@ class LocalAuthManager:
             workspace_id=user.workspace_id,
             is_super_admin=True,
         )
+
+
+# Session signing utilities for Local Mode HTTP-only cookies
+
+def sign_local_session(payload: Dict[str, Any], secret: str, expires_days: int = 30) -> str:
+    """Create a signed session token for Local Mode.
+
+    Args:
+        payload: Session data (user_id, email, workspace_id, etc.)
+        secret: Secret key for signing (local_omni_api_key)
+        expires_days: Token expiry in days (default 30)
+
+    Returns:
+        Signed token string in format: base64_data.signature
+    """
+    # Add expiry timestamp
+    payload_copy = payload.copy()
+    payload_copy["exp"] = (datetime.now(timezone.utc) + timedelta(days=expires_days)).isoformat()
+    payload_copy["iat"] = datetime.now(timezone.utc).isoformat()
+
+    # Encode payload
+    data = base64.urlsafe_b64encode(json.dumps(payload_copy).encode()).decode()
+
+    # Sign with HMAC-SHA256
+    signature = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+
+    return f"{data}.{signature}"
+
+
+def verify_local_session(token: str, secret: str) -> Optional[Dict[str, Any]]:
+    """Verify and decode a Local Mode session token.
+
+    Args:
+        token: Signed token string
+        secret: Secret key used for signing
+
+    Returns:
+        Decoded payload if valid, None if invalid/expired
+    """
+    try:
+        # Split token into data and signature
+        parts = token.rsplit(".", 1)
+        if len(parts) != 2:
+            logger.warning("[LocalAuth] Invalid token format - missing signature")
+            return None
+
+        data, signature = parts
+
+        # Verify signature
+        expected_signature = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected_signature):
+            logger.warning("[LocalAuth] Invalid token signature")
+            return None
+
+        # Decode payload
+        payload = json.loads(base64.urlsafe_b64decode(data))
+
+        # Check expiry
+        exp = payload.get("exp")
+        if exp:
+            exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+            if exp_dt < datetime.now(timezone.utc):
+                logger.info("[LocalAuth] Token expired")
+                return None
+
+        return payload
+
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"[LocalAuth] Token verification failed: {e}")
+        return None

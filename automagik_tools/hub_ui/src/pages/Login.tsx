@@ -9,12 +9,13 @@ export default function Login() {
   const [appMode, setAppMode] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Check if already authenticated
+  // Check if already authenticated (wait for app mode to prevent race condition)
   useEffect(() => {
+    if (appMode === null) return;  // Wait for app mode to be determined
     if (isAuthenticated()) {
       navigate('/dashboard');
     }
-  }, [navigate]);
+  }, [navigate, appMode]);
 
   // Fetch app mode on mount
   useEffect(() => {
@@ -114,35 +115,45 @@ export default function Login() {
     }
   };
 
-  // Handle Local Mode authentication (no WorkOS required)
-  const handleLocalModeAuth = () => {
+  // Handle Local Mode authentication (calls backend to set HTTP-only session cookie)
+  const handleLocalModeAuth = async () => {
     try {
-      const user = {
-        id: 'local',
-        email: 'local@localhost',
-        first_name: 'Local',
-        last_name: 'User',
-        workspace_id: 'local',
-        workspace_name: 'Local Mode',
-        workspace_slug: 'local',
-        is_super_admin: true,
-        mfa_enabled: false
-      };
-      localStorage.setItem('hub_user', JSON.stringify(user));
+      console.log('[Login] Calling /api/auth/local-login...');
 
-      // RACE CONDITION FIX: Verify write committed by reading back
-      const stored = localStorage.getItem('hub_user');
-      if (!stored) {
-        console.error('[Login] localStorage write verification failed');
-        setError('Failed to save authentication. Check browser privacy settings.');
-        return;
+      const response = await fetch('/api/auth/local-login', {
+        method: 'POST',
+        credentials: 'include',  // Important: receive HTTP-only session cookie
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Local authentication failed');
       }
 
-      console.log('[Login] Local mode auth successful');
+      const data = await response.json();
+
+      // Store user info in localStorage for display purposes only
+      // (actual auth is in HTTP-only session cookie)
+      if (data.user) {
+        const userInfo: UserInfo = {
+          id: data.user.id,
+          email: data.user.email,
+          first_name: data.user.first_name,
+          last_name: data.user.last_name,
+          workspace_id: data.user.workspace_id,
+          workspace_name: data.user.workspace_name,
+          workspace_slug: data.user.workspace_slug,
+          is_super_admin: data.user.is_super_admin || false,
+          mfa_enabled: data.user.mfa_enabled || false,
+        };
+        setUserInfo(userInfo);
+      }
+
+      console.log('[Login] Local mode auth successful - session cookie set');
       navigate('/dashboard');
     } catch (e) {
       console.error('[Login] handleLocalModeAuth failed:', e);
-      setError('Failed to save authentication. Check browser privacy settings.');
+      setError(e instanceof Error ? e.message : 'Failed to authenticate in Local Mode');
     }
   };
 
