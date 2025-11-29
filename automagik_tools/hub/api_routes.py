@@ -55,6 +55,48 @@ async def get_current_user_id(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
 
+async def get_current_user_context(request: Request) -> Dict[str, Any]:
+    """Get full user context including user_id and workspace_id.
+
+    Returns the complete user object from authentication, which includes:
+    - id/user_id: The user's unique identifier
+    - workspace_id: The user's workspace (required for multi-tenant operations)
+    - email, first_name, last_name: User profile info
+    - is_super_admin: Admin status flag
+    """
+    from .auth import get_current_user
+
+    try:
+        # Try cookie-based authentication first (both WorkOS and Local Mode)
+        return await get_current_user(request)
+    except HTTPException:
+        # Fall back to bearer token (for backward compatibility)
+        token = get_access_token()
+        if token:
+            user_id = token.claims.get("sub")
+            workspace_id = token.claims.get("workspace_id")
+            if user_id:
+                return {
+                    "id": user_id,
+                    "user_id": user_id,
+                    "workspace_id": workspace_id,
+                }
+
+        # No valid authentication
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+def extract_user_workspace(user: Dict[str, Any]) -> tuple[str, str]:
+    """Extract user_id and workspace_id from user dict.
+
+    Returns:
+        Tuple of (user_id, workspace_id)
+    """
+    user_id = user.get("id") or user.get("user_id")
+    workspace_id = user.get("workspace_id")
+    return user_id, workspace_id
+
+
 # Create router (no prefix - will be mounted at /api in hub_http.py)
 router = APIRouter()
 
@@ -103,30 +145,21 @@ async def get_tool_schema(tool_name: str) -> Dict[str, Any]:
 # --- User Tool Management Endpoints ---
 
 @router.get("/user/tools")
-async def list_user_tools(user_id: str = Depends(get_current_user_id)) -> List[Dict[str, Any]]:
+async def list_user_tools(user: Dict[str, Any] = Depends(get_current_user_context)) -> List[Dict[str, Any]]:
     """List all tools configured by the current user."""
-    # Create mock Context with user_id
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    return await hub_tools.list_my_tools(ctx)
+    user_id, workspace_id = extract_user_workspace(user)
+    return await hub_tools.list_my_tools(user_id=user_id, workspace_id=workspace_id)
 
 
 @router.post("/user/tools/{tool_name}")
 async def configure_tool(
     tool_name: str,
     request: ToolConfigRequest,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Add and configure a tool for the current user."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    result = await hub_tools.add_tool(tool_name, request.config, ctx)
+    user_id, workspace_id = extract_user_workspace(user)
+    result = await hub_tools.add_tool(tool_name, request.config, user_id=user_id, workspace_id=workspace_id)
 
     return {
         "status": "success",
@@ -138,30 +171,22 @@ async def configure_tool(
 @router.get("/user/tools/{tool_name}")
 async def get_user_tool_config(
     tool_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Get current configuration for a user's tool."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    return await hub_tools.get_tool_config(tool_name, ctx)
+    user_id, workspace_id = extract_user_workspace(user)
+    return await hub_tools.get_tool_config(tool_name, user_id=user_id, workspace_id=workspace_id)
 
 
 @router.put("/user/tools/{tool_name}")
 async def update_user_tool_config(
     tool_name: str,
     request: ToolConfigRequest,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Update configuration for a user's tool."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    result = await hub_tools.update_tool_config(tool_name, request.config, ctx)
+    user_id, workspace_id = extract_user_workspace(user)
+    result = await hub_tools.update_tool_config(tool_name, request.config, user_id=user_id, workspace_id=workspace_id)
 
     return {
         "status": "success",
@@ -173,15 +198,11 @@ async def update_user_tool_config(
 @router.delete("/user/tools/{tool_name}")
 async def delete_user_tool(
     tool_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Remove a tool from user's collection."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    result = await hub_tools.remove_tool(tool_name, ctx)
+    user_id, workspace_id = extract_user_workspace(user)
+    result = await hub_tools.remove_tool(tool_name, user_id=user_id, workspace_id=workspace_id)
 
     return {
         "status": "success",
@@ -243,17 +264,14 @@ async def get_tool_status(
 @router.post("/user/tools/{tool_name}/start")
 async def start_tool(
     tool_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Start a tool instance."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
+    user_id, workspace_id = extract_user_workspace(user)
 
     # Get user's tool configuration
     try:
-        config = await hub_tools.get_tool_config(tool_name, ctx)
+        config = await hub_tools.get_tool_config(tool_name, user_id=user_id, workspace_id=workspace_id)
     except Exception:
         # No config found, use empty config
         config = {}
@@ -275,17 +293,14 @@ async def stop_tool(
 @router.post("/user/tools/{tool_name}/refresh")
 async def refresh_tool(
     tool_name: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Refresh tool configuration/reload."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
+    user_id, workspace_id = extract_user_workspace(user)
 
     # Get user's latest tool configuration
     try:
-        config = await hub_tools.get_tool_config(tool_name, ctx)
+        config = await hub_tools.get_tool_config(tool_name, user_id=user_id, workspace_id=workspace_id)
     except Exception:
         config = {}
 
@@ -299,15 +314,11 @@ async def refresh_tool(
 async def store_tool_credential(
     tool_name: str,
     request: CredentialRequest,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Store encrypted credentials for a tool."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    result = await store_credential(tool_name, request.provider, request.secrets, ctx)
+    user_id, _ = extract_user_workspace(user)
+    result = await store_credential(tool_name, request.provider, request.secrets, user_id=user_id)
 
     return {
         "status": "success",
@@ -319,41 +330,29 @@ async def store_tool_credential(
 async def get_tool_credential(
     tool_name: str,
     provider: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Retrieve credentials for a tool."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    return await get_credential(tool_name, provider, ctx)
+    user_id, _ = extract_user_workspace(user)
+    return await get_credential(tool_name, provider, user_id=user_id)
 
 
 @router.get("/user/credentials")
-async def list_user_credentials(user_id: str = Depends(get_current_user_id)) -> List[Dict[str, Any]]:
+async def list_user_credentials(user: Dict[str, Any] = Depends(get_current_user_context)) -> List[Dict[str, Any]]:
     """List all user's credentials (metadata only)."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    return await list_credentials(ctx)
+    user_id, _ = extract_user_workspace(user)
+    return await list_credentials(user_id=user_id)
 
 
 @router.delete("/user/credentials/{tool_name}")
 async def delete_tool_credential(
     tool_name: str,
     provider: str,
-    user_id: str = Depends(get_current_user_id)
+    user: Dict[str, Any] = Depends(get_current_user_context)
 ) -> Dict[str, Any]:
     """Delete a tool credential."""
-    from fastmcp import Context
-
-    ctx = Context()
-    ctx.set_state("user_id", user_id)
-
-    result = await delete_credential(tool_name, provider, ctx)
+    user_id, _ = extract_user_workspace(user)
+    result = await delete_credential(tool_name, provider, user_id=user_id)
 
     return {
         "status": "success",

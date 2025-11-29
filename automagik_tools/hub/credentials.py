@@ -13,24 +13,29 @@ async def store_credential(
     tool_name: str,
     provider: str,
     secrets: Dict[str, Any],
-    ctx: Context
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None
 ) -> str:
     """
     Store encrypted credentials for a specific tool and provider.
-    
+
     Args:
         tool_name: Name of the tool (e.g., 'google_calendar')
         provider: Provider name (e.g., 'google', 'github', 'api_key')
         secrets: Dictionary containing secrets (e.g., {'access_token': '...', 'refresh_token': '...'})
-        ctx: FastMCP context (provides user_id)
-        
+        ctx: FastMCP context (optional if user_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+
     Returns:
         Success message
     """
-    # TODO: Proper user extraction
-    user_id = "default_user"
-    if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
-         user_id = ctx.session.get("user_id")
+    # Direct param takes precedence, then try context, then default
+    if not user_id:
+        if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
+            user_id = ctx.session.get("user_id")
+        else:
+            user_id = "default_user"
 
     # In a real implementation, we would encrypt these values before storing
     # For now, we'll store them as JSON strings, but the model field is named 'access_token' (Text)
@@ -77,23 +82,28 @@ async def store_credential(
 async def get_credential(
     tool_name: str,
     provider: str,
-    ctx: Context
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Retrieve credentials for a specific tool.
-    
+
     Args:
         tool_name: Name of the tool
         provider: Provider name
-        ctx: FastMCP context
-        
+        ctx: FastMCP context (optional if user_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+
     Returns:
         Dictionary of secrets
     """
-    # TODO: Proper user extraction
-    user_id = "default_user"
-    if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
-         user_id = ctx.session.get("user_id")
+    # Direct param takes precedence, then try context, then default
+    if not user_id:
+        if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
+            user_id = ctx.session.get("user_id")
+        else:
+            user_id = "default_user"
          
     async with get_db_session() as session:
         result = await session.execute(
@@ -118,20 +128,27 @@ async def get_credential(
             }
 
 
-async def list_credentials(ctx: Context) -> List[Dict[str, Any]]:
+async def list_credentials(
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     List all stored credentials (metadata only, no secrets).
-    
+
     Args:
-        ctx: FastMCP context
-        
+        ctx: FastMCP context (optional if user_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+
     Returns:
         List of credential metadata
     """
-    # TODO: Proper user extraction
-    user_id = "default_user"
-    if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
-         user_id = ctx.session.get("user_id")
+    # Direct param takes precedence, then try context, then default
+    if not user_id:
+        if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
+            user_id = ctx.session.get("user_id")
+        else:
+            user_id = "default_user"
          
     async with get_db_session() as session:
         result = await session.execute(
@@ -152,23 +169,28 @@ async def list_credentials(ctx: Context) -> List[Dict[str, Any]]:
 async def delete_credential(
     tool_name: str,
     provider: str,
-    ctx: Context
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None
 ) -> str:
     """
     Delete a stored credential.
-    
+
     Args:
         tool_name: Name of the tool
         provider: Provider name
-        ctx: FastMCP context
-        
+        ctx: FastMCP context (optional if user_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+
     Returns:
         Success message
     """
-    # TODO: Proper user extraction
-    user_id = "default_user"
-    if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
-         user_id = ctx.session.get("user_id")
+    # Direct param takes precedence, then try context, then default
+    if not user_id:
+        if ctx and hasattr(ctx, "session") and ctx.session.get("user_id"):
+            user_id = ctx.session.get("user_id")
+        else:
+            user_id = "default_user"
          
     async with get_db_session() as session:
         result = await session.execute(

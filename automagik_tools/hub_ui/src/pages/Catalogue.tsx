@@ -204,26 +204,30 @@ export default function Catalogue() {
 
             {selectedTool && (
               <div className="space-y-4">
-                {Object.entries(selectedTool.config_schema.properties || {}).map(([key, schema]: [string, any]) => (
-                  <div key={key} className="space-y-2">
-                    <Label htmlFor={key}>
-                      {schema.title || key}
-                      {selectedTool.config_schema.required?.includes(key) && (
-                        <span className="text-destructive ml-1">*</span>
+                {selectedTool.config_schema?.properties &&
+                  Object.entries(selectedTool.config_schema.properties).map(([key, schema]: [string, any]) => (
+                    <div key={key} className="space-y-2">
+                      <Label htmlFor={key}>
+                        {schema.title || key}
+                        {selectedTool.config_schema?.required?.includes(key) && (
+                          <span className="text-destructive ml-1">*</span>
+                        )}
+                      </Label>
+                      {schema.description && (
+                        <p className="text-sm text-muted-foreground">{schema.description}</p>
                       )}
-                    </Label>
-                    {schema.description && (
-                      <p className="text-sm text-muted-foreground">{schema.description}</p>
-                    )}
-                    <Input
-                      id={key}
-                      type={schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text'}
-                      placeholder={schema.default || ''}
-                      value={config[key] || ''}
-                      onChange={(e) => setConfig({ ...config, [key]: e.target.value })}
-                    />
-                  </div>
-                ))}
+                      <Input
+                        id={key}
+                        type={schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text'}
+                        placeholder={schema.default || ''}
+                        value={config[key] || ''}
+                        onChange={(e) => setConfig({ ...config, [key]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                {!selectedTool.config_schema?.properties && (
+                  <p className="text-sm text-muted-foreground">No configuration required for this tool.</p>
+                )}
               </div>
             )}
 

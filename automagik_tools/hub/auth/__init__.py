@@ -120,7 +120,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
     Dependency to get the current authenticated user from the session cookie.
     Supports both LOCAL mode (signed session) and WorkOS mode (sealed session).
     """
-    from .setup.local_auth import verify_local_session
+    from ..setup.local_auth import verify_local_session
 
     # Check app mode first
     async with get_db_session() as session:

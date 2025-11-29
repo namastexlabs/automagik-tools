@@ -4,7 +4,7 @@ All tools are scoped to the user's workspace for multi-tenant isolation.
 """
 import json
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
 from sqlalchemy import select
@@ -12,11 +12,18 @@ from .database import get_db_session
 from .models import UserTool, ToolConfig, ToolRegistry
 
 
-def _get_user_workspace(ctx: Context) -> tuple[str, str]:
-    """Extract user_id and workspace_id from context.
+def _get_user_workspace(
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> tuple[str, str]:
+    """Extract user_id and workspace_id from context or direct parameters.
 
     Args:
-        ctx: FastMCP context
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (takes precedence over context)
+        workspace_id: Direct workspace_id (takes precedence over context)
 
     Returns:
         Tuple of (user_id, workspace_id)
@@ -24,18 +31,20 @@ def _get_user_workspace(ctx: Context) -> tuple[str, str]:
     Raises:
         ToolError: If user is not authenticated
     """
-    user_id = None
-    workspace_id = None
+    # Direct parameters take precedence
+    if not user_id or not workspace_id:
+        if ctx:
+            # Try state (set by middleware)
+            if not user_id:
+                user_id = ctx.get_state("user_id")
+            if not workspace_id:
+                workspace_id = ctx.get_state("workspace_id")
 
-    if ctx:
-        # Try state (set by middleware)
-        user_id = ctx.get_state("user_id")
-        workspace_id = ctx.get_state("workspace_id")
-
-        # Legacy: try session
-        if not user_id and hasattr(ctx, "session"):
-            user_id = ctx.session.get("user_id")
-            workspace_id = ctx.session.get("workspace_id")
+            # Legacy: try session
+            if not user_id and hasattr(ctx, "session"):
+                user_id = ctx.session.get("user_id")
+            if not workspace_id and hasattr(ctx, "session"):
+                workspace_id = ctx.session.get("workspace_id")
 
     if not user_id:
         raise ToolError("Authentication required. Please log in first.")
@@ -78,7 +87,10 @@ async def get_tool_metadata(tool_name: str) -> Dict[str, Any]:
 async def add_tool(
     tool_name: str,
     config: Dict[str, Any],
-    ctx: Context
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
 ) -> str:
     """
     Add a tool to your workspace.
@@ -86,12 +98,14 @@ async def add_tool(
     Args:
         tool_name: Name of the tool to add
         config: Configuration dictionary for the tool
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         Success message
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         # Verify tool exists in registry
@@ -160,18 +174,26 @@ async def add_tool(
     return f"Tool '{tool_name}' added to your workspace successfully."
 
 
-async def remove_tool(tool_name: str, ctx: Context) -> str:
+async def remove_tool(
+    tool_name: str,
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> str:
     """
     Remove a tool from your workspace.
 
     Args:
         tool_name: Name of the tool to remove
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         Success message
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         # Disable tool (soft delete)
@@ -192,17 +214,24 @@ async def remove_tool(tool_name: str, ctx: Context) -> str:
     return f"Tool '{tool_name}' removed from your workspace."
 
 
-async def list_my_tools(ctx: Context) -> List[Dict[str, Any]]:
+async def list_my_tools(
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     List all tools in your workspace.
 
     Args:
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         List of enabled tools
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         result = await session.execute(
@@ -214,28 +243,40 @@ async def list_my_tools(ctx: Context) -> List[Dict[str, Any]]:
         tools = []
         for user_tool, registry_entry in result:
             tools.append({
-                "name": user_tool.tool_name,
+                # Fields expected by frontend UserTool interface
+                "tool_name": user_tool.tool_name,
+                "enabled": user_tool.enabled,
+                "created_at": user_tool.created_at.isoformat() if user_tool.created_at else None,
+                "updated_at": user_tool.created_at.isoformat() if user_tool.created_at else None,  # UserTool doesn't track updates
+                # Additional metadata from registry
                 "display_name": registry_entry.display_name,
                 "description": registry_entry.description,
                 "category": registry_entry.category,
-                "added_at": user_tool.created_at.isoformat() if user_tool.created_at else None,
             })
 
         return tools
 
 
-async def get_tool_config(tool_name: str, ctx: Context) -> Dict[str, Any]:
+async def get_tool_config(
+    tool_name: str,
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Get current configuration for a tool in your workspace.
 
     Args:
         tool_name: Name of the tool
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         Configuration dictionary
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         result = await session.execute(
@@ -255,7 +296,10 @@ async def get_tool_config(tool_name: str, ctx: Context) -> Dict[str, Any]:
 async def update_tool_config(
     tool_name: str,
     config: Dict[str, Any],
-    ctx: Context
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
 ) -> str:
     """
     Update configuration for a tool in your workspace.
@@ -263,12 +307,14 @@ async def update_tool_config(
     Args:
         tool_name: Name of the tool
         config: New configuration dictionary (partial updates allowed)
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         Success message
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         # Verify tool is enabled for workspace
@@ -312,18 +358,26 @@ async def update_tool_config(
     return f"Configuration for '{tool_name}' updated successfully."
 
 
-async def get_missing_config(tool_name: str, ctx: Context) -> List[str]:
+async def get_missing_config(
+    tool_name: str,
+    ctx: Optional[Context] = None,
+    *,
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> List[str]:
     """
     Identify missing required configuration keys for a tool.
 
     Args:
         tool_name: Name of the tool
-        ctx: FastMCP context (provides user_id and workspace_id)
+        ctx: FastMCP context (optional if user_id and workspace_id provided)
+        user_id: Direct user_id (for HTTP API calls)
+        workspace_id: Direct workspace_id (for HTTP API calls)
 
     Returns:
         List of missing configuration keys
     """
-    user_id, workspace_id = _get_user_workspace(ctx)
+    user_id, workspace_id = _get_user_workspace(ctx, user_id=user_id, workspace_id=workspace_id)
 
     async with get_db_session() as session:
         # Get tool metadata for schema
