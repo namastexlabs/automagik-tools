@@ -6,6 +6,7 @@ import { setUserInfo, type UserInfo } from '@/lib/auth';
 export default function Login() {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
+  const [appMode, setAppMode] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Check if already authenticated
@@ -15,8 +16,26 @@ export default function Login() {
     }
   }, [navigate]);
 
-  // Handle OAuth callback
+  // Fetch app mode on mount
   useEffect(() => {
+    fetch('/api/setup/status')
+      .then(res => res.json())
+      .then(data => {
+        console.log('[Login] App mode:', data.current_mode);
+        setAppMode(data.current_mode);
+      })
+      .catch(err => {
+        console.error('[Login] Failed to fetch app mode:', err);
+        // Default to workos on error to maintain existing behavior
+        setAppMode('workos');
+      });
+  }, []);
+
+  // Handle authentication based on app mode
+  useEffect(() => {
+    // Wait for app mode to be determined
+    if (appMode === null) return;
+
     const code = searchParams.get('code');
     const errorParam = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
@@ -27,12 +46,17 @@ export default function Login() {
     }
 
     if (code) {
+      // OAuth callback - handle WorkOS response
       handleOAuthCallback(code);
+    } else if (appMode === 'local') {
+      // Local mode - auto-authenticate without WorkOS
+      console.log('[Login] Local mode detected - auto-authenticating');
+      handleLocalModeAuth();
     } else {
-      // No code and not authenticated - redirect to WorkOS immediately
+      // WorkOS mode - redirect to WorkOS for authentication
       redirectToWorkOS();
     }
-  }, [searchParams]);
+  }, [searchParams, appMode]);
 
   const handleOAuthCallback = async (code: string) => {
     try {
@@ -90,6 +114,38 @@ export default function Login() {
     }
   };
 
+  // Handle Local Mode authentication (no WorkOS required)
+  const handleLocalModeAuth = () => {
+    try {
+      const user = {
+        id: 'local',
+        email: 'local@localhost',
+        first_name: 'Local',
+        last_name: 'User',
+        workspace_id: 'local',
+        workspace_name: 'Local Mode',
+        workspace_slug: 'local',
+        is_super_admin: true,
+        mfa_enabled: false
+      };
+      localStorage.setItem('hub_user', JSON.stringify(user));
+
+      // RACE CONDITION FIX: Verify write committed by reading back
+      const stored = localStorage.getItem('hub_user');
+      if (!stored) {
+        console.error('[Login] localStorage write verification failed');
+        setError('Failed to save authentication. Check browser privacy settings.');
+        return;
+      }
+
+      console.log('[Login] Local mode auth successful');
+      navigate('/dashboard');
+    } catch (e) {
+      console.error('[Login] handleLocalModeAuth failed:', e);
+      setError('Failed to save authentication. Check browser privacy settings.');
+    }
+  };
+
   // Show error if present, otherwise just a loading state
   if (error) {
     return (
@@ -98,7 +154,7 @@ export default function Login() {
           <h2 className="text-lg font-semibold mb-2">Authentication Error</h2>
           <p className="text-sm">{error}</p>
           <button
-            onClick={() => redirectToWorkOS()}
+            onClick={() => appMode === 'local' ? handleLocalModeAuth() : redirectToWorkOS()}
             className="mt-4 w-full bg-destructive text-destructive-foreground px-4 py-2 rounded-md hover:bg-destructive/90"
           >
             Try Again
