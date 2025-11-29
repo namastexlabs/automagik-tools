@@ -522,12 +522,14 @@ if ui_dist.exists():
 else:
     # UI not built - serve configuration-aware placeholder
     from .hub.setup.config_store import ConfigStore
+    from .hub.database import get_db_session
 
     async def ui_placeholder(request):
         # Check if app is configured
-        config_store = ConfigStore()
         try:
-            app_mode = await config_store.get_app_mode()
+            async with get_db_session() as session:
+                config_store = ConfigStore(session)
+                app_mode = await config_store.get_app_mode()
         except Exception:
             app_mode = "unconfigured"
 
