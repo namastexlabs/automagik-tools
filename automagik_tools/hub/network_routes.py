@@ -85,6 +85,9 @@ def is_port_in_use(port: int) -> tuple[bool, List[PortConflict]]:
 
         for conn in connections:
             if conn.laddr.port == port:
+                # Skip connections where PID is unavailable (common on Linux/WSL)
+                if conn.pid is None:
+                    continue
                 # Port is in use
                 try:
                     process = psutil.Process(conn.pid)
