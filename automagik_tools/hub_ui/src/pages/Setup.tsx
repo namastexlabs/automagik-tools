@@ -95,6 +95,16 @@ export default function SetupNew() {
   const [pendingRestartConfig, setPendingRestartConfig] = useState<RestartConfig | null>(null);
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
+  // Set local mode user info so isAuthenticated() returns true
+  const setLocalModeUser = () => {
+    localStorage.setItem('user_info', JSON.stringify({
+      id: 'local',
+      email: 'local@localhost',
+      name: 'Local User',
+      mode: 'local'
+    }));
+  };
+
   // Check if setup is already complete
   useEffect(() => {
     fetch('/api/setup/status')
@@ -198,6 +208,7 @@ export default function SetupNew() {
         setShowRestartDialog(true);
       } else {
         // No restart needed, redirect to dashboard
+        setLocalModeUser();
         window.location.href = '/app/dashboard';
       }
     } else if (state.mode === 'workos') {
@@ -257,6 +268,7 @@ export default function SetupNew() {
     if (state.mode === 'workos') {
       window.location.href = `${newUrl}/app/login`;
     } else {
+      setLocalModeUser();
       window.location.href = `${newUrl}/app/dashboard`;
     }
   };
@@ -363,6 +375,7 @@ export default function SetupNew() {
             if (pendingRestartConfig) {
               setShowRestartDialog(true);
             } else {
+              setLocalModeUser();
               window.location.href = '/app/dashboard';
             }
           }}
