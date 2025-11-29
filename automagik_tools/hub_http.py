@@ -520,16 +520,25 @@ if ui_dist.exists():
     app.mount("/", ProductionSPAStaticFiles(directory=str(ui_dist), html=True), name="ui")
 
 else:
-    # UI not built - serve HTML placeholder with setup info
+    # UI not built - serve configuration-aware placeholder
+    from .hub.setup.config_store import ConfigStore
+
     async def ui_placeholder(request):
-        html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automagik Tools Hub</title>
-    <style>
+        # Check if app is configured
+        config_store = ConfigStore()
+        try:
+            app_mode = await config_store.get_app_mode()
+        except Exception:
+            app_mode = "unconfigured"
+
+        path = request.url.path
+
+        # If configured and visiting /setup, redirect to home
+        if app_mode != "unconfigured" and path == "/setup":
+            return RedirectResponse(url="/", status_code=307)
+
+        # Common styles for all placeholder pages
+        common_styles = """
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -544,46 +553,40 @@ else:
             background: white;
             border-radius: 16px;
             padding: 48px;
-            max-width: 800px;
+            max-width: 600px;
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 {
-            color: #2d3748;
-            font-size: 2.5rem;
-            margin-bottom: 16px;
             text-align: center;
         }
+        h1 { color: #2d3748; font-size: 2rem; margin-bottom: 16px; }
+        p { color: #4a5568; margin-bottom: 12px; line-height: 1.6; }
+        code {
+            background: #edf2f7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        a { color: #667eea; }
         .status {
-            background: #48bb78;
-            color: white;
-            padding: 12px 24px;
+            display: inline-block;
+            padding: 8px 16px;
             border-radius: 8px;
-            text-align: center;
             font-weight: 600;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
-        .section {
-            margin-bottom: 32px;
-        }
-        h2 {
-            color: #4a5568;
-            font-size: 1.25rem;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 8px;
-        }
+        .status-configured { background: #c6f6d5; color: #276749; }
+        .status-unconfigured { background: #feebc8; color: #c05621; }
         .link-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 16px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 24px;
         }
         .link-card {
             background: #f7fafc;
-            padding: 20px;
+            padding: 16px;
             border-radius: 8px;
-            text-align: center;
             text-decoration: none;
             color: #2d3748;
             border: 2px solid #e2e8f0;
@@ -592,96 +595,83 @@ else:
         .link-card:hover {
             border-color: #667eea;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
-        .link-card strong {
-            display: block;
-            color: #667eea;
-            font-size: 1.1rem;
-            margin-bottom: 8px;
-        }
-        .info-box {
-            background: #edf2f7;
-            padding: 16px;
-            border-radius: 8px;
-            margin-top: 12px;
-        }
-        .info-box code {
-            background: #2d3748;
-            color: #48bb78;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-        }
-        .footer {
-            text-align: center;
-            color: #718096;
-            margin-top: 32px;
-            font-size: 0.9rem;
-        }
-    </style>
+        .link-card strong { display: block; color: #667eea; margin-bottom: 4px; }
+        """
+
+        if app_mode == "unconfigured":
+            # Unconfigured - show setup instructions
+            html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Required - Automagik Tools</title>
+    <style>{common_styles}</style>
 </head>
 <body>
     <div class="container">
-        <h1>🛠️ Automagik Tools Hub</h1>
-        <div class="status">✅ Running in Local Mode</div>
-
-        <div class="section">
-            <h2>🔗 Quick Access</h2>
-            <div class="link-grid">
-                <a href="/docs" class="link-card">
-                    <strong>📚 API Docs</strong>
-                    <span>Interactive API Documentation</span>
-                </a>
-                <a href="/redoc" class="link-card">
-                    <strong>📖 ReDoc</strong>
-                    <span>Alternative API Docs</span>
-                </a>
-                <a href="/api/health" class="link-card">
-                    <strong>💚 Health Check</strong>
-                    <span>System Status</span>
-                </a>
-                <a href="/mcp" class="link-card">
-                    <strong>🔌 MCP Endpoint</strong>
-                    <span>Model Context Protocol</span>
-                </a>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>⚙️ Configuration</h2>
-            <div class="info-box">
-                <p><strong>Mode:</strong> Local (Passwordless)</p>
-                <p><strong>Admin:</strong> <code>admin@namastex.com</code></p>
-                <p><strong>Port:</strong> <code>8884</code></p>
-                <p><strong>Process:</strong> PM2 ("Tools Hub")</p>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>🚀 Getting Started</h2>
-            <div class="info-box">
-                <p style="margin-bottom: 12px;">The Hub is configured and ready. Visit <strong>/docs</strong> to explore available API endpoints.</p>
-                <p><strong>Next Steps:</strong></p>
-                <ul style="margin-left: 20px; margin-top: 8px;">
-                    <li>Scan for projects: <code>POST /api/discovery/scan</code></li>
-                    <li>List agents: <code>GET /api/discovery/agents</code></li>
-                    <li>Configure toolkits: <code>PUT /api/discovery/agents/{id}/toolkit</code></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>Powered by Automagik Tools • FastMCP • WorkOS</p>
+        <h1>Automagik Tools Hub</h1>
+        <div class="status status-unconfigured">Setup Required</div>
+        <p>The frontend UI has not been built yet.</p>
+        <p>To complete setup, build the UI first:</p>
+        <p><code>cd automagik_tools/hub_ui && pnpm install && pnpm build</code></p>
+        <p>Then restart the hub and visit this page again.</p>
+        <div class="link-grid">
+            <a href="/docs" class="link-card">
+                <strong>API Docs</strong>
+                <span>Swagger UI</span>
+            </a>
+            <a href="/api/health" class="link-card">
+                <strong>Health Check</strong>
+                <span>System Status</span>
+            </a>
         </div>
     </div>
 </body>
-</html>
-        """
+</html>"""
+        else:
+            # Configured but UI not built - show status with actual mode
+            mode_display = app_mode.upper() if app_mode else "UNKNOWN"
+            html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automagik Tools Hub</title>
+    <style>{common_styles}</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Automagik Tools Hub</h1>
+        <div class="status status-configured">Mode: {mode_display}</div>
+        <p>The hub is configured and running.</p>
+        <p>The frontend UI is not built. For the full experience, build it:</p>
+        <p><code>cd automagik_tools/hub_ui && pnpm install && pnpm build</code></p>
+        <div class="link-grid">
+            <a href="/docs" class="link-card">
+                <strong>API Docs</strong>
+                <span>Swagger UI</span>
+            </a>
+            <a href="/redoc" class="link-card">
+                <strong>ReDoc</strong>
+                <span>API Reference</span>
+            </a>
+            <a href="/api/health" class="link-card">
+                <strong>Health Check</strong>
+                <span>System Status</span>
+            </a>
+            <a href="/mcp" class="link-card">
+                <strong>MCP Endpoint</strong>
+                <span>Model Context Protocol</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>"""
         return HTMLResponse(content=html)
 
-    # Use specific path patterns for routes
-    app.add_route("/", ui_placeholder, methods=["GET"])
+    # Register placeholder routes
     app.add_route("/", ui_placeholder, methods=["GET"])
     app.add_route("/setup", ui_placeholder, methods=["GET"])
 
