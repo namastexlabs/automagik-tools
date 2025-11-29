@@ -114,7 +114,7 @@ main() {
 
     echo -e "${YELLOW}Waiting for backend to start...${NC}"
     for i in {1..30}; do
-        if curl -sf http://localhost:8884/health >/dev/null 2>&1; then
+        if curl -sf http://localhost:8884/api/health >/dev/null 2>&1; then
             echo -e "${GREEN}Backend is ready!${NC}"
             break
         fi
