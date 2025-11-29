@@ -826,3 +826,29 @@ All commits must reference:
 **Why:** Track WHY code was written. Connect commits to requirements. Enable traceability from code → issue → discussion → decision.
 
 **Evidence:** `.genie/reports/learn/commit-must-link-to-issue-20251023.md`
+
+---
+
+## Package Manager: pnpm ONLY 🔴 CRITICAL
+
+**Rule:** This codebase uses pnpm exclusively. NEVER use npm.
+
+### Correct Commands
+- [learn-194] helpful=0 harmful=0: ✅ `pnpm install` (install dependencies)
+- [learn-195] helpful=0 harmful=0: ✅ `pnpm run build` (run build script)
+- [learn-196] helpful=0 harmful=0: ✅ `pnpm add <package>` (add dependency)
+- [learn-197] helpful=0 harmful=0: ✅ `pnpm run <script>` (run any script)
+
+### Forbidden Commands
+- [learn-198] helpful=0 harmful=0: ❌ `npm install` (FORBIDDEN - creates package-lock.json conflicts)
+- [learn-199] helpful=0 harmful=0: ❌ `npm run build` (FORBIDDEN - use pnpm)
+- [learn-200] helpful=0 harmful=0: ❌ `npm add` (FORBIDDEN - use pnpm)
+- [learn-201] helpful=0 harmful=0: ❌ Any npm command (FORBIDDEN)
+
+### Why pnpm
+- [learn-202] helpful=0 harmful=0: Project uses pnpm-lock.yaml (not package-lock.json)
+- [learn-203] helpful=0 harmful=0: pnpm is faster and more disk-efficient
+- [learn-204] helpful=0 harmful=0: Mixing package managers causes lock file conflicts
+- [learn-205] helpful=0 harmful=0: CI/CD expects pnpm
+
+**Evidence:** User correction 2025-11-29 - npm forbidden, pnpm only
