@@ -96,12 +96,18 @@ export default function SetupNew() {
   const isUpgrade = searchParams.get('mode') === 'upgrade';
 
   // Set local mode user info so isAuthenticated() returns true
+  // Key must match USER_STORAGE_KEY in auth.ts = 'hub_user'
   const setLocalModeUser = () => {
-    localStorage.setItem('user_info', JSON.stringify({
+    localStorage.setItem('hub_user', JSON.stringify({
       id: 'local',
       email: 'local@localhost',
-      name: 'Local User',
-      mode: 'local'
+      first_name: 'Local',
+      last_name: 'User',
+      workspace_id: 'local',
+      workspace_name: 'Local Mode',
+      workspace_slug: 'local',
+      is_super_admin: true,
+      mfa_enabled: false
     }));
   };
 
