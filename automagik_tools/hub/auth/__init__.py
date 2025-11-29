@@ -118,37 +118,79 @@ async def get_cookie_password_async() -> str:
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """
     Dependency to get the current authenticated user from the session cookie.
+    Supports both LOCAL mode (signed session) and WorkOS mode (sealed session).
     """
-    cookie_password = get_cookie_password()
-    session_data = request.cookies.get("wos_session")
-    
-    if not session_data:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-        
-    try:
-        client = get_workos_client()
-        session = client.user_management.load_sealed_session(
-            sealed_session=session_data,
-            cookie_password=cookie_password,
-        )
-        
-        auth_response = session.authenticate()
-        
-        if not auth_response.authenticated:
-            # Try to refresh
-            refresh_result = session.refresh()
-            if not refresh_result.authenticated:
-                raise HTTPException(status_code=401, detail="Session expired")
-            
-            # Note: In a real FastAPI dependency, we can't easily set the cookie on the response here
-            # The middleware or endpoint needs to handle the refresh and cookie setting
-            # For now, we assume the session is valid or return 401
-            return refresh_result.user.to_dict()
-            
-        return auth_response.user.to_dict()
-        
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+    from .setup.local_auth import verify_local_session
+
+    # Check app mode first
+    async with get_db_session() as session:
+        config_store = ConfigStore(session)
+        try:
+            app_mode = await config_store.get_app_mode()
+        except Exception:
+            raise HTTPException(status_code=500, detail="Configuration not available")
+
+    # LOCAL Mode: Use local_session cookie with signed token
+    if app_mode == "local":
+        session_data = request.cookies.get("local_session")
+        if not session_data:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        # Get API key to verify signature
+        async with get_db_session() as session:
+            config_store = ConfigStore(session)
+            api_key = await config_store.get("local_omni_api_key")
+
+        if not api_key:
+            raise HTTPException(status_code=500, detail="Local auth not configured")
+
+        payload = verify_local_session(session_data, api_key)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+        return {
+            "id": payload.get("user_id"),
+            "user_id": payload.get("user_id"),
+            "email": payload.get("email"),
+            "first_name": payload.get("first_name", "Local"),
+            "last_name": payload.get("last_name", "User"),
+            "workspace_id": payload.get("workspace_id"),
+            "is_super_admin": payload.get("is_super_admin", False),
+        }
+
+    # WorkOS Mode: Use wos_session cookie with sealed encryption
+    elif app_mode == "workos":
+        cookie_password = get_cookie_password()
+        session_data = request.cookies.get("wos_session")
+
+        if not session_data:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        try:
+            client = get_workos_client()
+            wos_session = client.user_management.load_sealed_session(
+                sealed_session=session_data,
+                cookie_password=cookie_password,
+            )
+
+            auth_response = wos_session.authenticate()
+
+            if not auth_response.authenticated:
+                # Try to refresh
+                refresh_result = wos_session.refresh()
+                if not refresh_result.authenticated:
+                    raise HTTPException(status_code=401, detail="Session expired")
+
+                return refresh_result.user.to_dict()
+
+            return auth_response.user.to_dict()
+
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+    # Unconfigured
+    else:
+        raise HTTPException(status_code=503, detail="Application not configured")
 
 def get_auth_url(redirect_uri: str) -> str:
     """Generate AuthKit authorization URL."""

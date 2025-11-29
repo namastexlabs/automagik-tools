@@ -320,3 +320,6 @@ test_genie_stdio.py
 
 # Script files that may contain secrets
 scripts/start_linear_genie_sse.sh
+
+# Local data directory
+data/
