@@ -386,7 +386,7 @@ async def get_setup_health():
 
         return HealthCheckResponse(
             status="ok",
-            mode=mode.value if mode else None,
+            mode=mode if mode else None,
             setup_completed=setup_completed,
             db_accessible=True,
         )

@@ -113,6 +113,11 @@ async def create_database_if_needed(db_path: str) -> None:
         db_dir.mkdir(parents=True, exist_ok=True)
         print(f"📁 Created database directory: {db_dir}")
 
+    # Create empty database file if needed (SQLite will populate on first migration)
+    if not db_file.exists():
+        db_file.touch()
+        print(f"📁 Created database file: {db_file}")
+
 
 async def run_migrations_once() -> bool:
     """Run database migrations if needed (idempotent).
@@ -224,7 +229,14 @@ async def bootstrap_application() -> RuntimeConfig:
     """
     import traceback
     import re
+    from dotenv import load_dotenv
     from .database import DATABASE_URL, _is_postgresql
+
+    # Step 0: Ensure database file exists for SQLite BEFORE any connection attempts
+    # This prevents SQLite from creating an improper in-memory database
+    if not _is_postgresql():
+        db_path = os.getenv("HUB_DATABASE_PATH", "./data/hub.db")
+        await create_database_if_needed(db_path)
 
     # Pre-flight connectivity check - fail fast if database is unreachable
     try:
@@ -252,9 +264,6 @@ Copy this block when reporting issues.
 """)
         raise SystemExit(f"DATABASE CONNECTION FAILED: {e}")
 
-
-    from dotenv import load_dotenv
-
     # Step 1: Detect state
     state = await get_bootstrap_state()
     print(f"🔍 Bootstrap state: {state.value}")
@@ -265,10 +274,6 @@ Copy this block when reporting issues.
         load_dotenv()
 
         db_path = os.getenv("HUB_DATABASE_PATH", "./data/hub.db")
-
-        # Create database if needed
-        if state == BootstrapState.NO_DATABASE:
-            await create_database_if_needed(db_path)
 
         # Run migrations
         await run_migrations_once()
