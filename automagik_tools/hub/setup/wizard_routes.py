@@ -193,8 +193,11 @@ async def validate_workos_credentials(request: WorkOSValidateRequest):
         Validation result
 
     Note:
-        This endpoint tests credentials by making a test API call to WorkOS.
+        This endpoint tests credentials by making a test API call to WorkOS
+        AND validates the authkit_domain by checking its OIDC configuration.
     """
+    import httpx
+
     try:
         # Import WorkOS client
         from workos import WorkOSClient
@@ -209,15 +212,56 @@ async def validate_workos_credentials(request: WorkOSValidateRequest):
         try:
             # This will raise an exception if credentials are invalid
             organizations = client.organizations.list_organizations(limit=1)
-            return WorkOSValidateResponse(
-                valid=True,
-                error=None
-            )
         except Exception as api_error:
             return WorkOSValidateResponse(
                 valid=False,
                 error=f"Invalid credentials: {str(api_error)}"
             )
+
+        # Validate authkit_domain by checking OIDC configuration
+        # This ensures the domain is reachable and is a valid AuthKit instance
+        authkit_domain = request.authkit_domain.rstrip('/')
+        oidc_url = f"{authkit_domain}/.well-known/openid-configuration"
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                response = await http_client.get(oidc_url)
+                if response.status_code != 200:
+                    return WorkOSValidateResponse(
+                        valid=False,
+                        error=f"AuthKit domain not accessible: HTTP {response.status_code}. "
+                              f"Please verify the domain is correct (e.g., https://your-subdomain.authkit.app)"
+                    )
+
+                # Verify it's a valid OIDC config with expected issuer
+                oidc_config = response.json()
+                issuer = oidc_config.get("issuer", "")
+                if not issuer.startswith(authkit_domain):
+                    return WorkOSValidateResponse(
+                        valid=False,
+                        error=f"AuthKit domain mismatch: issuer is '{issuer}' but expected '{authkit_domain}'"
+                    )
+
+        except httpx.TimeoutException:
+            return WorkOSValidateResponse(
+                valid=False,
+                error="AuthKit domain validation timed out. Please check the domain is correct."
+            )
+        except httpx.RequestError as e:
+            return WorkOSValidateResponse(
+                valid=False,
+                error=f"Cannot reach AuthKit domain: {str(e)}. Please verify the URL is correct."
+            )
+        except Exception as e:
+            return WorkOSValidateResponse(
+                valid=False,
+                error=f"AuthKit domain validation failed: {str(e)}"
+            )
+
+        return WorkOSValidateResponse(
+            valid=True,
+            error=None
+        )
 
     except ImportError:
         raise HTTPException(
