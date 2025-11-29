@@ -1012,7 +1012,7 @@ reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
 	@cd automagik_tools/hub_ui && pnpm run build
 	$(call print_status,Starting service...)
 	@pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart 8884-automagik-tools
-	@sleep 2
+	@sleep 3
 	$(call print_success,Reload complete!)
 	@$(MAKE) health
 

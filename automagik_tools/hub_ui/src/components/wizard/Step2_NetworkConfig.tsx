@@ -125,7 +125,7 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
   };
 
   const handleNext = () => {
-    if (portStatus?.available) {
+    if (canProceed) {
       onNext();
     }
   };
