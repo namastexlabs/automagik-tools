@@ -150,8 +150,9 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
     }
   };
 
-  // Allow proceeding if port is available OR if the only conflict is ourselves (the wizard)
-  const isSelfConflict = portStatus?.conflicts?.length === 1 && portStatus.conflicts[0]?.is_self === true;
+  // Allow proceeding if port is available OR if ALL conflicts are ourselves (the wizard)
+  const isSelfConflict = portStatus?.conflicts?.length > 0 &&
+    portStatus.conflicts.every(c => c.is_self === true);
   const canProceed = portStatus?.available === true || isSelfConflict;
   const isDefaultConfig = data.port === DEFAULT_PORT && data.bindAddress === 'localhost';
 
