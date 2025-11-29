@@ -178,7 +178,13 @@ help: ## 🛠️ Show this help message
 	@echo -e "  $(FONT_PURPLE)serve-all$(FONT_RESET)       Serve all tools on single transport (SSE)"
 	@echo -e "  $(FONT_PURPLE)serve-dual$(FONT_RESET)      Serve all tools on dual transports (SSE+HTTP)"
 	@echo ""
-	@echo -e "$(FONT_CYAN)$(TOOLS_SYMBOL) Development:$(FONT_RESET)"
+	@echo -e "$(FONT_CYAN)🔥 Development Mode:$(FONT_RESET)"
+	@echo -e "  $(FONT_PURPLE)dev$(FONT_RESET)             Start full dev environment (backend + frontend)"
+	@echo -e "  $(FONT_PURPLE)dev-backend$(FONT_RESET)     Start backend only with hot reload (port 8884)"
+	@echo -e "  $(FONT_PURPLE)dev-frontend$(FONT_RESET)    Start frontend only with Vite HMR (port 9884)"
+	@echo -e "  $(FONT_PURPLE)dev-install$(FONT_RESET)     Install all dev dependencies"
+	@echo ""
+	@echo -e "$(FONT_CYAN)$(TOOLS_SYMBOL) Testing:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)test$(FONT_RESET)            Run all tests"
 	@echo -e "  $(FONT_PURPLE)test-unit$(FONT_RESET)       Run unit tests"
 	@echo -e "  $(FONT_PURPLE)test-mcp$(FONT_RESET)        Run MCP protocol tests"
@@ -1299,14 +1305,39 @@ validate-tool: ## ✅ Validate tool compliance (use TOOL=name)
 # ===========================================
 # 🔥 Development
 # ===========================================
-.PHONY: dev-server
-dev-server: ## 🔥 Start development server with hot-reload
+.PHONY: dev-server dev dev-backend dev-frontend dev-install
+dev-server: ## 🔥 Start development server with hot-reload (legacy)
 	$(call print_status,Starting development server with hot-reload...)
 	@$(UV) run watchmedo auto-restart \
 		--directory automagik_tools \
 		--pattern "*.py" \
 		--recursive \
 		-- make serve-all HOST=$(HOST) PORT=$(PORT)
+
+dev: ## 🔥 Start full dev environment (backend + frontend with hot reload)
+	$(call print_status,Starting full development environment...)
+	@chmod +x scripts/dev_runner.sh
+	@./scripts/dev_runner.sh
+
+dev-backend: ## 🐍 Start backend only with hot reload (port 8884)
+	$(call print_status,Starting backend with hot reload...)
+	@$(UV) run uvicorn automagik_tools.hub_http:app \
+		--host 0.0.0.0 \
+		--port 8884 \
+		--reload \
+		--reload-dir automagik_tools \
+		--log-level info
+
+dev-frontend: ## ⚛️ Start frontend only with Vite HMR (port 9884)
+	$(call print_status,Starting frontend with Vite HMR...)
+	@cd automagik_tools/hub_ui && pnpm dev
+
+dev-install: ## 📦 Install development dependencies (Python + Node.js)
+	$(call print_status,Installing development dependencies...)
+	@$(UV) sync --all-extras
+	@$(call check_node)
+	@cd automagik_tools/hub_ui && pnpm install
+	$(call print_success,Development dependencies installed!)
 
 # ===========================================
 # 🧪 Advanced Testing
