@@ -124,25 +124,31 @@ def is_port_in_use(port: int) -> tuple[bool, List[PortConflict]]:
 
 
 async def suggest_alternative_ports(port: int, count: int = 3) -> List[int]:
-    """Suggest alternative ports near the requested port.
+    """Suggest alternative ports based on the requested port.
 
-    Uses parallel port scanning for 16x performance improvement.
-    Tests ports in batches of 10 concurrently.
+    Uses memorable prefix pattern (like email suggestions):
+    8884 -> 18884, 28884, 38884
     """
-    candidates = [port + offset for offset in range(1, 50) if 1024 <= (port + offset) <= 65535]
     suggestions = []
 
-    # Test in batches of 10 for optimal parallelism
-    for i in range(0, len(candidates), 10):
-        batch = candidates[i:i+10]
-        # Run port checks in parallel using asyncio.to_thread
-        results = await asyncio.gather(
-            *[asyncio.to_thread(is_port_in_use, p) for p in batch]
-        )
-
-        for test_port, (in_use, _) in zip(batch, results):
+    # Gmail-style: prefix the port with 1, 2, 3...
+    # e.g., 8884 -> 18884, 28884, 38884
+    for prefix in range(1, 10):
+        candidate = int(f"{prefix}{port}")
+        if 1024 <= candidate <= 65535:
+            in_use, _ = is_port_in_use(candidate)
             if not in_use:
-                suggestions.append(test_port)
+                suggestions.append(candidate)
+                if len(suggestions) >= count:
+                    return suggestions
+
+    # Fallback to sequential if prefixed ports all taken
+    for offset in range(1, 50):
+        candidate = port + offset
+        if 1024 <= candidate <= 65535:
+            in_use, _ = is_port_in_use(candidate)
+            if not in_use:
+                suggestions.append(candidate)
                 if len(suggestions) >= count:
                     return suggestions
 
