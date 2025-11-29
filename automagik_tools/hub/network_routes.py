@@ -1,5 +1,6 @@
 """Network configuration API for setup wizard."""
 import asyncio
+import os
 import socket
 import psutil
 from typing import List, Optional
@@ -31,6 +32,7 @@ class PortConflict(BaseModel):
     pid: int
     process: str
     command: Optional[str] = None
+    is_self: bool = False  # True if this is our server process
 
 
 class TestPortResponse(BaseModel):
@@ -78,6 +80,7 @@ def is_port_in_use(port: int) -> tuple[bool, List[PortConflict]]:
         (is_in_use, conflicts)
     """
     conflicts = []
+    current_pid = os.getpid()  # Our server's PID for self-detection
 
     try:
         # Get all connections
@@ -88,19 +91,22 @@ def is_port_in_use(port: int) -> tuple[bool, List[PortConflict]]:
                 # Skip connections where PID is unavailable (common on Linux/WSL)
                 if conn.pid is None:
                     continue
-                # Port is in use
+                # Port is in use - check if it's ourselves
+                is_self = (conn.pid == current_pid)
                 try:
                     process = psutil.Process(conn.pid)
                     conflicts.append(PortConflict(
                         pid=conn.pid,
                         process=process.name(),
-                        command=' '.join(process.cmdline()[:3]) if process.cmdline() else None
+                        command=' '.join(process.cmdline()[:3]) if process.cmdline() else None,
+                        is_self=is_self,
                     ))
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     conflicts.append(PortConflict(
                         pid=conn.pid,
                         process="unknown",
-                        command=None
+                        command=None,
+                        is_self=is_self,
                     ))
 
         return len(conflicts) > 0, conflicts

@@ -44,6 +44,7 @@ interface PortTestResult {
     pid: number;
     process: string;
     command?: string;
+    is_self?: boolean;  // True if this is the wizard itself
   }>;
   suggestions: number[];
 }
@@ -149,7 +150,9 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
     }
   };
 
-  const canProceed = portStatus?.available === true;
+  // Allow proceeding if port is available OR if the only conflict is ourselves (the wizard)
+  const isSelfConflict = portStatus?.conflicts?.length === 1 && portStatus.conflicts[0]?.is_self === true;
+  const canProceed = portStatus?.available === true || isSelfConflict;
   const isDefaultConfig = data.port === DEFAULT_PORT && data.bindAddress === 'localhost';
 
   return (
@@ -200,6 +203,13 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                   {isDefaultConfig
                     ? 'Default settings work for most users'
                     : `Port ${data.port} is available`}
+                </span>
+              </>
+            ) : isSelfConflict ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-green-600 dark:text-green-400">
+                  Port {data.port} is ready (used by this setup wizard)
                 </span>
               </>
             ) : portStatus && !portStatus.available ? (
@@ -299,13 +309,13 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                   </div>
                 )}
 
-                {!testing && portStatus?.available && (
+                {!testing && (portStatus?.available || isSelfConflict) && (
                   <div className="flex items-center px-3">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                   </div>
                 )}
 
-                {!testing && portStatus && !portStatus.available && (
+                {!testing && portStatus && !portStatus.available && !isSelfConflict && (
                   <div className="flex items-center px-3">
                     <AlertCircle className="h-5 w-5 text-red-600" />
                   </div>
@@ -313,7 +323,7 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
               </div>
 
               {/* Port Conflict Details */}
-              {!testing && portStatus && !portStatus.available && (
+              {!testing && portStatus && !portStatus.available && !isSelfConflict && (
                 <div className="space-y-3">
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -353,6 +363,17 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Self-conflict info (when wizard detects itself) */}
+              {!testing && isSelfConflict && (
+                <Alert>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription>
+                    This port is currently used by the setup wizard itself.
+                    After setup completes, the Hub will take over this port seamlessly.
+                  </AlertDescription>
+                </Alert>
               )}
 
               {error && (
