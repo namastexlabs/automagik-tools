@@ -317,7 +317,7 @@ install: ## $(ROCKET) Install automagik-tools (interactive)
 		pm2 set pm2-logrotate:max_size 100M >/dev/null 2>&1 || true; \
 		pm2 set pm2-logrotate:retain 7 >/dev/null 2>&1 || true; \
 		pm2 update >/dev/null 2>&1 || true; \
-		pm2 start ecosystem.config.cjs >/dev/null 2>&1 || pm2 restart "Tools Hub" >/dev/null 2>&1 || true; \
+		pm2 start ecosystem.config.cjs >/dev/null 2>&1 || pm2 restart "8884-automagik-tools" >/dev/null 2>&1 || true; \
 		pm2 save --force >/dev/null 2>&1 || true; \
 		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 configured and service started!$(FONT_RESET)"; \
 		pm2 status; \
@@ -361,9 +361,9 @@ install-complete:
 	@echo ""
 	@echo -e "$(FONT_CYAN)📊 Useful commands:$(FONT_RESET)"
 	@echo -e "  $(FONT_PURPLE)pm2 status$(FONT_RESET)           # Check service status"
-	@echo -e "  $(FONT_PURPLE)pm2 logs \"Tools Hub\"$(FONT_RESET)  # View live logs"
-	@echo -e "  $(FONT_PURPLE)pm2 restart \"Tools Hub\"$(FONT_RESET) # Restart service"
-	@echo -e "  $(FONT_PURPLE)pm2 stop \"Tools Hub\"$(FONT_RESET)    # Stop service"
+	@echo -e "  $(FONT_PURPLE)pm2 logs \"8884-automagik-tools\"$(FONT_RESET)  # View live logs"
+	@echo -e "  $(FONT_PURPLE)pm2 restart \"8884-automagik-tools\"$(FONT_RESET) # Restart service"
+	@echo -e "  $(FONT_PURPLE)pm2 stop \"8884-automagik-tools\"$(FONT_RESET)    # Stop service"
 	@echo -e "  $(FONT_PURPLE)make health$(FONT_RESET)          # Run health checks"
 	@echo -e "  $(FONT_PURPLE)make update$(FONT_RESET)          # Update to latest version"
 	@echo ""
@@ -555,7 +555,7 @@ uninstall: ## 🗑️ Uninstall automagik-tools (interactive)
 	@echo -e "  • Python virtual environment (.venv/)"
 	@echo -e "  • Node.js dependencies (hub_ui/node_modules/)"
 	@echo -e "  • UI build artifacts (hub_ui/dist/)"
-	@echo -e "  • PM2 process (Tools Hub)"
+	@echo -e "  • PM2 process (8884-automagik-tools)"
 	@echo -e "  • systemd service (if installed)"
 	@echo ""
 	@read -p "Proceed with uninstall? [y/N] " -n 1 -r REPLY; echo; \
@@ -566,7 +566,7 @@ uninstall: ## 🗑️ Uninstall automagik-tools (interactive)
 	echo ""; \
 	echo -e "$(FONT_PURPLE)$(TOOLS_SYMBOL) Stopping PM2 process...$(FONT_RESET)"; \
 	if command -v pm2 >/dev/null 2>&1; then \
-		pm2 delete "Tools Hub" 2>/dev/null || true; \
+		pm2 delete "8884-automagik-tools" 2>/dev/null || true; \
 		pm2 save --force 2>/dev/null || true; \
 		echo -e "$(FONT_GREEN)$(CHECKMARK) PM2 process removed$(FONT_RESET)"; \
 	else \
@@ -991,14 +991,30 @@ start-local: ## 🚀 Start service using local PM2 ecosystem
 stop-local: ## 🛑 Stop service using local PM2 ecosystem
 	$(call print_status,Stopping automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 stop "Tools Hub" 2>/dev/null || true
+	@pm2 stop "8884-automagik-tools" 2>/dev/null || true
 	@$(call print_success,Service stopped!)
 
 restart-local: ## 🔄 Restart service using local PM2 ecosystem
 	$(call print_status,Restarting automagik-tools with local PM2...)
 	@$(call check_pm2)
-	@pm2 restart "Tools Hub" 2>/dev/null || pm2 start ecosystem.config.cjs
+	@pm2 restart "8884-automagik-tools" 2>/dev/null || pm2 start ecosystem.config.cjs
 	@$(call print_success,Service restarted!)
+
+reload: ## 🔄 Full reload (stop, clean caches, rebuild UI, restart)
+	$(call print_status,Stopping service...)
+	@pm2 stop 8884-automagik-tools 2>/dev/null || true
+	$(call print_status,Clearing caches...)
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf automagik_tools/hub_ui/dist 2>/dev/null || true
+	@rm -rf automagik_tools/hub_ui/node_modules/.vite 2>/dev/null || true
+	$(call print_status,Rebuilding UI...)
+	@cd automagik_tools/hub_ui && pnpm install --silent
+	@cd automagik_tools/hub_ui && pnpm run build
+	$(call print_status,Starting service...)
+	@pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart 8884-automagik-tools
+	@sleep 2
+	$(call print_success,Reload complete!)
+	@$(MAKE) health
 
 install-service: ## 🔧 Install local PM2 service for automagik-tools
 	$(call print_status,Installing local PM2 service)
@@ -1022,7 +1038,7 @@ restart-service: ## 🔄 Restart local PM2 service
 uninstall-service: ## 🗑️ Uninstall local PM2 service
 	$(call print_status,Uninstalling local PM2 service)
 	@$(call check_pm2)
-	@pm2 delete "Tools Hub" 2>/dev/null || true
+	@pm2 delete "8884-automagik-tools" 2>/dev/null || true
 	@pm2 save --force
 	@$(call print_success,Local PM2 service uninstalled!)
 
@@ -1037,18 +1053,18 @@ endef
 service-status: ## 📊 Check automagik-tools PM2 service status
 	$(call print_status,Checking PM2 service status)
 	@$(call check_pm2)
-	@pm2 show "Tools Hub" 2>/dev/null || echo "Service not found"
+	@pm2 show "8884-automagik-tools" 2>/dev/null || echo "Service not found"
 
 .PHONY: logs logs-follow
 logs: ## 📄 Show service logs (N=lines)
 	$(eval N := $(or $(N),30))
 	$(call print_status,Recent logs)
-	@pm2 logs "Tools Hub" --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "8884-automagik-tools" --lines $(N) --nostream 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 logs-follow: ## 📄 Follow service logs in real-time
 	$(call print_status,Following logs)
 	@echo -e "$(FONT_YELLOW)Press Ctrl+C to stop following logs$(FONT_RESET)"
-	@pm2 logs "Tools Hub" 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
+	@pm2 logs "8884-automagik-tools" 2>/dev/null || echo -e "$(FONT_YELLOW)⚠️ Service not found or not running$(FONT_RESET)"
 
 .PHONY: health
 health: ## 🩺 Check service health endpoints
@@ -1098,7 +1114,7 @@ _update_run:
 
 	@# Step 3: Restart PM2 service if running
 	$(call print_status,Restarting PM2 service...)
-	@if command -v pm2 >/dev/null 2>&1 && pm2 show "Tools Hub" >/dev/null 2>&1; then \
+	@if command -v pm2 >/dev/null 2>&1 && pm2 show "8884-automagik-tools" >/dev/null 2>&1; then \
 		$(MAKE) restart-local; \
 		echo -e "$(FONT_CYAN)⏳ Waiting for service to restart...$(FONT_RESET)"; \
 		sleep 3; \
