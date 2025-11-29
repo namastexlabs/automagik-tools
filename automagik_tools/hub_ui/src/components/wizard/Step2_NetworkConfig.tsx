@@ -102,8 +102,11 @@ export function Step2_NetworkConfig({ data, onUpdate, onNext, onBack }: Step2Pro
       const result: PortTestResult = await response.json();
       setPortStatus(result);
 
-      // If port is in use and we're still on default, open advanced to show
-      if (!result.available && !advancedOpen) {
+      // Only auto-open advanced if there's a REAL conflict (not ourselves)
+      const allConflictsAreSelf = result.conflicts.length > 0 &&
+        result.conflicts.every(c => c.is_self === true);
+
+      if (!result.available && !advancedOpen && !allConflictsAreSelf) {
         setAdvancedOpen(true);
       }
     } catch (err) {
