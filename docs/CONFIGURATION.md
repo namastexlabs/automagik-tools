@@ -38,7 +38,7 @@ All configuration loaded from database via `RuntimeConfig`. The `.env` file is i
 
 ### Setup Wizard (`/setup`)
 
-**URL:** `http://localhost:8000/setup`
+**URL:** `http://localhost:8884/setup`
 
 **Purpose:** Initial Hub configuration
 
@@ -64,7 +64,7 @@ All configuration loaded from database via `RuntimeConfig`. The `.env` file is i
 
 ### Tool Catalogue (`/catalogue`)
 
-**URL:** `http://localhost:8000/catalogue`
+**URL:** `http://localhost:8884/catalogue`
 
 **Purpose:** Per-tool configuration
 
@@ -90,7 +90,7 @@ These credentials are stored per workspace in the `tool_configs` table, NOT glob
 
 ### Settings UI (`/settings`) - Advanced
 
-**URL:** `http://localhost:8000/settings`
+**URL:** `http://localhost:8884/settings`
 
 **Purpose:** Runtime configuration adjustments
 
@@ -253,7 +253,7 @@ def get_metadata():
 
 If you prefer manual migration:
 
-1. **Visit Setup Wizard:** `http://localhost:8000/setup`
+1. **Visit Setup Wizard:** `http://localhost:8884/setup`
 2. **Enter credentials:** Copy from `.env` to web form
 3. **Save:** Submit form to store in database
 4. **Verify:** Check `data/hub.db` has values

@@ -3,8 +3,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Read backend port from environment (set by dev_runner.sh)
-// Falls back to 8000 for standalone frontend dev
-const backendPort = process.env.VITE_BACKEND_PORT || '8000';
+// Falls back to 8884 (production default) for standalone frontend dev
+const backendPort = process.env.VITE_BACKEND_PORT || '8884';
 const backendUrl = `http://localhost:${backendPort}`;
 
 // https://vite.dev/config/

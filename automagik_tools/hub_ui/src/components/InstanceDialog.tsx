@@ -270,7 +270,7 @@ export function InstanceDialog({ open, onOpenChange, instance, onInstanceCreated
                 type="url"
                 value={formData.agent_api_url}
                 onChange={(e) => setFormData({ ...formData, agent_api_url: e.target.value })}
-                placeholder="http://localhost:8000"
+                placeholder="http://localhost:8884"
                 required
                 disabled={isPending}
               />

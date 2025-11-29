@@ -180,7 +180,7 @@ async def load_runtime_config_from_db() -> RuntimeConfig:
         # Network configuration
         network_config = await config_store.get_network_config()
         host = network_config.get("bind_address", "0.0.0.0")
-        port = int(network_config.get("port", 8000))
+        port = int(network_config.get("port", 8884))
 
         # Database path
         database_path = await config_store.get(
@@ -289,7 +289,7 @@ Copy this block when reporting issues.
 
             # Store network config from .env
             host = os.getenv("HUB_HOST", "0.0.0.0")
-            port = int(os.getenv("HUB_PORT", "8000"))
+            port = int(os.getenv("HUB_PORT", "8884"))
             await config_store.set_network_config({"bind_address": host, "port": port})
 
             # Store database path
@@ -334,7 +334,7 @@ Copy this block when reporting issues.
         print("⚠️  Setup required! Navigate to /setup to configure application mode")
         return RuntimeConfig(
             host=os.getenv("HUB_HOST", "0.0.0.0"),
-            port=int(os.getenv("HUB_PORT", "8000")),
+            port=int(os.getenv("HUB_PORT", "8884")),
             database_path=os.getenv("HUB_DATABASE_PATH", "./data/hub.db"),
             allowed_origins=["*"],
             enable_hsts=False,

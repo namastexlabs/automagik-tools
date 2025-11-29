@@ -119,7 +119,7 @@ def load_external_mcp_servers() -> Dict[str, Dict[str, Any]]:
         },
         "another_server": {
             "type": "http",
-            "url": "http://localhost:8000/mcp"
+            "url": "http://localhost:8884/mcp"
         }
     }
     """

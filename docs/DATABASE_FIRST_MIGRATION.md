@@ -190,7 +190,7 @@ class RuntimeConfig:
 ### For Users
 
 1. **First-time Setup Required**
-   - Navigate to `http://localhost:8000/setup` on first run
+   - Navigate to `http://localhost:8884/setup` on first run
    - Choose local or WorkOS authentication mode
    - Configure super admin emails
 
@@ -208,7 +208,7 @@ class RuntimeConfig:
 1. **No More `os.getenv()` in Runtime Code**
    ```python
    # ❌ Old (don't do this)
-   port = int(os.getenv("HUB_PORT", "8000"))
+   port = int(os.getenv("HUB_PORT", "8884"))
 
    # ✅ New (use RuntimeConfig)
    from automagik_tools.hub.config_manager import get_config
@@ -276,7 +276,7 @@ Bootstrap State: configured
 ├─────────────────┼──────────────────────┤
 │ App Mode        │ workos               │
 │ Bind Address    │ 0.0.0.0              │
-│ Port            │ 8000                 │
+│ Port            │ 8884                 │
 │ Database Path   │ data/hub.db          │
 │ Super Admins    │ 2 configured         │
 │ WorkOS Client ID│ client_***           │
@@ -326,7 +326,7 @@ automagik-tools config show
 # Should show: unconfigured
 
 # 4. Complete setup wizard
-# Navigate to http://localhost:8000/setup
+# Navigate to http://localhost:8884/setup
 
 # 5. Verify configuration
 automagik-tools config show

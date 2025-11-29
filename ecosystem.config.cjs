@@ -84,7 +84,7 @@ module.exports = {
     // This enables zero-configuration: database is the only source of truth.
     // Port/host no longer need to be set in .env after initial setup.
     {
-      name: '8000-automagik-tools',
+      name: '8884-automagik-tools',
       cwd: PROJECT_ROOT,
       script: path.join(PROJECT_ROOT, '.venv/bin/python'),
       args: '-m automagik_tools.hub.start',

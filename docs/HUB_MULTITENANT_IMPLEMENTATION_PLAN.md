@@ -598,7 +598,7 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_user_workflow():
     """Test complete user workflow."""
-    async with AsyncClient(base_url="http://localhost:8000") as client:
+    async with AsyncClient(base_url="http://localhost:8884") as client:
         # 1. Login (mocked OAuth)
         token = await mock_oauth_login(client)
 
@@ -650,7 +650,7 @@ async def test_user_workflow():
 {
   "mcpServers": {
     "automagik-hub": {
-      "url": "http://localhost:8000/mcp",
+      "url": "http://localhost:8884/mcp",
       "transport": {
         "type": "http"
       },
@@ -668,7 +668,7 @@ async def test_user_workflow():
 **Checklist**:
 - [ ] All tools migrated to multi-tenant
 - [ ] Hub UI builds successfully (`cd hub_ui && npm run build`)
-- [ ] Hub server starts on port 8000
+- [ ] Hub server starts on port 8884
 - [ ] Browser opens automatically
 - [ ] OAuth login works
 - [ ] Tool catalogue loads
@@ -817,7 +817,7 @@ git commit -m "chore: finalize multi-tenant Hub implementation - ready for produ
 
 **User Handoff**:
 - User returns to complete implementation
-- Run `uv run automagik-tools hub --host 0.0.0.0 --port 8000 --transport http`
+- Run `uv run automagik-tools hub --host 0.0.0.0 --port 8884 --transport http`
 - Browser auto-opens to Hub UI
 - Login via WorkOS OAuth
 - Test tool catalogue, configuration, lifecycle

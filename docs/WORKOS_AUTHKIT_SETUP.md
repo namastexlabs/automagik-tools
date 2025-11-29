@@ -6,7 +6,7 @@ This guide walks you through setting up WorkOS AuthKit with the Automagik Tools 
 
 1. A **[WorkOS Account](https://workos.com/)** (free tier available)
 2. The Automagik Tools Hub installed (`uv install` or `uvx automagik-tools`)
-3. Your Hub's URL (e.g., `http://localhost:8000` for development)
+3. Your Hub's URL (e.g., `http://localhost:8884` for development)
 
 ## Step 1: Create WorkOS Project
 
@@ -52,7 +52,7 @@ Set these environment variables:
 
 ```bash
 export WORKOS_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app
-export HUB_BASE_URL=http://localhost:8000  # Change for production
+export HUB_BASE_URL=http://localhost:8884  # Change for production
 ```
 
 ### Option B: .env File (Not Recommended - Zero Config Goal)
@@ -62,7 +62,7 @@ Create a `.env` file (only if necessary):
 ```bash
 # AuthKit (WorkOS) - FastMCP Native Integration
 WORKOS_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app
-HUB_BASE_URL=http://localhost:8000
+HUB_BASE_URL=http://localhost:8884
 
 # Optional: Required OAuth scopes (comma-separated)
 # FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_REQUIRED_SCOPES=openid,profile,email
@@ -73,7 +73,7 @@ HUB_BASE_URL=http://localhost:8000
 ```bash
 uvx automagik-tools hub \
   --env WORKOS_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app \
-  --env HUB_BASE_URL=http://localhost:8000
+  --env HUB_BASE_URL=http://localhost:8884
 ```
 
 ## Step 6: Start the Hub
@@ -84,8 +84,8 @@ uvx automagik-tools hub \
 # Using CLI flags (zero-config)
 uvx automagik-tools hub \
   --env WORKOS_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app \
-  --env HUB_BASE_URL=http://localhost:8000 \
-  --port 8000 \
+  --env HUB_BASE_URL=http://localhost:8884 \
+  --port 8884 \
   --reload
 ```
 
@@ -93,7 +93,7 @@ uvx automagik-tools hub \
 
 ```bash
 # Using environment variables
-uvx automagik-tools hub --port 8000
+uvx automagik-tools hub --port 8884
 ```
 
 You should see:
@@ -105,7 +105,7 @@ You should see:
 INFO:     Started server process [12345]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000
+INFO:     Uvicorn running on http://0.0.0.0:8884
 ```
 
 ## Step 7: Test Authentication
@@ -119,7 +119,7 @@ from fastmcp import Client
 import asyncio
 
 async def main():
-    async with Client("http://localhost:8000/mcp", auth="oauth") as client:
+    async with Client("http://localhost:8884/mcp", auth="oauth") as client:
         # This will trigger OAuth flow in your browser
         assert await client.ping()
         print("✅ Authentication successful!")
@@ -151,8 +151,8 @@ Add to your MCP client configuration (e.g., `claude_desktop_config.json`):
         "automagik-tools",
         "hub",
         "--env", "WORKOS_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app",
-        "--env", "HUB_BASE_URL=http://localhost:8000",
-        "--port", "8000"
+        "--env", "HUB_BASE_URL=http://localhost:8884",
+        "--port", "8884"
       ]
     }
   }
@@ -221,7 +221,7 @@ uvx automagik-tools hub \
 
 ```bash
 # Development (localhost)
---env HUB_BASE_URL=http://localhost:8000
+--env HUB_BASE_URL=http://localhost:8884
 
 # Production (public URL)
 --env HUB_BASE_URL=https://hub.yourdomain.com
@@ -250,7 +250,7 @@ export HUB_BASE_URL=https://hub.yourdomain.com
 
 # Optional (with defaults)
 export HUB_HOST=0.0.0.0
-export HUB_PORT=8000
+export HUB_PORT=8884
 export HUB_DATABASE_PATH=/var/lib/automagik-hub/hub.db
 ```
 
@@ -261,7 +261,7 @@ For production, you MUST use HTTPS. Options:
 1. **Reverse Proxy** (Recommended)
    - Use Nginx/Caddy in front of Hub
    - Let reverse proxy handle SSL/TLS
-   - Hub listens on localhost:8000
+   - Hub listens on localhost:8884
 
 2. **Cloud Deployment**
    - Deploy on Fly.io, Railway, etc.

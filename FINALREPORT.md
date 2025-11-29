@@ -205,7 +205,7 @@ from fastmcp.server.auth.providers.workos import AuthKitProvider
 def create_auth_provider() -> AuthKitProvider:
     return AuthKitProvider(
         authkit_domain=os.environ["WORKOS_AUTHKIT_DOMAIN"],
-        base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8000")
+        base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8884")
     )
 ```
 

@@ -223,7 +223,7 @@ Transform the automagik-tools Hub from a static tool aggregator into a **dynamic
 External Components:
 ┌──────────────────┐     ┌──────────────────┐     ┌──────────────┐
 │  Namastex OAuth  │────▶│   Claude / LLM   │────▶│  Hub Server  │
-│  (User Auth)     │     │   (MCP Client)   │     │  (HTTP/8000) │
+│  (User Auth)     │     │   (MCP Client)   │     │  (HTTP/8884) │
 └──────────────────┘     └──────────────────┘     └──────────────┘
 ```
 
@@ -500,7 +500,7 @@ auth_provider = OAuthProxy(
     client_secret=os.environ["NAMASTEX_CLIENT_SECRET"],
 
     # Hub server URL
-    base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8000"),
+    base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8884"),
     redirect_path="/auth/callback",
 
     # Required scopes
@@ -512,7 +512,7 @@ auth_provider = OAuthProxy(
 
     # Security
     forward_pkce=True,
-    issuer_url=os.environ.get("HUB_BASE_URL", "http://localhost:8000")
+    issuer_url=os.environ.get("HUB_BASE_URL", "http://localhost:8884")
 )
 
 # Create Hub with OAuth
@@ -797,7 +797,7 @@ auth = OAuthProxy(
     userinfo_url=os.environ["NAMASTEX_OAUTH_USERINFO"],
     client_id=os.environ["NAMASTEX_CLIENT_ID"],
     client_secret=os.environ["NAMASTEX_CLIENT_SECRET"],
-    base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8000"),
+    base_url=os.environ.get("HUB_BASE_URL", "http://localhost:8884"),
     redirect_path="/auth/callback",
     required_scopes=["openid", "profile", "email", "tools:manage"],
     jwt_signing_key=os.environ["JWT_SIGNING_KEY"],
@@ -827,7 +827,7 @@ async def add_tool(tool_name: str, config: dict, ctx: Context) -> str:
 
 # Run HTTP server directly
 if __name__ == "__main__":
-    hub.run(transport="http", host="0.0.0.0", port=8000)
+    hub.run(transport="http", host="0.0.0.0", port=8884)
 ```
 
 **Start server:**
@@ -836,7 +836,7 @@ if __name__ == "__main__":
 python automagik_tools/hub_http.py
 
 # Production with Uvicorn
-uvicorn automagik_tools.hub_http:hub --host 0.0.0.0 --port 8000
+uvicorn automagik_tools.hub_http:hub --host 0.0.0.0 --port 8884
 ```
 
 ---
@@ -860,7 +860,7 @@ app.mount("/mcp", http_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(http_app, host="0.0.0.0", port=8000)
+    uvicorn.run(http_app, host="0.0.0.0", port=8884)
 ```
 
 ---
@@ -901,13 +901,13 @@ WORKERS=4
 # Single worker (sufficient for 10 users)
 uvicorn automagik_tools.hub_http:hub \
   --host 0.0.0.0 \
-  --port 8000 \
+  --port 8884 \
   --log-level info
 
 # Multiple workers (if needed for scale)
 uvicorn automagik_tools.hub_http:hub \
   --host 0.0.0.0 \
-  --port 8000 \
+  --port 8884 \
   --workers 4 \
   --log-level info
 ```
@@ -929,7 +929,7 @@ EnvironmentFile=/opt/automagik-hub/.env.production
 ExecStart=/opt/automagik-hub/venv/bin/uvicorn \
     automagik_tools.hub_http:hub \
     --host 0.0.0.0 \
-    --port 8000 \
+    --port 8884 \
     --log-level info
 
 Restart=always
@@ -951,7 +951,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/hub.namastex.com/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8884;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
