@@ -91,8 +91,8 @@ async def get_authorization_url() -> Dict[str, str]:
     return {"authorization_url": authorization_url}
 
 
-@router.post("/callback")
-async def auth_callback(request: AuthCallbackRequest, req: Request):
+@router.get("/callback")
+async def auth_callback(code: str, req: Request):
     """Handle OAuth callback and exchange code for session.
 
     This endpoint:
@@ -118,7 +118,7 @@ async def auth_callback(request: AuthCallbackRequest, req: Request):
 
         # Exchange authorization code for sealed session using WorkOS SDK
         auth_response = workos_client.user_management.authenticate_with_code(
-            code=request.code,
+            code=code,
             session={
                 "seal_session": True,
                 "cookie_password": cookie_password,
