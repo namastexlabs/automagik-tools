@@ -48,11 +48,14 @@ async def get_workos_config() -> Dict[str, str]:
         if creds:
             # Database has credentials
             redirect_uri = "https://tools.genieos.namastex.io/api/auth/callback"
+            # Also get cookie password for session sealing
+            cookie_password = await config_store.get_or_generate_cookie_password()
             return {
                 "client_id": creds["client_id"],
                 "api_key": creds["api_key"],
                 "authkit_domain": creds["authkit_domain"],
                 "redirect_uri": redirect_uri,
+                "cookie_password": cookie_password,
             }
 
         # No credentials in database - setup required
@@ -104,7 +107,7 @@ async def auth_callback(code: str, req: Request):
 
     Returns user data (session stored in HTTP-only cookie).
     """
-    from .auth import get_workos_client, get_cookie_password
+    from workos import WorkOSClient
     from fastapi.responses import JSONResponse
 
     # Get client IP for audit logging
@@ -112,9 +115,10 @@ async def auth_callback(code: str, req: Request):
     user_agent = req.headers.get("user-agent")
 
     try:
-        # Get WorkOS client and cookie password
-        workos_client = get_workos_client()
-        cookie_password = get_cookie_password()
+        # Get WorkOS config (async - same pattern as /authorize)
+        config = await get_workos_config()
+        workos_client = WorkOSClient(api_key=config['api_key'], client_id=config['client_id'])
+        cookie_password = config['cookie_password']
 
         # Exchange authorization code for sealed session using WorkOS SDK
         auth_response = workos_client.user_management.authenticate_with_code(
