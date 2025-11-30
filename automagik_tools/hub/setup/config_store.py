@@ -262,19 +262,27 @@ class ConfigStore:
     async def get_or_generate_cookie_password(self) -> str:
         """Get or generate WorkOS cookie password.
 
-        Cookie password is used for session encryption. If not set,
-        a secure random password is generated and stored.
+        Cookie password must be a valid Fernet key (32 bytes, base64-encoded
+        with padding = 44 characters). Used by WorkOS SDK for session sealing.
 
         Returns:
-            Cookie password string
+            Cookie password string (valid Fernet key)
         """
-        import secrets
+        from cryptography.fernet import Fernet
 
         password = await self.get("workos_cookie_password")
 
+        # Validate existing password is a valid Fernet key
+        if password:
+            try:
+                Fernet(password.encode())
+            except Exception:
+                # Invalid format, regenerate
+                password = None
+
         if not password:
-            # Generate secure random password
-            password = secrets.token_urlsafe(32)
+            # Generate proper Fernet key (32 bytes base64-encoded with padding)
+            password = Fernet.generate_key().decode()
             await self.set("workos_cookie_password", password, is_secret=True)
 
         return password
