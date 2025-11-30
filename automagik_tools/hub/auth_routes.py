@@ -74,14 +74,17 @@ async def get_authorization_url() -> Dict[str, str]:
     Returns a URL that the frontend redirects to for authentication.
     WorkOS handles the login UI, MFA, SSO, etc.
     """
+    from workos import WorkOSClient
+
     config = await get_workos_config()
 
-    # Build WorkOS authorization URL - use AuthKit OAuth endpoint directly
-    authorization_url = (
-        f"{config['authkit_domain']}/oauth2/authorize"
-        f"?client_id={config['client_id']}"
-        f"&redirect_uri={config['redirect_uri']}"
-        f"&response_type=code"
+    # Create WorkOS client with credentials we already have (async-safe)
+    client = WorkOSClient(api_key=config['api_key'], client_id=config['client_id'])
+
+    # Use SDK to generate authorization URL (required for AuthKit)
+    authorization_url = client.user_management.get_authorization_url(
+        provider="authkit",
+        redirect_uri=config['redirect_uri'],
     )
 
     logger.info(f"Generated authorization URL with redirect_uri={config['redirect_uri']}")

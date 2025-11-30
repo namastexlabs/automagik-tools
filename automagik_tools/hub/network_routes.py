@@ -5,7 +5,7 @@ import socket
 import psutil
 from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 
 class NetworkInterface(BaseModel):
@@ -156,17 +156,26 @@ async def suggest_alternative_ports(port: int, count: int = 3) -> List[int]:
 
 
 @router.get("/info", response_model=NetworkInfoResponse)
-async def get_network_info():
+async def get_network_info(
+    mode: Optional[str] = Query(None, description="Install mode: 'local' or 'workos'")
+):
     """Get network interface information.
 
     Returns list of available network interfaces with IPs.
+
+    Args:
+        mode: Optional install mode to determine recommended bind address.
+              'local' → 127.0.0.1, 'workos'/'team' → 0.0.0.0
     """
     try:
         interfaces = get_network_interfaces()
         hostname = socket.gethostname()
 
-        # Recommend localhost by default for security
-        recommended_bind = "127.0.0.1"
+        # Mode-aware default: team/workos = network, local = localhost
+        if mode in ("workos", "team"):
+            recommended_bind = "0.0.0.0"
+        else:
+            recommended_bind = "127.0.0.1"
 
         return NetworkInfoResponse(
             interfaces=interfaces,
