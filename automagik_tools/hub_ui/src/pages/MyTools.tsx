@@ -161,7 +161,7 @@ export default function MyTools() {
                     <div>
                       <span className="text-muted-foreground">Configuration:</span>
                       <span className="ml-2">
-                        {Object.keys(tool.config).length} settings
+                        {Object.keys(tool.config ?? {}).length} settings
                       </span>
                     </div>
                   </div>
